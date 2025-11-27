@@ -2,16 +2,18 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'download_qr_screen.dart';
 import 'encounter_list_screen.dart';
 import 'notifications_screen.dart';
+import '../data/preset_hashtags.dart';
 import '../services/streetpass_service.dart';
 import '../state/encounter_manager.dart';
 import '../state/local_profile_loader.dart';
+import '../state/emotion_map_manager.dart';
 import '../state/notification_manager.dart';
 import '../state/profile_controller.dart';
 import '../state/timeline_manager.dart';
@@ -26,6 +28,7 @@ import '../widgets/profile_info_tile.dart';
 import '../widgets/profile_stats_row.dart';
 import 'profile_follow_list_sheet.dart';
 import 'profile_view_screen.dart';
+import '../utils/auth_helpers.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -144,6 +147,11 @@ class _HomeShellState extends State<HomeShell> {
     _autoStartAttempted = true;
     final manager = context.read<EncounterManager>();
     if (manager.isRunning) return;
+    if (FirebaseAuth.instance.currentUser == null) {
+      debugPrint(
+          'HomeShell._autoStartStreetPass: skipping start because no FirebaseAuth user is available');
+      return;
+    }
     try {
       await manager.start();
     } on StreetPassException catch (error) {
@@ -171,9 +179,14 @@ class _TimelineScreen extends StatelessWidget {
     final palette = _HomePalette.fromTheme(theme);
     final encounterManager = context.watch<EncounterManager>();
     final timelineManager = context.watch<TimelineManager>();
+    final localProfile = context.watch<ProfileController>().profile;
     final metrics = _computeMetrics(encounterManager);
-    final feedItems =
-        _buildFeedItems(timelineManager.posts, encounterManager.encounters);
+    final filteredPosts = _filterTimelinePosts(
+      timelineManager.posts,
+      localProfile,
+      encounterManager.encounters,
+    );
+    final feedPosts = _buildFeedPosts(filteredPosts);
 
     return Scaffold(
       backgroundColor: palette.background,
@@ -183,17 +196,6 @@ class _TimelineScreen extends StatelessWidget {
         backgroundColor: palette.background,
         elevation: 0,
         scrolledUnderElevation: 0,
-        actions: [
-          IconButton(
-            tooltip: '\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9QR\u3092\u8868\u793a',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const DownloadQrScreen()),
-              );
-            },
-            icon: const Icon(Icons.qr_code_2),
-          ),
-        ],
       ),
       body: SafeArea(
         child: Align(
@@ -215,20 +217,16 @@ class _TimelineScreen extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 24),
-                if (feedItems.isEmpty)
+                if (feedPosts.isEmpty)
                   const _EmptyTimelineMessage()
                 else
-                  for (final item in feedItems)
+                  for (final post in feedPosts)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 24),
-                      child: item.post != null
-                          ? _UserPostCard(
-                              post: item.post!,
-                              timelineManager: timelineManager,
-                            )
-                          : _EncounterPostCard(
-                              encounter: item.encounter!,
-                            ),
+                      child: _UserPostCard(
+                        post: post,
+                        timelineManager: timelineManager,
+                      ),
                     ),
               ],
             ),
@@ -239,26 +237,56 @@ class _TimelineScreen extends StatelessWidget {
   }
 }
 
-List<_TimelineFeedItem> _buildFeedItems(
-  List<TimelinePost> posts,
-  List<Encounter> encounters,
-) {
-  final items = <_TimelineFeedItem>[
-    for (final post in posts) _TimelineFeedItem(post: post),
-    for (final encounter in encounters) _TimelineFeedItem(encounter: encounter),
-  ];
-  items.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+List<TimelinePost> _buildFeedPosts(List<TimelinePost> posts) {
+  final items = List<TimelinePost>.from(posts);
+  items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
   return items;
 }
 
-class _TimelineFeedItem {
-  _TimelineFeedItem({this.post, this.encounter})
-      : assert(post != null || encounter != null),
-        timestamp = post?.createdAt ?? encounter!.encounteredAt;
+List<TimelinePost> _filterTimelinePosts(
+  List<TimelinePost> posts,
+  Profile localProfile,
+  List<Encounter> encounters,
+) {
+  final followedIds = <String>{};
+  final encounteredIds = <String>{};
+  for (final encounter in encounters) {
+    final id = encounter.profile.id;
+    if (id.isEmpty) continue;
+    encounteredIds.add(id);
+    if (encounter.profile.following) {
+      followedIds.add(id);
+    }
+  }
+  final localTags = _canonicalHashtagSet(localProfile.favoriteGames);
 
-  final TimelinePost? post;
-  final Encounter? encounter;
-  final DateTime timestamp;
+  return posts.where((post) {
+    final authorId = post.authorId;
+    final isSelf =
+        authorId.isEmpty || authorId == localProfile.id || authorId == 'local';
+    if (isSelf) return true;
+    if (followedIds.contains(authorId)) return true;
+    if (encounteredIds.contains(authorId)) return true;
+    if (localTags.isEmpty) return false;
+    final postTags = _canonicalHashtagSet(post.hashtags);
+    if (postTags.isEmpty) return false;
+    return postTags.any(localTags.contains);
+  }).toList();
+}
+
+Set<String> _canonicalHashtagSet(Iterable<String> rawTags) {
+  final result = <String>{};
+  for (final raw in rawTags) {
+    final normalized = Profile.normalizeHashtag(raw);
+    if (normalized == null) continue;
+    final key = normalized.startsWith('#')
+        ? normalized.substring(1).toLowerCase()
+        : normalized.toLowerCase();
+    if (key.isNotEmpty) {
+      result.add(key);
+    }
+  }
+  return result;
 }
 
 _HomeMetrics _computeMetrics(EncounterManager manager) {
@@ -275,7 +303,8 @@ _HomeMetrics _computeMetrics(EncounterManager manager) {
     if (key.isEmpty) continue;
     occurrences.update(key, (value) => value + 1, ifAbsent: () => 1);
   }
-  final reencounters = occurrences.values.where((count) => count > 1).length;
+  final reencounters =
+      occurrences.values.where((occurrenceCount) => occurrenceCount > 1).length;
 
   final resonance = encounters.where((encounter) => encounter.liked).length;
 
@@ -490,6 +519,8 @@ class _TimelineComposerState extends State<_TimelineComposer> {
   final TextEditingController _controller = TextEditingController();
   Uint8List? _imageBytes;
   bool _submitting = false;
+  final Set<String> _selectedHashtags = <String>{};
+  static const int _maxHashtagSelection = 5;
 
   @override
   void dispose() {
@@ -525,16 +556,23 @@ class _TimelineComposerState extends State<_TimelineComposer> {
           '\u30c6\u30ad\u30b9\u30c8\u304b\u753b\u50cf\u3092\u8ffd\u52a0\u3057\u3066\u304f\u3060\u3055\u3044\u3002');
       return;
     }
+    if (_selectedHashtags.isEmpty) {
+      _showSnack('\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0\u30921\u3064\u4ee5\u4e0a\u9078\u3093\u3067\u304f\u3060\u3055\u3044\u3002');
+      return;
+    }
+    final hashtags = Profile.sanitizeHashtags(_selectedHashtags).toList();
     setState(() => _submitting = true);
     try {
       await widget.timelineManager.addPost(
         caption: caption,
         imageBytes: _imageBytes,
+        hashtags: hashtags,
       );
       if (!mounted) return;
       _controller.clear();
       setState(() {
         _imageBytes = null;
+        _selectedHashtags.clear();
       });
       FocusScope.of(context).unfocus();
       _showSnack('\u6295\u7a3f\u3057\u307e\u3057\u305f\u3002');
@@ -551,6 +589,21 @@ class _TimelineComposerState extends State<_TimelineComposer> {
 
   void _removeImage() {
     setState(() => _imageBytes = null);
+  }
+
+  void _toggleHashtag(String tag) {
+    setState(() {
+      if (_selectedHashtags.contains(tag)) {
+        _selectedHashtags.remove(tag);
+      } else {
+        if (_selectedHashtags.length >= _maxHashtagSelection) {
+          _showSnack(
+              '\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0\u306f$_maxHashtagSelection\u500b\u307e\u3067\u9078\u3079\u307e\u3059\u3002');
+          return;
+        }
+        _selectedHashtags.add(tag);
+      }
+    });
   }
 
   void _showSnack(String message) {
@@ -585,6 +638,29 @@ class _TimelineComposerState extends State<_TimelineComposer> {
                 hintText:
                     '\u4eca\u306e\u6c17\u6301\u3061\u3084\u3082\u3088\u3044\u3092\u5171\u6709...',
                 border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0\u3092\u9078\u3076 (\u6700\u5927$_maxHashtagSelection\u500b)',
+              style: theme.textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 200,
+              child: SingleChildScrollView(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final tag in presetHashtags)
+                      FilterChip(
+                        label: Text(tag),
+                        selected: _selectedHashtags.contains(tag),
+                        onSelected: (_) => _toggleHashtag(tag),
+                      ),
+                  ],
+                ),
               ),
             ),
             if (_imageBytes != null) ...[
@@ -652,7 +728,11 @@ class _UserPostCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final viewerId = context.watch<ProfileController>().profile.id;
+    final canDelete =
+        post.authorId.isEmpty || post.authorId == viewerId || post.authorId == 'local';
     final imageBytes = post.decodeImage();
+    final hasImageUrl = (post.imageUrl?.isNotEmpty ?? false);
     final likeLabel = post.likeCount > 0
         ? '${post.likeCount}\u4ef6\u306e\u3044\u3044\u306d'
         : '\u307e\u3060\u3044\u3044\u306d\u306f\u3042\u308a\u307e\u305b\u3093';
@@ -667,8 +747,27 @@ class _UserPostCard extends StatelessWidget {
             title: post.authorName,
             subtitle: _relativeTime(post.createdAt),
             color: post.authorColor,
+            trailing: canDelete
+                ? PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'delete') {
+                        _confirmDelete(context);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('\u524a\u9664'),
+                      ),
+                    ],
+                  )
+                : null,
           ),
-          if (imageBytes != null) _TimelineImage(bytes: imageBytes),
+          if (imageBytes != null || hasImageUrl)
+            _TimelineImage(
+              bytes: imageBytes,
+              imageUrl: hasImageUrl ? post.imageUrl : null,
+            ),
           if (post.caption.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -677,75 +776,77 @@ class _UserPostCard extends StatelessWidget {
                 style: theme.textTheme.bodyLarge,
               ),
             ),
+          if (post.hashtags.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final tag in post.hashtags)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color:
+                            theme.colorScheme.primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        tag,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           _TimelineActions(
             isLiked: post.isLiked,
             likeLabel: likeLabel,
-            onLike: () => timelineManager.toggleLike(post.id),
+            onLike: () {
+              timelineManager.toggleLike(post.id);
+            },
           ),
         ],
       ),
     );
   }
-}
 
-class _EncounterPostCard extends StatelessWidget {
-  const _EncounterPostCard({required this.encounter});
-
-  final Encounter encounter;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final profile = encounter.profile;
-    final caption = (encounter.message?.trim().isNotEmpty ?? false)
-        ? encounter.message!.trim()
-        : '${profile.displayName}\u3068\u306e\u65b0\u3057\u3044\u51fa\u4f1a\u3092\u8a18\u9332\u3057\u307e\u3057\u305f\u3002';
-    final distance = encounter.displayDistance;
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      elevation: 0,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _TimelineCardHeader(
-            title: profile.displayName,
-            subtitle: _relativeTime(encounter.encounteredAt),
-            color: profile.avatarColor,
-          ),
-          _EncounterImage(profile: profile),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  caption,
-                  style: theme.textTheme.bodyLarge,
-                ),
-                if (distance != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    '\u63a8\u5b9a\u8ddd\u96e2: ${distance.toStringAsFixed(1)}m',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
+  Future<void> _confirmDelete(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('\u6295\u7a3f\u3092\u524a\u9664'),
+          content: const Text('\u3053\u306e\u6295\u7a3f\u3092\u524a\u9664\u3057\u307e\u3059\u304b\uff1f'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('\u30ad\u30e3\u30f3\u30bb\u30eb'),
             ),
-          ),
-          _TimelineActions(
-            isLiked: encounter.liked,
-            likeLabel: encounter.liked
-                ? '\u3044\u3044\u306d\u3057\u307e\u3057\u305f'
-                : '\u3059\u308c\u9055\u3044\u306b\u3044\u3044\u306d',
-            onLike: () =>
-                context.read<EncounterManager>().toggleLike(encounter.id),
-          ),
-        ],
-      ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('\u524a\u9664'),
+            ),
+          ],
+        );
+      },
     );
+    if (result != true) return;
+    try {
+      await timelineManager.deletePost(post);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('\u6295\u7a3f\u3092\u524a\u9664\u3057\u307e\u3057\u305f\u3002')),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('\u524a\u9664\u306b\u5931\u6557\u3057\u307e\u3057\u305f: $error')),
+      );
+    }
   }
 }
 
@@ -754,11 +855,13 @@ class _TimelineCardHeader extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.color,
+    this.trailing,
   });
 
   final String title;
   final String subtitle;
   final Color color;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -790,6 +893,7 @@ class _TimelineCardHeader extends StatelessWidget {
           color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
+      trailing: trailing,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     );
   }
@@ -838,87 +942,58 @@ class _TimelineActions extends StatelessWidget {
 }
 
 class _TimelineImage extends StatelessWidget {
-  const _TimelineImage({required this.bytes});
+  const _TimelineImage({this.bytes, this.imageUrl})
+      : assert(bytes != null || imageUrl != null);
 
-  final Uint8List bytes;
+  final Uint8List? bytes;
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
+    final errorPlaceholder = Container(
+      color: Colors.grey.shade200,
+      alignment: Alignment.center,
+      child: const Icon(
+        Icons.image_not_supported_outlined,
+        size: 48,
+        color: Colors.black38,
+      ),
+    );
+
+    Widget buildImage() {
+      if (bytes != null) {
+        return Image.memory(
+          bytes!,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          filterQuality: FilterQuality.high,
+          errorBuilder: (context, error, stackTrace) => errorPlaceholder,
+        );
+      }
+      return Image.network(
+        imageUrl!,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.high,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value: progress.expectedTotalBytes != null
+                  ? progress.cumulativeBytesLoaded /
+                      progress.expectedTotalBytes!
+                  : null,
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) => errorPlaceholder,
+      );
+    }
+
     return AspectRatio(
       aspectRatio: 4 / 5,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(0),
-        child: Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          gaplessPlayback: true,
-          filterQuality: FilterQuality.high,
-          errorBuilder: (context, error, stackTrace) => Container(
-            color: Colors.grey.shade200,
-            alignment: Alignment.center,
-            child: const Icon(
-              Icons.image_not_supported_outlined,
-              size: 48,
-              color: Colors.black38,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EncounterImage extends StatelessWidget {
-  const _EncounterImage({required this.profile});
-
-  final Profile profile;
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = profile.avatarColor;
-    final hashtags = profile.favoriteGames;
-    final details = hashtags.isNotEmpty
-        ? hashtags.take(2).join(' ')
-        : profile.homeTown;
-    return AspectRatio(
-      aspectRatio: 4 / 5,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              accent.withValues(alpha: 0.9),
-              accent.withValues(alpha: 0.6),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Stack(
-          children: [
-            Align(
-              alignment: Alignment.center,
-              child: Icon(
-                Icons.people_alt_rounded,
-                size: 72,
-                color: Colors.white.withValues(alpha: 0.88),
-              ),
-            ),
-            Positioned(
-              left: 20,
-              bottom: 20,
-              right: 20,
-              child: Text(
-                details.isEmpty
-                    ? '\u65b0\u3057\u3044\u3059\u308c\u9055\u3044\u3092\u8a18\u9332'
-                    : details,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-            ),
-          ],
-        ),
+        child: buildImage(),
       ),
     );
   }
@@ -982,7 +1057,14 @@ class _ProfileScreenState extends State<_ProfileScreen> {
     final manager = context.read<EncounterManager>();
     final notificationManager = context.read<NotificationManager>();
     final timelineManager = context.read<TimelineManager>();
+    final emotionMapManager = context.read<EmotionMapManager>();
     try {
+      // Stop subscriptions before auth is cleared to avoid permission errors.
+      manager.pauseProfileSync();
+      notificationManager.pauseForLogout();
+      timelineManager.pauseForLogout();
+      emotionMapManager.pauseForLogout();
+
       // If the user is authenticated, call the server-side function to
       // delete their profile and related server-side data before clearing
       // local state. We catch and continue on error to avoid blocking logout.
@@ -1007,6 +1089,17 @@ class _ProfileScreenState extends State<_ProfileScreen> {
         }
       }
 
+      // Best-effort cleanup of streetpass_presences while still authenticated.
+      try {
+        await _deleteStreetpassPresence(
+          profileId: controller.profile.id,
+          beaconId: controller.profile.beaconId,
+        );
+      } catch (e, st) {
+        debugPrint('Failed to delete streetpass presence: $e');
+        debugPrintStack(stackTrace: st);
+      }
+
       // Sign out from Firebase Auth.
       debugPrint('HomeShell._logout: signing out FirebaseAuth');
       await FirebaseAuth.instance.signOut();
@@ -1028,7 +1121,8 @@ class _ProfileScreenState extends State<_ProfileScreen> {
         // Do not bootstrap profile on logout and avoid re-subscribing to server
         // stats so that follower/following/likes counts are reset locally.
         await manager.switchLocalProfile(refreshed, skipSync: true);
-        await notificationManager.resetForProfile(refreshed);
+        // Do NOT call resetForProfile here - we're not authenticated yet!
+        // The managers will be restarted after login in NameSetupScreen.
         // Reset UI-visible stats to zero on logout.
         controller.updateStats(
             followersCount: 0, followingCount: 0, receivedLikes: 0);
@@ -1038,19 +1132,49 @@ class _ProfileScreenState extends State<_ProfileScreen> {
         // identity to avoid creating a new profile doc on next start. Still
         // clear local UI-visible stats and reset managers to a neutral state.
         debugPrint(
-            'HomeShell._logout: server deletion failed or not attempted; keeping local identity to avoid creating extra profiles');
-        final clearedLocal =
-            await LocalProfileLoader.updateLocalProfile(favoriteGames: const []);
-        await manager.switchLocalProfile(clearedLocal, skipSync: true);
-        await notificationManager.resetForProfile(clearedLocal);
+            'HomeShell._logout: server deletion failed or not attempted; wiping local identity to avoid lingering presence');
+        await LocalProfileLoader.resetLocalProfile(wipeIdentity: true);
+        final refreshed = await LocalProfileLoader.loadOrCreate();
+        await manager.switchLocalProfile(refreshed, skipSync: true);
+        // Do NOT call resetForProfile here - we're not authenticated yet!
         controller.updateStats(
             followersCount: 0, followingCount: 0, receivedLikes: 0);
-        controller.updateProfile(clearedLocal, needsSetup: true);
+        controller.updateProfile(refreshed, needsSetup: true);
       }
+
+      // Immediately re-establish anonymous auth so Firestore access remains allowed
+      // while the user is on the name setup flow.
+      await ensureAnonymousAuth();
     } finally {
       if (mounted) {
         setState(() => _loggingOut = false);
       }
+    }
+  }
+
+  Future<void> _deleteStreetpassPresence({
+    required String profileId,
+    required String beaconId,
+  }) async {
+    final firestore = FirebaseFirestore.instance;
+    final presences = firestore.collection('streetpass_presences');
+
+    // Delete own doc (deviceId == profileId)
+    try {
+      await presences.doc(profileId).delete();
+    } catch (_) {
+      // ignore
+    }
+
+    // Delete any doc with the same beaconId (defensive)
+    try {
+      final byBeacon =
+          await presences.where('beaconId', isEqualTo: beaconId).get();
+      for (final doc in byBeacon.docs) {
+        await doc.reference.delete();
+      }
+    } catch (_) {
+      // ignore
     }
   }
 

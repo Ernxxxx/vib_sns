@@ -129,6 +129,7 @@ class _NotificationTile extends StatelessWidget {
         break;
       case AppNotificationType.like:
       case AppNotificationType.follow:
+      case AppNotificationType.timelineLike:
         manager.markNotificationRead(notification.id);
         if (notification.profile != null) {
           Navigator.of(context).push(

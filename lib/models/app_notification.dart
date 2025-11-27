@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'profile.dart';
 
-enum AppNotificationType { encounter, like, follow }
+enum AppNotificationType { encounter, like, follow, timelineLike }
 
 class AppNotification {
   AppNotification({
@@ -33,6 +33,8 @@ class AppNotification {
         return Icons.favorite;
       case AppNotificationType.follow:
         return Icons.person_add;
+      case AppNotificationType.timelineLike:
+        return Icons.favorite;
     }
   }
 
@@ -44,6 +46,8 @@ class AppNotification {
         return Colors.pinkAccent;
       case AppNotificationType.follow:
         return theme.colorScheme.tertiary;
+      case AppNotificationType.timelineLike:
+        return Colors.pink;
     }
   }
 

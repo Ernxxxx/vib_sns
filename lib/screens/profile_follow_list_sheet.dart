@@ -87,7 +87,7 @@ class _ProfileFollowListSheetState extends State<ProfileFollowListSheet> {
           stream: stream,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
-              return SizedBox(
+              return const SizedBox(
                 height: 240,
                 child: Center(
                   child: Text('一覧の読み込みに失敗しました。再度お試しください。'),

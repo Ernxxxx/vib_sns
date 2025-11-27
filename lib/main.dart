@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'utils/auth_helpers.dart';
 import 'utils/color_extensions.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -56,13 +57,7 @@ Future<void> main() async {
 
   // Ensure there is an authenticated user so server-side deletion can be
   // performed on logout. If no auth is present, sign in anonymously.
-  try {
-    if (FirebaseAuth.instance.currentUser == null) {
-      await FirebaseAuth.instance.signInAnonymously();
-    }
-  } catch (e) {
-    debugPrint('Anonymous sign-in failed: $e');
-  }
+  final ensuredUser = await ensureAnonymousAuth();
 
   final localProfile = await LocalProfileLoader.loadOrCreate();
   await _ensureNotificationPermission();
@@ -70,7 +65,7 @@ Future<void> main() async {
   // If the user is authenticated, attach the auth UID to the profile document
   // so server-side Callable Functions can validate ownership. We write the
   // authUid into the profiles/{id} doc (merge) when present.
-  final currentUser = FirebaseAuth.instance.currentUser;
+  final currentUser = ensuredUser ?? FirebaseAuth.instance.currentUser;
   if (currentUser != null) {
     try {
       debugPrint(
@@ -93,19 +88,21 @@ Future<void> main() async {
   // a wipe) while anonymous sign-in is unavailable caused many profiles to
   // appear in Firestore. Only bootstrap when we have an auth user or the
   // local profile already has a display name.
-  if (currentUser != null || hasName) {
+  if (currentUser != null && hasName) {
     await interactionService.bootstrapProfile(localProfile);
   } else {
     debugPrint(
-        'main: skipping bootstrapProfile because no auth and no displayName');
+        'main: skipping bootstrapProfile because no auth or no displayName (auth=${currentUser != null}, hasName=$hasName)');
   }
   final profileController = ProfileController(
     profile: localProfile,
     needsSetup: !hasName,
   );
+  final shouldStartPaused = !hasName || currentUser == null;
   final notificationManager = NotificationManager(
     interactionService: interactionService,
     localProfile: localProfile,
+    startPaused: shouldStartPaused,
   );
   final timelineManager = TimelineManager(profileController: profileController);
   final emotionMapManager =

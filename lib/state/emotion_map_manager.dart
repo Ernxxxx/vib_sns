@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
@@ -9,10 +10,20 @@ import 'profile_controller.dart';
 
 class EmotionMapManager extends ChangeNotifier {
   EmotionMapManager({required ProfileController profileController})
-      : _profileController = profileController {
+      : _profileController = profileController,
+        _paused = profileController.needsSetup ||
+            FirebaseAuth.instance.currentUser == null {
     _profileController.addListener(_handleProfileChanged);
     _activeProfileId = _profileController.profile.id;
-    _subscribeToPosts();
+    _authSubscription =
+        FirebaseAuth.instance.userChanges().listen((User? user) {
+      if (user != null && !_paused) {
+        _subscribeToPosts();
+      }
+    });
+    if (!_paused) {
+      _subscribeToPosts();
+    }
   }
 
   static const _collectionPath = 'emotion_map_posts';
@@ -23,6 +34,8 @@ class EmotionMapManager extends ChangeNotifier {
   String? _activeProfileId;
   bool _isLoaded = false;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _postsSub;
+  bool _paused;
+  StreamSubscription<User?>? _authSubscription;
 
   List<EmotionMapPost> get posts => List.unmodifiable(_posts);
   bool get isLoaded => _isLoaded;
@@ -79,6 +92,14 @@ class EmotionMapManager extends ChangeNotifier {
   }
 
   void _subscribeToPosts() {
+    if (_paused) {
+      return;
+    }
+    if (!_hasAuthUser) {
+      debugPrint(
+          'EmotionMapManager: deferring map subscription until FirebaseAuth user is available');
+      return;
+    }
     _postsSub?.cancel();
     _postsSub = FirebaseFirestore.instance
         .collection(_collectionPath)
@@ -148,10 +169,31 @@ class EmotionMapManager extends ChangeNotifier {
     _activeProfileId = nextProfileId;
   }
 
+  void pauseForLogout() {
+    _paused = true;
+    _postsSub?.cancel();
+    _postsSub = null;
+    _posts.clear();
+    _isLoaded = false;
+    notifyListeners();
+  }
+
+  void resumeAfterLogin() {
+    final wasPaused = _paused;
+    _paused = false;
+    if (!wasPaused && _postsSub != null) {
+      return;
+    }
+    _subscribeToPosts();
+  }
+
   @override
   void dispose() {
     _profileController.removeListener(_handleProfileChanged);
+    _authSubscription?.cancel();
     _postsSub?.cancel();
     super.dispose();
   }
+
+  bool get _hasAuthUser => FirebaseAuth.instance.currentUser != null;
 }

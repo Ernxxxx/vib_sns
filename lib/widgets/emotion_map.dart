@@ -822,7 +822,7 @@ class _EmotionMapState extends State<EmotionMap> {
 
   double _clusterCellSizeForZoom(double zoom) {
     const minZoom = 10.0;
-    final maxZoom = _clusterZoomThreshold;
+    const maxZoom = _clusterZoomThreshold;
     if (maxZoom <= minZoom) {
       return _clusterMinCellSizeDegrees;
     }

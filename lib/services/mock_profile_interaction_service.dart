@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/profile.dart';
@@ -502,20 +501,7 @@ class _MockLikeWatcher {
     final viewerState = _stateLookup(viewerId);
     final viewerFollowing = viewerState.following.keys.toSet();
     final entries = targetState.likedBy.entries.toList()
-      ..sort((a, b) {
-        final left = a.value;
-        final right = b.value;
-        if (left == null && right == null) {
-          return 0;
-        }
-        if (left == null) {
-          return 1;
-        }
-        if (right == null) {
-          return -1;
-        }
-        return right.compareTo(left);
-      });
+      ..sort((a, b) => b.value.compareTo(a.value));
     final snapshots = <ProfileLikeSnapshot>[];
     for (final entry in entries) {
       final profileId = entry.key;

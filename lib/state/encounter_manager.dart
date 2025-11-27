@@ -1,7 +1,7 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vibration/vibration.dart';
 
@@ -28,8 +28,19 @@ class EncounterManager extends ChangeNotifier {
         usesMockService = usesMockBackend,
         _profileController = profileController,
         _interactionService = interactionService,
-        _notificationManager = notificationManager {
-    _subscribeToLocalProfile();
+        _notificationManager = notificationManager,
+        _profileSyncPaused =
+            (profileController?.needsSetup ?? false) ||
+                FirebaseAuth.instance.currentUser == null {
+    _authSubscription =
+        FirebaseAuth.instance.userChanges().listen((User? user) {
+      if (user != null && !_profileSyncPaused) {
+        _subscribeToLocalProfile();
+      }
+    });
+    if (!_profileSyncPaused) {
+      _subscribeToLocalProfile();
+    }
   }
 
   final StreetPassService _streetPassService;
@@ -65,6 +76,8 @@ class EncounterManager extends ChangeNotifier {
   bool _isRunning = false;
   String? _errorMessage;
   Future<void>? _resetFuture;
+  bool _profileSyncPaused;
+  StreamSubscription<User?>? _authSubscription;
 
   bool get isRunning => _isRunning;
   String? get errorMessage => _errorMessage;
@@ -76,6 +89,14 @@ class EncounterManager extends ChangeNotifier {
   }
 
   void _subscribeToLocalProfile() {
+    if (_profileSyncPaused) {
+      return;
+    }
+    if (FirebaseAuth.instance.currentUser == null) {
+      debugPrint(
+          'EncounterManager: deferring profile stat sync until FirebaseAuth user is available');
+      return;
+    }
     final service = _interactionService;
     if (service == null) {
       return;
@@ -101,6 +122,24 @@ class EncounterManager extends ChangeNotifier {
         debugPrint('Failed to sync local profile stats: $error');
       },
     );
+  }
+
+  void pauseProfileSync() {
+    _profileSyncPaused = true;
+    final localStatsSub = _localStatsSubscription;
+    _localStatsSubscription = null;
+    if (localStatsSub != null) {
+      unawaited(localStatsSub.cancel());
+    }
+  }
+
+  void resumeProfileSync() {
+    final wasPaused = _profileSyncPaused;
+    _profileSyncPaused = false;
+    if (!wasPaused && _localStatsSubscription != null) {
+      return;
+    }
+    _subscribeToLocalProfile();
   }
 
   Future<void> start() async {
@@ -660,6 +699,7 @@ class EncounterManager extends ChangeNotifier {
 
   @override
   void dispose() {
+    _authSubscription?.cancel();
     _subscription?.cancel();
     _bleSubscription?.cancel();
     for (final subscription in _interactionSubscriptions.values) {
