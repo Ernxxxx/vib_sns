@@ -1,8 +1,11 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
+import '../state/local_profile_loader.dart';
 
 Timer? _anonymousRetryTimer;
 
@@ -61,6 +64,45 @@ void _cancelAnonymousRetryTimer() {
   _anonymousRetryTimer = null;
 }
 
+Future<UserCredential> linkOrSignInWithEmail({
+  required String email,
+  required String password,
+}) async {
+  final auth = FirebaseAuth.instance;
+  final credential =
+      EmailAuthProvider.credential(email: email, password: password);
+  final currentUser = auth.currentUser;
+  if (currentUser != null && currentUser.isAnonymous) {
+    try {
+      return await currentUser.linkWithCredential(credential);
+    } on FirebaseAuthException catch (error) {
+      if (error.code == 'credential-already-in-use' ||
+          error.code == 'email-already-in-use') {
+        await auth.signOut();
+        return await auth.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      }
+      rethrow;
+    }
+  }
+  try {
+    return await auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+  } on FirebaseAuthException catch (error) {
+    if (error.code == 'user-not-found') {
+      return await auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    }
+    rethrow;
+  }
+}
+
 Future<UserCredential?> signInWithGoogle() async {
   final googleSignIn = GoogleSignIn();
   GoogleSignInAccount? account;
@@ -93,4 +135,12 @@ Future<UserCredential?> signInWithGoogle() async {
     }
   }
   return await firebaseAuth.signInWithCredential(credential);
+}
+
+Future<void> persistAuthUid(User user) async {
+  final localProfile = await LocalProfileLoader.loadOrCreate();
+  await FirebaseFirestore.instance
+      .collection('profiles')
+      .doc(localProfile.id)
+      .set({'authUid': user.uid}, SetOptions(merge: true));
 }

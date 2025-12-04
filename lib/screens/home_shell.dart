@@ -69,13 +69,13 @@ class _HomeShellState extends State<HomeShell> {
         selectedIndex: _currentIndex,
         destinations: [
           const NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
+            icon: Icon(Icons.home_outlined, size: 24),
+            selectedIcon: Icon(Icons.home, size: 24),
             label: '',
           ),
           const NavigationDestination(
-            icon: Icon(Icons.add_circle_outline),
-            selectedIcon: Icon(Icons.add_circle),
+            icon: Icon(Icons.add_circle_outline, size: 24),
+            selectedIcon: Icon(Icons.add_circle, size: 24),
             label: '',
           ),
           NavigationDestination(
@@ -84,8 +84,8 @@ class _HomeShellState extends State<HomeShell> {
             label: '',
           ),
           const NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
+            icon: Icon(Icons.person_outline, size: 24),
+            selectedIcon: Icon(Icons.person, size: 24),
             label: '',
           ),
         ],
@@ -96,8 +96,10 @@ class _HomeShellState extends State<HomeShell> {
 
   static Widget _buildNotificationIcon(int unreadCount,
       {required bool selected}) {
-    final icon =
-        Icon(selected ? Icons.notifications : Icons.notifications_none);
+    final icon = Icon(
+      selected ? Icons.notifications : Icons.notifications_none,
+      size: 24,
+    );
     if (unreadCount <= 0) {
       return icon;
     }
@@ -211,7 +213,21 @@ class _TimelineScreen extends StatelessWidget {
                   onEncounterTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const EncounterListScreen(),
+                        builder: (_) => const EncounterListScreen.encounters(),
+                      ),
+                    );
+                  },
+                  onReunionTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const EncounterListScreen.reunions(),
+                      ),
+                    );
+                  },
+                  onResonanceTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const EncounterListScreen.resonances(),
                       ),
                     );
                   },
@@ -297,21 +313,10 @@ _HomeMetrics _computeMetrics(EncounterManager manager) {
       .where((encounter) => encounter.encounteredAt.isAfter(todayStart))
       .length;
 
-  final occurrences = <String, int>{};
-  for (final encounter in encounters) {
-    final key = encounter.profile.id;
-    if (key.isEmpty) continue;
-    occurrences.update(key, (value) => value + 1, ifAbsent: () => 1);
-  }
-  final reencounters =
-      occurrences.values.where((occurrenceCount) => occurrenceCount > 1).length;
-
-  final resonance = encounters.where((encounter) => encounter.liked).length;
-
   return _HomeMetrics(
     todaysEncounters: todaysEncounters,
-    reencounters: reencounters,
-    resonance: resonance,
+    reencounters: manager.reunionCount,
+    resonance: manager.resonanceCount,
   );
 }
 
@@ -360,11 +365,15 @@ class _HighlightsSection extends StatelessWidget {
     required this.palette,
     required this.metrics,
     required this.onEncounterTap,
+    this.onReunionTap,
+    this.onResonanceTap,
   });
 
   final _HomePalette palette;
   final _HomeMetrics metrics;
   final VoidCallback onEncounterTap;
+  final VoidCallback? onReunionTap;
+  final VoidCallback? onResonanceTap;
 
   @override
   Widget build(BuildContext context) {
@@ -373,30 +382,32 @@ class _HighlightsSection extends StatelessWidget {
         icon: Icons.people_alt_outlined,
         label: '\u3059\u308c\u9055\u3044',
         value: '${metrics.todaysEncounters}',
-        color: Colors.white,
+        color: Colors.black87,
         onTap: onEncounterTap,
       ),
       _HighlightMetric(
         icon: Icons.repeat,
         label: '\u518d\u4f1a',
         value: '${metrics.reencounters}',
-        color: Colors.white,
+        color: Colors.black87,
+        onTap: onReunionTap,
       ),
       _HighlightMetric(
         icon: Icons.favorite,
         label: '\u5171\u9cf4',
         value: metrics.resonance.toString(),
-        color: Colors.white,
+        color: Colors.black87,
+        onTap: onResonanceTap,
       ),
     ];
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: [
-            palette.primaryAccent.withValues(alpha: 0.88),
-            palette.secondaryAccent.withValues(alpha: 0.72),
+            Color(0xFFFFFF00),
+            Color(0xFFFFFF00),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -404,7 +415,7 @@ class _HighlightsSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: palette.primaryAccent.withValues(alpha: 0.15),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -557,7 +568,8 @@ class _TimelineComposerState extends State<_TimelineComposer> {
       return;
     }
     if (_selectedHashtags.isEmpty) {
-      _showSnack('\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0\u30921\u3064\u4ee5\u4e0a\u9078\u3093\u3067\u304f\u3060\u3055\u3044\u3002');
+      _showSnack(
+          '\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0\u30921\u3064\u4ee5\u4e0a\u9078\u3093\u3067\u304f\u3060\u3055\u3044\u3002');
       return;
     }
     final hashtags = Profile.sanitizeHashtags(_selectedHashtags).toList();
@@ -655,8 +667,22 @@ class _TimelineComposerState extends State<_TimelineComposer> {
                   children: [
                     for (final tag in presetHashtags)
                       FilterChip(
+                        showCheckmark: false,
                         label: Text(tag),
                         selected: _selectedHashtags.contains(tag),
+                        backgroundColor: Colors.white,
+                        selectedColor:
+                            theme.colorScheme.primary.withValues(alpha: 0.25),
+                        side: BorderSide(
+                          color: _selectedHashtags.contains(tag)
+                              ? theme.colorScheme.primary
+                              : Colors.grey.shade300,
+                        ),
+                        labelStyle: TextStyle(
+                          color: _selectedHashtags.contains(tag)
+                              ? theme.colorScheme.primary
+                              : Colors.black87,
+                        ),
                         onSelected: (_) => _toggleHashtag(tag),
                       ),
                   ],
@@ -692,12 +718,27 @@ class _TimelineComposerState extends State<_TimelineComposer> {
             Row(
               children: [
                 FilledButton.tonalIcon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: theme.colorScheme.primary,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    minimumSize: const Size(0, 44),
+                    side: BorderSide(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                    ),
+                  ),
                   onPressed: _submitting ? null : _pickImage,
                   icon: const Icon(Icons.photo_library_outlined),
                   label: const Text('\u753b\u50cf\u3092\u3048\u3089\u3076'),
                 ),
                 const Spacer(),
                 FilledButton(
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 14),
+                    minimumSize: const Size(0, 44),
+                  ),
                   onPressed: _submitting ? null : _submit,
                   child: _submitting
                       ? const SizedBox(
@@ -729,8 +770,9 @@ class _UserPostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final viewerId = context.watch<ProfileController>().profile.id;
-    final canDelete =
-        post.authorId.isEmpty || post.authorId == viewerId || post.authorId == 'local';
+    final canDelete = post.authorId.isEmpty ||
+        post.authorId == viewerId ||
+        post.authorId == 'local';
     final imageBytes = post.decodeImage();
     final hasImageUrl = (post.imageUrl?.isNotEmpty ?? false);
     final likeLabel = post.likeCount > 0
@@ -788,8 +830,7 @@ class _UserPostCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color:
-                            theme.colorScheme.primary.withOpacity(0.08),
+                        color: theme.colorScheme.primary.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -822,7 +863,8 @@ class _UserPostCard extends StatelessWidget {
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('\u6295\u7a3f\u3092\u524a\u9664'),
-          content: const Text('\u3053\u306e\u6295\u7a3f\u3092\u524a\u9664\u3057\u307e\u3059\u304b\uff1f'),
+          content: const Text(
+              '\u3053\u306e\u6295\u7a3f\u3092\u524a\u9664\u3057\u307e\u3059\u304b\uff1f'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -840,11 +882,15 @@ class _UserPostCard extends StatelessWidget {
     try {
       await timelineManager.deletePost(post);
       messenger.showSnackBar(
-        const SnackBar(content: Text('\u6295\u7a3f\u3092\u524a\u9664\u3057\u307e\u3057\u305f\u3002')),
+        const SnackBar(
+            content: Text(
+                '\u6295\u7a3f\u3092\u524a\u9664\u3057\u307e\u3057\u305f\u3002')),
       );
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text('\u524a\u9664\u306b\u5931\u6557\u3057\u307e\u3057\u305f: $error')),
+        SnackBar(
+            content: Text(
+                '\u524a\u9664\u306b\u5931\u6557\u3057\u307e\u3057\u305f: $error')),
       );
     }
   }
@@ -1065,6 +1111,17 @@ class _ProfileScreenState extends State<_ProfileScreen> {
       timelineManager.pauseForLogout();
       emotionMapManager.pauseForLogout();
 
+      // Best-effort cleanup of streetpass_presences while still authenticated.
+      try {
+        await _deleteStreetpassPresence(
+          profileId: controller.profile.id,
+          beaconId: controller.profile.beaconId,
+        );
+      } catch (e, st) {
+        debugPrint('Failed to delete streetpass presence: $e');
+        debugPrintStack(stackTrace: st);
+      }
+
       // If the user is authenticated, call the server-side function to
       // delete their profile and related server-side data before clearing
       // local state. We catch and continue on error to avoid blocking logout.
@@ -1087,17 +1144,6 @@ class _ProfileScreenState extends State<_ProfileScreen> {
           debugPrint('deleteUserProfile failed: $e');
           debugPrintStack(stackTrace: st);
         }
-      }
-
-      // Best-effort cleanup of streetpass_presences while still authenticated.
-      try {
-        await _deleteStreetpassPresence(
-          profileId: controller.profile.id,
-          beaconId: controller.profile.beaconId,
-        );
-      } catch (e, st) {
-        debugPrint('Failed to delete streetpass presence: $e');
-        debugPrintStack(stackTrace: st);
       }
 
       // Sign out from Firebase Auth.
@@ -1334,6 +1380,17 @@ class _ProfileScreenState extends State<_ProfileScreen> {
               ),
               const SizedBox(height: 16),
               FilledButton.tonalIcon(
+                style: FilledButton.styleFrom(
+                  backgroundColor:
+                      theme.colorScheme.primary.withValues(alpha: 0.1),
+                  foregroundColor: theme.colorScheme.primary,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  minimumSize: const Size.fromHeight(48),
+                  side: BorderSide(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.4),
+                  ),
+                ),
                 onPressed: _loggingOut ? null : _logout,
                 icon: const Icon(Icons.logout),
                 label: _loggingOut

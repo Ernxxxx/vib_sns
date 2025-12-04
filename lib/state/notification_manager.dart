@@ -177,6 +177,10 @@ class NotificationManager extends ChangeNotifier {
     _startSubscriptions();
   }
 
+  bool hasLikedMe(String profileId) {
+    return _knownLikeIds.contains(profileId);
+  }
+
   void _startSubscriptions() {
     if (_paused) {
       return;

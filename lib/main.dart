@@ -210,17 +210,79 @@ class VibSnsApp extends StatelessWidget {
   }
 
   ThemeData _buildTheme() {
-    const accent = Color(0xFFFFC400);
+    const accent = Color(0xFFF2B705);
+    const darkAccent = Color(0xFFB28704);
+    const lightAccent = Color(0xFFFFD85F);
     final base = ThemeData(
       useMaterial3: true,
-      colorScheme:
-          ColorScheme.fromSeed(seedColor: accent, brightness: Brightness.light),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: accent,
+        brightness: Brightness.light,
+      ).copyWith(
+        primary: accent,
+        secondary: lightAccent,
+        tertiary: darkAccent,
+      ),
     );
     return base.copyWith(
       scaffoldBackgroundColor: Colors.white,
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: accent,
+          foregroundColor: Colors.black87,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: accent,
+          foregroundColor: Colors.black87,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: darkAccent,
+        ),
+      ),
+      chipTheme: base.chipTheme.copyWith(
+        selectedColor: accent.withValues(alpha: 0.15),
+        labelStyle: const TextStyle(color: Colors.black87),
+        side: BorderSide(color: accent.withValues(alpha: 0.3)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? lightAccent
+                : Colors.white,
+          ),
+          side: WidgetStateProperty.all(
+            BorderSide(color: accent.withValues(alpha: 0.5)),
+          ),
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+          ),
+          padding: WidgetStateProperty.all(
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+        ),
+      ),
       navigationBarTheme: NavigationBarThemeData(
         indicatorColor: accent.withValues(alpha: 0.15),
         backgroundColor: Colors.white,
+        iconTheme: WidgetStateProperty.all(
+          const IconThemeData(size: 24),
+        ),
         labelTextStyle: WidgetStateProperty.all(
           const TextStyle(fontWeight: FontWeight.w600),
         ),

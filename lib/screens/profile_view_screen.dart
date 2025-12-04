@@ -37,6 +37,8 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
   bool _isProcessingFollow = false;
   bool _isProcessingLike = false;
   bool _isLikedByViewer = false;
+  bool? _pendingFollowTarget;
+  bool? _pendingLikeTarget;
   bool _isLoadingDetails = false;
 
   @override
@@ -78,14 +80,39 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
       (snapshot) {
         _latestSnapshot = snapshot;
         if (!mounted) return;
+
+        // For follow: only update if no pending operation OR server matches pending target
+        bool shouldUpdateFollow = false;
+        if (_pendingFollowTarget == null) {
+          shouldUpdateFollow = true;
+        } else if (snapshot.isFollowedByViewer == _pendingFollowTarget) {
+          _pendingFollowTarget = null;
+          shouldUpdateFollow = true;
+        }
+        // If pending doesn't match, keep local state
+
+        // For like: only update if no pending operation OR server matches pending target
+        bool shouldUpdateLike = false;
+        if (_pendingLikeTarget == null) {
+          shouldUpdateLike = true;
+        } else if (snapshot.isLikedByViewer == _pendingLikeTarget) {
+          _pendingLikeTarget = null;
+          shouldUpdateLike = true;
+        }
+        // If pending doesn't match, keep local state
+
         setState(() {
           _profile = _profile.copyWith(
             followersCount: snapshot.followersCount,
             followingCount: snapshot.followingCount,
             receivedLikes: snapshot.receivedLikes,
-            following: snapshot.isFollowedByViewer,
+            following: shouldUpdateFollow
+                ? snapshot.isFollowedByViewer
+                : _profile.following,
           );
-          _isLikedByViewer = snapshot.isLikedByViewer;
+          if (shouldUpdateLike) {
+            _isLikedByViewer = snapshot.isLikedByViewer;
+          }
         });
       },
       onError: (error, stackTrace) {
@@ -96,11 +123,17 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
 
   Profile _mergeProfileDetails(Profile fresh) {
     final snapshot = _latestSnapshot;
+    final snapshotFollow = snapshot?.isFollowedByViewer;
+    final shouldHoldFollow = _pendingFollowTarget != null &&
+        snapshotFollow != null &&
+        snapshotFollow != _pendingFollowTarget;
     return fresh.copyWith(
       followersCount: snapshot?.followersCount ?? fresh.followersCount,
       followingCount: snapshot?.followingCount ?? fresh.followingCount,
       receivedLikes: snapshot?.receivedLikes ?? fresh.receivedLikes,
-      following: snapshot?.isFollowedByViewer ?? _profile.following,
+      following: shouldHoldFollow
+          ? _profile.following
+          : (snapshotFollow ?? _profile.following),
     );
   }
 
@@ -112,6 +145,7 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
     final shouldFollow = !_profile.following;
     setState(() {
       _isProcessingFollow = true;
+      _pendingFollowTarget = shouldFollow;
       final delta = shouldFollow ? 1 : -1;
       _profile = _profile.copyWith(
         following: shouldFollow,
@@ -131,6 +165,7 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
         final fallbackCount =
             (_profile.followersCount + (shouldFollow ? -1 : 1))
                 .clamp(0, 999999);
+        _pendingFollowTarget = null;
         _profile = _profile.copyWith(
           following: snapshot?.isFollowedByViewer ?? !shouldFollow,
           followersCount: snapshot?.followersCount ?? fallbackCount,
@@ -153,6 +188,7 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
     final shouldLike = !_isLikedByViewer;
     setState(() {
       _isProcessingLike = true;
+      _pendingLikeTarget = shouldLike;
       final delta = shouldLike ? 1 : -1;
       _isLikedByViewer = shouldLike;
       _profile = _profile.copyWith(
@@ -173,6 +209,7 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
           receivedLikes: (_profile.receivedLikes + (_isLikedByViewer ? 1 : -1))
               .clamp(0, 999999),
         );
+        _pendingLikeTarget = null;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('いいねの更新に失敗しました: $error')),
@@ -416,9 +453,8 @@ class _ProfileTimelineSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (posts.isEmpty) {
-      final message = isSelf
-          ? 'まだタイムラインに投稿がありません。写真や気持ちをシェアするとここに表示されます。'
-          : 'まだ投稿がありません。';
+      final message =
+          isSelf ? 'まだタイムラインに投稿がありません。写真や気持ちをシェアするとここに表示されます。' : 'まだ投稿がありません。';
       return Text(
         message,
         style: theme.textTheme.bodyMedium?.copyWith(

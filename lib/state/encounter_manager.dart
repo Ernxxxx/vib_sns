@@ -29,9 +29,8 @@ class EncounterManager extends ChangeNotifier {
         _profileController = profileController,
         _interactionService = interactionService,
         _notificationManager = notificationManager,
-        _profileSyncPaused =
-            (profileController?.needsSetup ?? false) ||
-                FirebaseAuth.instance.currentUser == null {
+        _profileSyncPaused = (profileController?.needsSetup ?? false) ||
+            FirebaseAuth.instance.currentUser == null {
     _authSubscription =
         FirebaseAuth.instance.userChanges().listen((User? user) {
       if (user != null && !_profileSyncPaused) {
@@ -58,6 +57,10 @@ class EncounterManager extends ChangeNotifier {
   final Map<String, DateTime> _lastHashtagMatchAt = {};
   final Map<String, Set<String>> _remoteHashtagCache = {};
   final Map<String, _BleDistanceWindow> _bleDistanceWindows = {};
+  final Map<String, bool> _pendingLikeStates = {};
+  final Map<String, bool> _pendingFollowStates = {};
+  final Map<String, EncounterHighlightEntry> _resonanceHighlights = {};
+  final Map<String, EncounterHighlightEntry> _reunionHighlights = {};
 
   static const Duration _presenceTimeout = Duration(seconds: 45);
   static const Duration _reencounterCooldown = Duration(minutes: 15);
@@ -87,6 +90,15 @@ class EncounterManager extends ChangeNotifier {
       ..sort((a, b) => b.encounteredAt.compareTo(a.encounteredAt));
     return List.unmodifiable(list);
   }
+
+  int get resonanceCount => _resonanceHighlights.length;
+  int get reunionCount => _reunionHighlights.length;
+
+  List<EncounterHighlightEntry> get resonanceEntries =>
+      _sortedHighlightEntries(_resonanceHighlights);
+
+  List<EncounterHighlightEntry> get reunionEntries =>
+      _sortedHighlightEntries(_reunionHighlights);
 
   void _subscribeToLocalProfile() {
     if (_profileSyncPaused) {
@@ -194,12 +206,14 @@ class EncounterManager extends ChangeNotifier {
       existing.message = data.message ?? existing.message;
       existing.unread = true;
       final previousProfile = existing.profile;
+      final previousLiked = existing.liked;
       existing.profile = data.profile.copyWith(
         following: previousProfile.following,
         receivedLikes: data.profile.receivedLikes,
         followersCount: data.profile.followersCount,
         followingCount: data.profile.followingCount,
       );
+      existing.liked = previousLiked;
       if (data.latitude != null) {
         existing.latitude = data.latitude;
       }
@@ -226,6 +240,7 @@ class EncounterManager extends ChangeNotifier {
     _hydrateRemoteHashtags(data.remoteId, data.profile);
 
     final encounter = _encountersByRemoteId[data.remoteId];
+    var countedAsRepeat = false;
     if (encounter != null) {
       final shouldNotify = !isRepeatCandidate ||
           _shouldNotifyRepeat(
@@ -243,6 +258,7 @@ class EncounterManager extends ChangeNotifier {
           isRepeat: isRepeatCandidate,
         );
         _lastNotificationAt[data.remoteId] = now;
+        countedAsRepeat = isRepeatCandidate;
       }
     }
     final hasSharedHashtag = _hasSharedHashtag(data.remoteId, data.profile);
@@ -257,6 +273,13 @@ class EncounterManager extends ChangeNotifier {
       _maybeTriggerHashtagMatchFeedback(
         remoteId: data.remoteId,
         hasSharedHashtag: hasSharedHashtag,
+      );
+    }
+    if (encounter != null) {
+      _updateResonanceAndReunion(
+        encounter,
+        hasSharedHashtag,
+        countedAsRepeat: countedAsRepeat,
       );
     }
     notifyListeners();
@@ -292,11 +315,31 @@ class EncounterManager extends ChangeNotifier {
           profile.followingCount = snapshot.followingCount;
           updated = true;
         }
-        if (profile.following != snapshot.isFollowedByViewer) {
+        // Handle follow state with pending check
+        final pendingFollow = _pendingFollowStates[remoteId];
+        if (pendingFollow != null) {
+          if (pendingFollow == snapshot.isFollowedByViewer) {
+            // Server caught up, clear pending state
+            _pendingFollowStates.remove(remoteId);
+            profile.following = snapshot.isFollowedByViewer;
+            updated = true;
+          }
+          // else: keep optimistic state, don't update
+        } else if (profile.following != snapshot.isFollowedByViewer) {
           profile.following = snapshot.isFollowedByViewer;
           updated = true;
         }
-        if (encounter.liked != snapshot.isLikedByViewer) {
+        // Handle like state with pending check
+        final pendingLike = _pendingLikeStates[remoteId];
+        if (pendingLike != null) {
+          if (pendingLike == snapshot.isLikedByViewer) {
+            // Server caught up, clear pending state
+            _pendingLikeStates.remove(remoteId);
+            encounter.liked = snapshot.isLikedByViewer;
+            updated = true;
+          }
+          // else: keep optimistic state, don't update
+        } else if (encounter.liked != snapshot.isLikedByViewer) {
           encounter.liked = snapshot.isLikedByViewer;
           updated = true;
         }
@@ -349,12 +392,14 @@ class EncounterManager extends ChangeNotifier {
     if (matched == null) {
       return;
     }
-    final smoothedDistance = _recordBleDistance(hit.beaconId, hit.distanceMeters);
+    final smoothedDistance =
+        _recordBleDistance(hit.beaconId, hit.distanceMeters);
     matched.bleDistanceMeters = smoothedDistance;
     matched.encounteredAt = DateTime.now();
     matched.unread = true;
     debugPrint('[VIBE] ble tags=${matched.profile.favoriteGames}');
-    final hasSharedHashtag = _hasSharedHashtag(matched.profile.id, matched.profile);
+    final hasSharedHashtag =
+        _hasSharedHashtag(matched.profile.id, matched.profile);
     final triggeredProximityVibration = _maybeTriggerProximityVibration(
       beaconId: hit.beaconId,
       remoteId: matched.profile.id,
@@ -422,8 +467,7 @@ class EncounterManager extends ChangeNotifier {
     final now = DateTime.now();
     final last = _lastVibrationAt[beaconId];
     final cooldown = _cooldownForDistance(distance);
-    if (last != null &&
-        now.difference(last) < cooldown) {
+    if (last != null && now.difference(last) < cooldown) {
       debugPrint(
           '[VIBE] skip (cooldown) last=${now.difference(last).inSeconds}s threshold=${cooldown.inSeconds}s');
       return false;
@@ -507,6 +551,50 @@ class EncounterManager extends ChangeNotifier {
     return false;
   }
 
+  bool _shouldRecordResonance(Encounter encounter, bool hasSharedHashtag) {
+    if (!hasSharedHashtag) {
+      return false;
+    }
+    if (!encounter.liked) {
+      return false;
+    }
+    final notificationManager = _notificationManager;
+    if (notificationManager == null) {
+      return false;
+    }
+    return notificationManager.hasLikedMe(encounter.profile.id);
+  }
+
+  void _updateResonanceAndReunion(
+    Encounter encounter,
+    bool hasSharedHashtag, {
+    required bool countedAsRepeat,
+  }) {
+    final remoteId = encounter.profile.id;
+    if (remoteId.isEmpty) {
+      return;
+    }
+    final hadResonated = _resonanceHighlights.containsKey(remoteId);
+    final didResonate = _shouldRecordResonance(encounter, hasSharedHashtag);
+    if (didResonate) {
+      final entry = EncounterHighlightEntry(
+        profile: encounter.profile,
+        occurredAt: encounter.encounteredAt,
+      );
+      _resonanceHighlights[remoteId] = entry;
+      if (hadResonated || countedAsRepeat) {
+        _reunionHighlights[remoteId] = entry;
+      }
+      return;
+    }
+    if (hadResonated && countedAsRepeat) {
+      _reunionHighlights[remoteId] = EncounterHighlightEntry(
+        profile: encounter.profile,
+        occurredAt: encounter.encounteredAt,
+      );
+    }
+  }
+
   Set<String> _normalizedHashtagSet(List<String> tags) {
     final normalized = <String>{};
     for (final tag in tags) {
@@ -518,6 +606,13 @@ class EncounterManager extends ChangeNotifier {
       normalized.add(canonical.toLowerCase());
     }
     return normalized;
+  }
+
+  List<EncounterHighlightEntry> _sortedHighlightEntries(
+      Map<String, EncounterHighlightEntry> source) {
+    final entries = source.values.toList()
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    return List.unmodifiable(entries);
   }
 
   bool _shouldNotifyRepeat({
@@ -630,18 +725,23 @@ class EncounterManager extends ChangeNotifier {
     final previousCount = encounter.profile.receivedLikes;
     final adjusted = (previousCount + (nextLiked ? 1 : -1)).clamp(0, 999999);
 
+    final profileId = encounter.profile.id;
     encounter.liked = nextLiked;
     encounter.profile.receivedLikes = adjusted;
     notifyListeners();
+    _pendingLikeStates[profileId] = nextLiked;
 
     unawaited(service
         .setLike(
-      targetId: encounter.profile.id,
+      targetId: profileId,
       viewerProfile: _localProfile,
       like: nextLiked,
     )
-        .catchError((error, stackTrace) {
+        .then((_) {
+      // Let the interaction subscription clear the pending state when server catches up.
+    }).catchError((error, stackTrace) {
       debugPrint('Failed to update like: $error');
+      _pendingLikeStates.remove(profileId);
       encounter.liked = wasLiked;
       encounter.profile.receivedLikes = previousCount;
       notifyListeners();
@@ -670,6 +770,7 @@ class EncounterManager extends ChangeNotifier {
     final previousRemoteFollowers = encounter.profile.followersCount;
     final previousLocalFollowing = _localProfile.followingCount;
 
+    final profileId = encounter.profile.id;
     encounter.profile.following = nextFollowing;
     encounter.profile.followersCount =
         (previousRemoteFollowers + (nextFollowing ? 1 : -1)).clamp(0, 999999);
@@ -679,15 +780,19 @@ class EncounterManager extends ChangeNotifier {
     _localProfile = _localProfile.copyWith(followingCount: updatedFollowing);
     _profileController?.updateStats(followingCount: updatedFollowing);
     notifyListeners();
+    _pendingFollowStates[profileId] = nextFollowing;
 
     unawaited(service
         .setFollow(
-      targetId: encounter.profile.id,
+      targetId: profileId,
       viewerId: _localProfile.id,
       follow: nextFollowing,
     )
-        .catchError((error, stackTrace) {
+        .then((_) {
+      // Let the interaction subscription clear the pending state when server catches up.
+    }).catchError((error, stackTrace) {
       debugPrint('Failed to update follow: $error');
+      _pendingFollowStates.remove(profileId);
       encounter.profile.following = wasFollowing;
       encounter.profile.followersCount = previousRemoteFollowers;
       _localProfile =
@@ -728,6 +833,8 @@ class EncounterManager extends ChangeNotifier {
     try {
       await _cancelInteractionSubscriptions();
       _encountersByRemoteId.clear();
+      _resonanceHighlights.clear();
+      _reunionHighlights.clear();
       _targetBeaconIds.clear();
       _clearPresenceTracking();
       await _subscription?.cancel();
@@ -836,4 +943,14 @@ class _BleDistanceSample {
 
   final double distance;
   final DateTime recordedAt;
+}
+
+class EncounterHighlightEntry {
+  EncounterHighlightEntry({
+    required this.profile,
+    required this.occurredAt,
+  });
+
+  final Profile profile;
+  final DateTime occurredAt;
 }

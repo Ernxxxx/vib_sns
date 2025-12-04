@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../data/preset_hashtags.dart';
 import '../models/profile.dart';
 import '../services/profile_interaction_service.dart';
 import '../state/encounter_manager.dart';
 import '../state/local_profile_loader.dart';
 import '../state/profile_controller.dart';
+import '../utils/color_extensions.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key, required this.profile});
@@ -26,13 +28,16 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _bioController;
   late final TextEditingController _homeTownController;
-  late final TextEditingController _hashtagsController;
   bool _saving = false;
   String? _avatarImageBase64;
   Uint8List? _avatarImageBytes;
   bool _avatarRemoved = false;
   final ImagePicker _picker = ImagePicker();
   VoidCallback? _nameListener;
+  late final Set<String> _selectedHashtags;
+  late final List<String> _availableHashtags;
+  static const int _minHashtagSelection = 2;
+  static const int _maxHashtagSelection = 10;
 
   @override
   void initState() {
@@ -42,12 +47,14 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         TextEditingController(text: _initialValue(widget.profile.bio));
     _homeTownController =
         TextEditingController(text: _initialValue(widget.profile.homeTown));
-    _hashtagsController =
-        TextEditingController(text: widget.profile.favoriteGames.join('\n'));
     _avatarImageBase64 = widget.profile.avatarImageBase64;
     _avatarImageBytes = _decodeAvatar(widget.profile.avatarImageBase64);
     _nameListener = () => setState(() {});
     _nameController.addListener(_nameListener!);
+    _selectedHashtags = {...widget.profile.favoriteGames};
+    final extras = widget.profile.favoriteGames
+        .where((tag) => !presetHashtags.contains(tag));
+    _availableHashtags = [...presetHashtags, ...extras];
   }
 
   @override
@@ -59,7 +66,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     _nameController.dispose();
     _bioController.dispose();
     _homeTownController.dispose();
-    _hashtagsController.dispose();
     super.dispose();
   }
 
@@ -81,39 +87,18 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     return value;
   }
 
-  List<String> _parseHashtags(String raw) {
-    if (raw.trim().isEmpty) return const <String>[];
-    return Profile.sanitizeHashtags(_splitHashtagInput(raw));
-  }
-
-  List<String> _splitHashtagInput(String raw) {
-    if (raw.trim().isEmpty) return const <String>[];
-    return raw
-        .split(RegExp(r'[,\n\s]+'))
-        .map((part) => part.trim())
-        .where((part) => part.isNotEmpty)
-        .toList(growable: false);
-  }
-
-  List<String> _normalizedHashtagsForValidation(String raw) {
-    final normalized = <String>[];
-    final seen = <String>{};
-    for (final token in _splitHashtagInput(raw)) {
-      var value = token.trim();
-      if (value.isEmpty) continue;
-      value = value.replaceAll(RegExp(r'\s+'), '');
-      if (value.isEmpty) continue;
-      if (!value.startsWith('#')) {
-        value = '#$value';
+  void _toggleHashtag(String tag) {
+    setState(() {
+      if (_selectedHashtags.contains(tag)) {
+        _selectedHashtags.remove(tag);
+      } else {
+        if (_selectedHashtags.length >= _maxHashtagSelection) {
+          _showSnack('ハッシュタグは$_maxHashtagSelection件まで選べます。');
+          return;
+        }
+        _selectedHashtags.add(tag);
       }
-      if (value == '#') continue;
-      final key =
-          value.startsWith('#') ? value.substring(1).toLowerCase() : value.toLowerCase();
-      if (seen.add(key)) {
-        normalized.add(value);
-      }
-    }
-    return normalized;
+    });
   }
 
   Future<void> _pickAvatar() async {
@@ -160,12 +145,16 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     if (_saving) return;
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedHashtags.length < _minHashtagSelection) {
+      _showSnack('ハッシュタグを$_minHashtagSelection件以上選択してください。');
+      return;
+    }
 
     setState(() => _saving = true);
     final displayName = _nameController.text.trim();
     final bio = _bioController.text.trim();
     final homeTown = _homeTownController.text.trim();
-    final hashtags = _parseHashtags(_hashtagsController.text);
+    final hashtags = _selectedHashtags.toList();
 
     final profileController = context.read<ProfileController>();
     final encounterManager = context.read<EncounterManager>();
@@ -321,32 +310,36 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   },
                 ),
                 const SizedBox(height: 20),
-                TextFormField(
-                  controller: _hashtagsController,
-                  decoration: InputDecoration(
-                    labelText: '\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0',
-                    hintText: '#\u30b2\u30fc\u30e0\u540d #\u30ab\u30d5\u30a7\u5de1\u308a #\u6620\u753b\u9451\u8cde',
-                    helperText:
-                        '#\u304b\u3089\u59cb\u307e\u308b\u6700\u592710\u500b\u307e\u3067\u3092\u6539\u884c\u3084\u7a7a\u767d\u3001\u30ab\u30f3\u30de\u533a\u5207\u308a\u3067\u8a18\u5165',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                  ),
-                  maxLines: 5,
-                  validator: (value) {
-                    final normalized =
-                        _normalizedHashtagsForValidation(value ?? '');
-                    if (normalized.length > Profile.maxHashtagCount) {
-                      return '\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0\u306f${Profile.maxHashtagCount}\u500b\u307e\u3067\u8a18\u5165\u3067\u304d\u307e\u3059';
-                    }
-                    final longest = normalized.fold<int>(
-                        0,
-                        (prev, element) =>
-                            element.length > prev ? element.length : prev);
-                    if (longest > Profile.maxHashtagLength) {
-                      return '\u5404\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0\u306f${Profile.maxHashtagLength}\u6587\u5b57\u4ee5\u5185\u306b\u3057\u3066\u304f\u3060\u3055\u3044';
-                    }
-                    return null;
-                  },
+                Text(
+                  '\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0 (\u9078\u629e$_minHashtagSelection\u301c$_maxHashtagSelection\u4ef6)',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _availableHashtags.map((tag) {
+                    final selected = _selectedHashtags.contains(tag);
+                    return FilterChip(
+                      showCheckmark: false,
+                      label: Text(tag),
+                      selected: selected,
+                      backgroundColor: Colors.white,
+                      selectedColor:
+                          Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                      side: BorderSide(
+                        color: selected
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey.shade300,
+                      ),
+                      labelStyle: TextStyle(
+                        color: selected
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.black87,
+                      ),
+                      onSelected: (_) => _toggleHashtag(tag),
+                    );
+                  }).toList(),
                 ),
                 const SizedBox(height: 32),
                 SizedBox(
@@ -452,12 +445,26 @@ class _AvatarEditor extends StatelessWidget {
           runSpacing: 8,
           children: [
             FilledButton.tonalIcon(
+              style: FilledButton.styleFrom(
+                backgroundColor:
+                    theme.colorScheme.primary.withValues(alpha: 0.1),
+                foregroundColor: theme.colorScheme.primary,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                minimumSize: const Size(140, 44),
+                side: BorderSide(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.4),
+                ),
+              ),
               onPressed: isSaving ? null : onPickImage,
               icon: const Icon(Icons.photo_camera_outlined),
               label: const Text('\u753b\u50cf\u3092\u9078\u3076'),
             ),
             if (onRemoveImage != null)
               TextButton.icon(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.black54,
+                ),
                 onPressed: isSaving ? null : onRemoveImage,
                 icon: const Icon(Icons.delete_outline),
                 label: const Text('\u753b\u50cf\u3092\u524a\u9664'),

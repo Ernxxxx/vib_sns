@@ -34,6 +34,7 @@ class TimelineManager extends ChangeNotifier {
   bool _paused;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
   StreamSubscription<User?>? _authSubscription;
+  final Map<String, bool> _pendingLikeStates = {};
 
   List<TimelinePost> get posts => List.unmodifiable(_posts);
   bool get isLoaded => _isLoaded;
@@ -44,8 +45,7 @@ class TimelineManager extends ChangeNotifier {
     List<String> hashtags = const <String>[],
   }) async {
     final profile = _profileController.profile;
-    final docRef =
-        FirebaseFirestore.instance.collection('timelinePosts').doc();
+    final docRef = FirebaseFirestore.instance.collection('timelinePosts').doc();
     String? imageUrl;
     String? encodedImage;
     Uint8List? optimizedBytes;
@@ -101,25 +101,29 @@ class TimelineManager extends ChangeNotifier {
   }
 
   Future<void> seedBotPosts() async {
-    final postsCollection = FirebaseFirestore.instance.collection('timelinePosts');
+    final postsCollection =
+        FirebaseFirestore.instance.collection('timelinePosts');
     final now = DateTime.now();
     final seeds = [
       {
         'authorId': 'bot_1',
         'authorName': 'BOT Resonance',
-        'caption': '\u65b0\u3057\u3044\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0\u306e\u6d41\u884c\u3092\u30c1\u30a7\u30c3\u30af\u4e2d\u3002',
+        'caption':
+            '\u65b0\u3057\u3044\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0\u306e\u6d41\u884c\u3092\u30c1\u30a7\u30c3\u30af\u4e2d\u3002',
         'hashtags': ['#AI', '#トレンド', '#共鳴'],
       },
       {
         'authorId': 'bot_2',
         'authorName': 'BOT Journey',
-        'caption': '\u5bd2\u3044\u591c\u306e\u8857\u3092\u30bf\u30a4\u30e0\u30ab\u30e1\u30e9\u3067\u6295\u5f71\u4e2d\u3002',
+        'caption':
+            '\u5bd2\u3044\u591c\u306e\u8857\u3092\u30bf\u30a4\u30e0\u30ab\u30e1\u30e9\u3067\u6295\u5f71\u4e2d\u3002',
         'hashtags': ['#旅', '#夜景', '#写真'],
       },
       {
         'authorId': 'bot_3',
         'authorName': 'BOT Chill',
-        'caption': '\u30ab\u30d5\u30a7\u3067\u30d6\u30ec\u30a4\u30f3\u30b9\u30c8\u30fc\u30e0\u3092\u30ab\u30b9\u30bf\u30de\u30a4\u30ba\u3002',
+        'caption':
+            '\u30ab\u30d5\u30a7\u3067\u30d6\u30ec\u30a4\u30f3\u30b9\u30c8\u30fc\u30e0\u3092\u30ab\u30b9\u30bf\u30de\u30a4\u30ba\u3002',
         'hashtags': ['#カフェ', '#音楽', '#リラックス'],
       },
     ];
@@ -163,6 +167,7 @@ class TimelineManager extends ChangeNotifier {
       post.likedBy.remove(viewerId);
     }
     notifyListeners();
+    _pendingLikeStates[postId] = nextLiked;
 
     final docRef =
         FirebaseFirestore.instance.collection('timelinePosts').doc(post.id);
@@ -173,9 +178,11 @@ class TimelineManager extends ChangeNotifier {
             ? FieldValue.arrayUnion([viewerId])
             : FieldValue.arrayRemove([viewerId]),
       });
+      // Let the Firestore snapshot listener clear the pending state when server catches up.
     } catch (error, stackTrace) {
       debugPrint('Failed to update timeline like: $error');
       debugPrintStack(stackTrace: stackTrace);
+      _pendingLikeStates.remove(postId);
       // Revert optimistic update on failure.
       post.isLiked = wasLiked;
       post.likeCount = (post.likeCount - delta).clamp(0, 999999);
@@ -227,17 +234,36 @@ class TimelineManager extends ChangeNotifier {
         .limit(200)
         .snapshots()
         .listen((snapshot) {
+      final viewerId = _profileController.profile.id;
       final nextPosts = snapshot.docs
           .map((doc) {
             final data = doc.data();
             data['id'] = data['id'] ?? doc.id;
             return TimelinePost.fromMap(
               data,
-              viewerId: _profileController.profile.id,
+              viewerId: viewerId,
             );
           })
           .whereType<TimelinePost>()
           .toList();
+      // Preserve pending like states to avoid overwriting optimistic updates.
+      for (final post in nextPosts) {
+        final pendingLike = _pendingLikeStates[post.id];
+        if (pendingLike != null) {
+          if (post.isLiked == pendingLike) {
+            // Server caught up, clear pending state.
+            _pendingLikeStates.remove(post.id);
+          } else {
+            // Keep the optimistic state until server catches up.
+            post.isLiked = pendingLike;
+            if (pendingLike && !post.likedBy.contains(viewerId)) {
+              post.likedBy.add(viewerId);
+            } else if (!pendingLike) {
+              post.likedBy.remove(viewerId);
+            }
+          }
+        }
+      }
       _posts
         ..clear()
         ..addAll(nextPosts);

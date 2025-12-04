@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- さらに余白を確保し、極力ズームを抑える (超小さく) -->
+    <item>
+        <inset
+            android:insetLeft="36dp"
+            android:insetTop="36dp"
+            android:insetRight="36dp"
+            android:insetBottom="36dp">
+            <bitmap
+                android:width="40dp"
+                android:height="40dp"
+                android:gravity="center"
+                android:filter="true"
+                android:src="@drawable/ic_launcher_symbol" />
+        </inset>
+    </item>
+</layer-list>

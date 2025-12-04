@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/profile.dart';
@@ -185,60 +186,37 @@ class FirestoreProfileInteractionService implements ProfileInteractionService {
     required bool like,
   }) async {
     final viewerId = viewerProfile.id;
-    if (targetId.isEmpty || viewerId.isEmpty || targetId == viewerId) {
+    final authUid = FirebaseAuth.instance.currentUser?.uid;
+    if (targetId.isEmpty ||
+        viewerId.isEmpty ||
+        targetId == viewerId ||
+        authUid == null) {
       return;
     }
     final profiles = _firestore.collection(_profilesCollection);
     final targetRef = profiles.doc(targetId);
-    final viewerRef = profiles.doc(viewerId);
-    final likeRef = targetRef.collection('likes').doc(viewerId);
+    // Use authUid as document ID to satisfy Firestore rules
+    final likeRef = targetRef.collection('likes').doc(authUid);
 
-    await _firestore.runTransaction((transaction) async {
-      final targetSnap = await transaction.get(targetRef);
-      final likeSnap = await transaction.get(likeRef);
-      var likes = (targetSnap.data()?['receivedLikes'] as num?)?.toInt() ?? 0;
-      Profile summaryProfile = viewerProfile;
-      try {
-        final viewerSnap = await transaction.get(viewerRef);
-        if (viewerSnap.exists) {
-          final stored = _profileFromDocument(viewerSnap, fallbackId: viewerId);
-          summaryProfile = stored.copyWith(
-            displayName: viewerProfile.displayName.isNotEmpty
-                ? viewerProfile.displayName
-                : stored.displayName,
-            avatarColor: viewerProfile.avatarColor,
-            avatarImageBase64: viewerProfile.avatarImageBase64,
-          );
-        }
-      } catch (_) {
-        // Ignore snapshot load failures; fall back to provided profile.
-      }
+    // First, perform the minimal write that must succeed (like document).
+    final likeBatch = _firestore.batch();
+    if (like) {
+      likeBatch.set(likeRef, {
+        'createdAt': FieldValue.serverTimestamp(),
+        'profile': _profileSummary(viewerProfile),
+        'viewerProfileId': viewerId,
+      });
+    } else {
+      likeBatch.delete(likeRef);
+    }
+    await likeBatch.commit();
 
-      if (like && !likeSnap.exists) {
-        likes += 1;
-        transaction.set(likeRef, {
-          'createdAt': FieldValue.serverTimestamp(),
-          'profile': _profileSummary(summaryProfile),
-        });
-        transaction.set(
-            targetRef,
-            {
-              'receivedLikes': likes,
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true));
-      } else if (!like && likeSnap.exists) {
-        likes = max(0, likes - 1);
-        transaction.delete(likeRef);
-        transaction.set(
-            targetRef,
-            {
-              'receivedLikes': likes,
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true));
-      }
-    });
+    // Then, best-effort counter bump. If this fails due to permissions, keep
+    // the like state and just log.
+    await _updateLikeCounters(
+      targetRef: targetRef,
+      like: like,
+    );
   }
 
   @override
@@ -247,76 +225,54 @@ class FirestoreProfileInteractionService implements ProfileInteractionService {
     required String viewerId,
     required bool follow,
   }) async {
-    if (targetId.isEmpty || viewerId.isEmpty || targetId == viewerId) {
+    final authUid = FirebaseAuth.instance.currentUser?.uid;
+    if (targetId.isEmpty ||
+        viewerId.isEmpty ||
+        targetId == viewerId ||
+        authUid == null) {
       return;
     }
     final profiles = _firestore.collection(_profilesCollection);
     final targetRef = profiles.doc(targetId);
     final viewerRef = profiles.doc(viewerId);
-    final followerRef = targetRef.collection('followers').doc(viewerId);
+    final viewerSnap = await _ensureAuthUidOnProfile(
+      profileRef: viewerRef,
+      authUid: authUid,
+    );
+    // Use authUid as document ID for followers to satisfy Firestore rules
+    final followerRef = targetRef.collection('followers').doc(authUid);
     final followingRef = viewerRef.collection('following').doc(targetId);
 
-    await _firestore.runTransaction((transaction) async {
-      final targetSnap = await transaction.get(targetRef);
-      final viewerSnap = await transaction.get(viewerRef);
-      final followerSnap = await transaction.get(followerRef);
-
-      var followers =
-          (targetSnap.data()?['followersCount'] as num?)?.toInt() ?? 0;
-      var following =
-          (viewerSnap.data()?['followingCount'] as num?)?.toInt() ?? 0;
-
-      final targetProfile =
-          _profileFromDocument(targetSnap, fallbackId: targetId);
+    // Critical writes: follower/following documents. Do these first so the
+    // follow state persists even if counter bumps are rejected by rules.
+    final relationBatch = _firestore.batch();
+    if (follow) {
+      final targetProfile = _profileFromDocument(
+          await targetRef.get(), fallbackId: targetId);
       final viewerProfile =
           _profileFromDocument(viewerSnap, fallbackId: viewerId);
 
-      if (follow && !followerSnap.exists) {
-        followers += 1;
-        following += 1;
-        transaction.set(followerRef, {
-          'createdAt': FieldValue.serverTimestamp(),
-          'profile': _profileSummary(viewerProfile),
-        });
-        transaction.set(followingRef, {
-          'createdAt': FieldValue.serverTimestamp(),
-          'profile': _profileSummary(targetProfile),
-        });
-        transaction.set(
-            targetRef,
-            {
-              'followersCount': followers,
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true));
-        transaction.set(
-            viewerRef,
-            {
-              'followingCount': following,
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true));
-      } else if (!follow && followerSnap.exists) {
-        followers = max(0, followers - 1);
-        following = max(0, following - 1);
-        transaction.delete(followerRef);
-        transaction.delete(followingRef);
-        transaction.set(
-            targetRef,
-            {
-              'followersCount': followers,
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true));
-        transaction.set(
-            viewerRef,
-            {
-              'followingCount': following,
-              'updatedAt': FieldValue.serverTimestamp(),
-            },
-            SetOptions(merge: true));
-      }
-    });
+      relationBatch.set(followerRef, {
+        'createdAt': FieldValue.serverTimestamp(),
+        'profile': _profileSummary(viewerProfile),
+        'viewerProfileId': viewerId,
+      });
+      relationBatch.set(followingRef, {
+        'createdAt': FieldValue.serverTimestamp(),
+        'profile': _profileSummary(targetProfile),
+      });
+    } else {
+      relationBatch.delete(followerRef);
+      relationBatch.delete(followingRef);
+    }
+    await relationBatch.commit();
+
+    // Best-effort counter bumps. If forbidden, keep follow state and just log.
+    await _updateFollowCounters(
+      targetRef: targetRef,
+      viewerRef: viewerRef,
+      follow: follow,
+    );
   }
 
   @override
@@ -348,8 +304,8 @@ class FirestoreProfileInteractionService implements ProfileInteractionService {
     required String viewerId,
     required _RelationType type,
   }) async {
-    final profiles =
-        _firestore.collection(FirestoreProfileInteractionService._profilesCollection);
+    final profiles = _firestore
+        .collection(FirestoreProfileInteractionService._profilesCollection);
     final docRef = profiles.doc(targetId);
     final collectionName =
         type == _RelationType.followers ? 'followers' : 'following';
@@ -450,6 +406,90 @@ class FirestoreProfileInteractionService implements ProfileInteractionService {
     _followingCaches[viewerId] = cache;
     return cache;
   }
+
+  Future<DocumentSnapshot<Map<String, dynamic>>> _ensureAuthUidOnProfile({
+    required DocumentReference<Map<String, dynamic>> profileRef,
+    required String authUid,
+  }) async {
+    final snapshot = await profileRef.get();
+    if (snapshot.data()?['authUid'] == authUid) {
+      return snapshot;
+    }
+    try {
+      await profileRef.set({'authUid': authUid}, SetOptions(merge: true));
+    } catch (error, stackTrace) {
+      debugPrint(
+          'Failed to persist authUid for profile ${profileRef.id}: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      rethrow;
+    }
+    return snapshot;
+  }
+
+  Future<void> _updateLikeCounters({
+    required DocumentReference<Map<String, dynamic>> targetRef,
+    required bool like,
+  }) async {
+    final targetSnap = await targetRef.get();
+    if (!targetSnap.exists) {
+      return;
+    }
+    try {
+      await targetRef.set(
+        {
+          'receivedLikes': FieldValue.increment(like ? 1 : -1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    } on FirebaseException catch (error, stackTrace) {
+      if (error.code != 'permission-denied') {
+        rethrow;
+      }
+      debugPrint(
+          'Best-effort like counter update skipped (permission-denied) for ${targetRef.id}');
+      debugPrintStack(stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> _updateFollowCounters({
+    required DocumentReference<Map<String, dynamic>> targetRef,
+    required DocumentReference<Map<String, dynamic>> viewerRef,
+    required bool follow,
+  }) async {
+    final targetSnap = await targetRef.get();
+    final hasTarget = targetSnap.exists;
+    final batch = _firestore.batch();
+    if (hasTarget) {
+      batch.set(
+        targetRef,
+        {
+          'followersCount': FieldValue.increment(follow ? 1 : -1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    }
+    batch.set(
+      viewerRef,
+      {
+        'followingCount': FieldValue.increment(follow ? 1 : -1),
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+
+    try {
+      await batch.commit();
+    } on FirebaseException catch (error, stackTrace) {
+      if (error.code != 'permission-denied') {
+        rethrow;
+      }
+      debugPrint(
+          'Best-effort follow counter update skipped (permission-denied) target=${targetRef.id} viewer=${viewerRef.id}');
+      debugPrintStack(stackTrace: stackTrace);
+    }
+  }
 }
 
 class _ProfileWatcher {
@@ -475,8 +515,12 @@ class _ProfileWatcher {
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _profileSub;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _likeSub;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _followSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _likeCountSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _followersCountSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _followingCountSub;
   int _listenerCount = 0;
   bool _isDisposed = false;
+  bool _hasSubcollectionCounts = false;
 
   int _receivedLikes = 0;
   int _followersCount = 0;
@@ -520,9 +564,11 @@ class _ProfileWatcher {
     _profileSub = docRef.snapshots().listen(
       (snapshot) {
         final data = snapshot.data();
-        _receivedLikes = (data?['receivedLikes'] as num?)?.toInt() ?? 0;
-        _followersCount = (data?['followersCount'] as num?)?.toInt() ?? 0;
-        _followingCount = (data?['followingCount'] as num?)?.toInt() ?? 0;
+        if (!_hasSubcollectionCounts) {
+          _receivedLikes = (data?['receivedLikes'] as num?)?.toInt() ?? 0;
+          _followersCount = (data?['followersCount'] as num?)?.toInt() ?? 0;
+          _followingCount = (data?['followingCount'] as num?)?.toInt() ?? 0;
+        }
         _emitSnapshot();
       },
       onError: (error, stackTrace) {
@@ -532,14 +578,37 @@ class _ProfileWatcher {
       },
     );
 
-    if (targetId == viewerId) {
+    // Live counts derived from subcollections, so counters stay accurate even
+    // if parent profile updates are rejected by security rules.
+    _likeCountSub =
+        docRef.collection('likes').snapshots().listen((snapshot) {
+      _hasSubcollectionCounts = true;
+      _receivedLikes = snapshot.size;
+      _emitSnapshot();
+    });
+    _followersCountSub =
+        docRef.collection('followers').snapshots().listen((snapshot) {
+      _hasSubcollectionCounts = true;
+      _followersCount = snapshot.size;
+      _emitSnapshot();
+    });
+    _followingCountSub =
+        docRef.collection('following').snapshots().listen((snapshot) {
+      _hasSubcollectionCounts = true;
+      _followingCount = snapshot.size;
+      _emitSnapshot();
+    });
+
+    // Use authUid to match the document ID used in setLike/setFollow
+    final authUid = FirebaseAuth.instance.currentUser?.uid;
+    if (targetId == viewerId || authUid == null) {
       _likedByViewer = false;
       _followedByViewer = false;
       _emitSnapshot();
       return;
     }
 
-    _likeSub = docRef.collection('likes').doc(viewerId).snapshots().listen(
+    _likeSub = docRef.collection('likes').doc(authUid).snapshots().listen(
       (snapshot) {
         _likedByViewer = snapshot.exists;
         _emitSnapshot();
@@ -551,8 +620,7 @@ class _ProfileWatcher {
       },
     );
 
-    _followSub =
-        docRef.collection('followers').doc(viewerId).snapshots().listen(
+    _followSub = docRef.collection('followers').doc(authUid).snapshots().listen(
       (snapshot) {
         _followedByViewer = snapshot.exists;
         _emitSnapshot();
@@ -583,9 +651,15 @@ class _ProfileWatcher {
     unawaited(_profileSub?.cancel());
     unawaited(_likeSub?.cancel());
     unawaited(_followSub?.cancel());
+    unawaited(_likeCountSub?.cancel());
+    unawaited(_followersCountSub?.cancel());
+    unawaited(_followingCountSub?.cancel());
     _profileSub = null;
     _likeSub = null;
     _followSub = null;
+    _likeCountSub = null;
+    _followersCountSub = null;
+    _followingCountSub = null;
   }
 
   void dispose() {
@@ -656,8 +730,7 @@ class _RelationshipWatcher {
     final docRef = profiles.doc(targetId);
     final collectionName =
         type == _RelationType.followers ? 'followers' : 'following';
-    _relationSub =
-        docRef.collection(collectionName).snapshots().listen(
+    _relationSub = docRef.collection(collectionName).snapshots().listen(
       (snapshot) {
         unawaited(_rebuild(snapshot.docs));
       },

@@ -115,12 +115,30 @@ const double _clusterZoomThreshold = 14.0;
 const int _clusterMinDenseCount = 10;
 const double _clusterMinCellSizeDegrees = 0.004;
 const double _clusterMaxCellSizeDegrees = 0.02;
-const List<Color> _clusterPalette = [
-  Color(0xFFFF7043),
-  Color(0xFFFFB300),
-  Color(0xFF42A5F5),
-  Color(0xFFAB47BC),
-  Color(0xFF26A69A),
+const double _clusterJitterFraction = 0.35; // オーバーラップ防止用のジッター
+
+const List<_ClusterTier> _clusterTiers = [
+  _ClusterTier(
+    minCount: 50,
+    label: '50+人',
+    emoji: '🐘',
+    color: Color(0xFF8E44AD),
+    sizeFactor: 1.15,
+  ),
+  _ClusterTier(
+    minCount: 25,
+    label: '25+人',
+    emoji: '🐕',
+    color: Color(0xFF2E86C1),
+    sizeFactor: 1.0,
+  ),
+  _ClusterTier(
+    minCount: 10,
+    label: '10+人',
+    emoji: '🐁',
+    color: Color(0xFFF39C12),
+    sizeFactor: 0.9,
+  ),
 ];
 
 class _EmotionMapState extends State<EmotionMap> {
@@ -833,14 +851,16 @@ class _EmotionMapState extends State<EmotionMap> {
   }
 
   Marker _buildClusterMarker(_ClusterBucket cluster) {
-    final center = cluster.center;
-    final scale = _markerScaleForZoom(_currentZoom).clamp(0.7, 1.0);
+    final center = _jitteredClusterCenter(cluster);
+    final tier = _resolveClusterTier(cluster.count);
+    final scale = (_markerScaleForZoom(_currentZoom) * tier.sizeFactor)
+        .clamp(0.65, 1.2);
     final stampSize = 110.0 * scale;
     final haloSize = stampSize * 1.25;
     final labelHeight = 38.0 * scale;
-    final baseColor = _clusterColorFor(cluster);
+    final baseColor = tier.color;
     final highlight = Color.lerp(baseColor, Colors.white, 0.35)!;
-    final displayLabel = _clusterLabelForCount(cluster.count);
+    final displayLabel = tier.label;
     return Marker(
       point: center,
       width: haloSize,
@@ -894,10 +914,9 @@ class _EmotionMapState extends State<EmotionMap> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.groups_2_rounded,
-                        color: Colors.white,
-                        size: 24 * scale,
+                      Text(
+                        tier.emoji,
+                        style: TextStyle(fontSize: 28 * scale),
                       ),
                       SizedBox(height: 4 * scale),
                       Text(
@@ -937,28 +956,20 @@ class _EmotionMapState extends State<EmotionMap> {
     _mapController.move(target, targetZoom);
   }
 
-  Color _clusterColorFor(_ClusterBucket cluster) {
-    final index =
-        cluster.colorKey % _clusterPalette.length;
-    return _clusterPalette[index];
+  _ClusterTier _resolveClusterTier(int count) {
+    for (final tier in _clusterTiers) {
+      if (count >= tier.minCount) return tier;
+    }
+    return _clusterTiers.last;
   }
 
-  String _clusterLabelForCount(int count) {
-    if (count < 10) {
-      // 2-9: そのまま表示
-      return '$count+人';
-    } else if (count < 100) {
-      // 10-99: 10刻みで表示 (10+, 20+, 30+, ..., 90+)
-      final bucket = ((count + 9) ~/ 10) * 10;
-      return '$bucket+人';
-    } else if (count < 1000) {
-      // 100-999: 100刻みで表示 (100+, 200+, 300+, ..., 900+)
-      final bucket = ((count + 99) ~/ 100) * 100;
-      return '$bucket+人';
-    } else {
-      // 1000以上
-      return '1000+人';
-    }
+  LatLng _jitteredClusterCenter(_ClusterBucket cluster) {
+    final base = cluster.center;
+    final cellSize = _clusterCellSizeForZoom(_currentZoom);
+    final hash = cluster.key.hashCode;
+    final dx = ((hash & 0xff) / 255.0 - 0.5) * cellSize * _clusterJitterFraction;
+    final dy = (((hash >> 8) & 0xff) / 255.0 - 0.5) * cellSize * _clusterJitterFraction;
+    return LatLng(base.latitude + dy, base.longitude + dx);
   }
 
   double _markerScaleForZoom(double zoom) {
@@ -1166,6 +1177,22 @@ class _MemoBubbleLayout {
   final double outerWidth;
   final double innerWidth;
   final double height;
+}
+
+class _ClusterTier {
+  const _ClusterTier({
+    required this.minCount,
+    required this.label,
+    required this.emoji,
+    required this.color,
+    required this.sizeFactor,
+  });
+
+  final int minCount;
+  final String label;
+  final String emoji;
+  final Color color;
+  final double sizeFactor;
 }
 
 class _ClusterEntry {

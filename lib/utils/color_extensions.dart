@@ -8,7 +8,7 @@ extension ColorExtensions on Color {
       return this;
     }
     final clampedAlpha = alpha.clamp(0.0, 1.0);
-    return withOpacity(clampedAlpha);
+    return withOpacity(clampedAlpha.toDouble());
   }
 
   /// Convenience alias for `value`; older code used `toARGB32`.

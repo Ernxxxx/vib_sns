@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function authUid() {
+      return request.auth.uid;
+    }
+
+    function ownsProfile(profileId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/profiles/$(profileId))
+        && get(/databases/$(database)/documents/profiles/$(profileId)).data.authUid == authUid();
+    }
+
+    function profileCountersOnlyChange() {
+      return request.resource.data.displayName == resource.data.displayName
+        && request.resource.data.bio == resource.data.bio
+        && request.resource.data.homeTown == resource.data.homeTown
+        && request.resource.data.favoriteGames == resource.data.favoriteGames
+        && request.resource.data.avatarColor == resource.data.avatarColor
+        && request.resource.data.avatarImageBase64 == resource.data.avatarImageBase64
+        && request.resource.data.beaconId == resource.data.beaconId
+        && request.resource.data.authUid == resource.data.authUid;
+    }
+
+    function timelineLikeOnlyChange() {
+      return request.resource.data.authorId == resource.data.authorId
+        && request.resource.data.authorName == resource.data.authorName
+        && request.resource.data.authorColorValue == resource.data.authorColorValue
+        && request.resource.data.caption == resource.data.caption
+        && request.resource.data.imageBase64 == resource.data.imageBase64
+        && request.resource.data.imageUrl == resource.data.imageUrl
+        && request.resource.data.hashtags == resource.data.hashtags
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    match /profiles/{profileId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.authUid == authUid()
+        && !exists(/databases/$(database)/documents/profiles/$(profileId));
+      allow update: if signedIn() && (
+        ownsProfile(profileId)
+        || profileCountersOnlyChange()
+        || request.resource.data.authUid == authUid()
+      );
+      allow delete: if ownsProfile(profileId);
+
+      match /followers/{followerId} {
+        allow read: if signedIn();
+        allow create: if signedIn() && authUid() == followerId;
+        allow delete: if ownsProfile(profileId) || authUid() == followerId;
+        allow update: if false;
+      }
+      match /following/{targetId} {
+        allow read: if signedIn();
+        allow create, delete: if ownsProfile(profileId);
+        allow update: if false;
+      }
+      match /likes/{likerId} {
+        allow read: if signedIn();
+        allow create: if signedIn() && authUid() == likerId;
+        allow delete: if ownsProfile(profileId) || authUid() == likerId;
+        allow update: if false;
+      }
+    }
+
+    match /timelinePosts/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && ownsProfile(request.resource.data.authorId);
+      allow delete: if resource.data.authorId != null && ownsProfile(resource.data.authorId);
+      allow update: if (resource.data.authorId != null && ownsProfile(resource.data.authorId))
+        || (signedIn() && timelineLikeOnlyChange());
+    }
+
+    match /emotion_map_posts/{postId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && ownsProfile(request.resource.data.profileId);
+      allow delete: if resource.data.profileId != null && ownsProfile(resource.data.profileId);
+      allow update: if false;
+    }
+
+    match /streetpass_presences/{deviceId} {
+      allow read: if signedIn();
+      allow write: if ownsProfile(deviceId);
+    }
+  }
+}

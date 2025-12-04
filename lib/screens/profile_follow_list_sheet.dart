@@ -28,6 +28,7 @@ class ProfileFollowListSheet extends StatefulWidget {
 
 class _ProfileFollowListSheetState extends State<ProfileFollowListSheet> {
   final Set<String> _pending = <String>{};
+  final Map<String, bool> _pendingFollowStates = <String, bool>{};
   List<ProfileFollowSnapshot>? _initialItems;
   bool _initialLoading = false;
 
@@ -94,12 +95,31 @@ class _ProfileFollowListSheetState extends State<ProfileFollowListSheet> {
                 ),
               );
             }
-            final streamItems = snapshot.data ?? const <ProfileFollowSnapshot>[];
-            final items = streamItems.isNotEmpty
-                ? streamItems
-                : (_initialItems ?? const <ProfileFollowSnapshot>[]);
-            final isLoading =
-                (streamItems.isEmpty && _initialItems == null) || _initialLoading;
+            final streamItems =
+                snapshot.data ?? const <ProfileFollowSnapshot>[];
+            // Apply pending follow states to preserve optimistic updates.
+            final processedItems = streamItems.isNotEmpty
+                ? streamItems.map((item) {
+                    final pendingState = _pendingFollowStates[item.profile.id];
+                    if (pendingState != null) {
+                      if (item.isFollowedByViewer == pendingState) {
+                        // Server caught up, clear pending state.
+                        _pendingFollowStates.remove(item.profile.id);
+                        return item;
+                      }
+                      // Keep the optimistic state until server catches up.
+                      return ProfileFollowSnapshot(
+                        profile: item.profile,
+                        isFollowedByViewer: pendingState,
+                      );
+                    }
+                    return item;
+                  }).toList()
+                : null;
+            final items = processedItems ??
+                (_initialItems ?? const <ProfileFollowSnapshot>[]);
+            final isLoading = (streamItems.isEmpty && _initialItems == null) ||
+                _initialLoading;
             if (isLoading) {
               return const SizedBox(
                 height: 240,
@@ -163,17 +183,27 @@ class _ProfileFollowListSheetState extends State<ProfileFollowListSheet> {
     if (_pending.contains(profileId) || profileId == widget.viewerId) {
       return;
     }
-    setState(() => _pending.add(profileId));
+    // Use pending state if exists, otherwise use snapshot state
+    final currentFollowState =
+        _pendingFollowStates[profileId] ?? snapshot.isFollowedByViewer;
+    final shouldFollow = !currentFollowState;
+    setState(() {
+      _pending.add(profileId);
+      _pendingFollowStates[profileId] = shouldFollow;
+    });
     final service = context.read<ProfileInteractionService>();
-    final shouldFollow = !snapshot.isFollowedByViewer;
     try {
       await service.setFollow(
         targetId: profileId,
         viewerId: widget.viewerId,
         follow: shouldFollow,
       );
+      // Keep pendingFollowStates until stream confirms the change.
     } catch (error) {
       if (!mounted) return;
+      setState(() {
+        _pendingFollowStates.remove(profileId);
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('フォロー状態の更新に失敗しました: $error')),
       );

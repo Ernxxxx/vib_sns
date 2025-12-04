@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 背景を黄色の円で塗る -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/splash_background" />
+        </shape>
+    </item>
+    <!-- 中央にロゴ。余白を付けて拡大トリミングを防ぐ -->
+    <item>
+        <inset
+            android:insetLeft="36dp"
+            android:insetTop="36dp"
+            android:insetRight="36dp"
+            android:insetBottom="36dp">
+            <bitmap
+                android:width="40dp"
+                android:height="40dp"
+                android:gravity="center"
+                android:filter="true"
+                android:src="@drawable/ic_launcher_symbol" />
+        </inset>
+    </item>
+</layer-list>

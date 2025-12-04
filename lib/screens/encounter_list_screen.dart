@@ -12,8 +12,18 @@ import '../widgets/like_button.dart';
 import '../widgets/profile_avatar.dart';
 import 'encounter_detail_screen.dart';
 
+enum EncounterListFilter { encounter, reunion, resonance }
+
 class EncounterListScreen extends StatefulWidget {
-  const EncounterListScreen({super.key});
+  const EncounterListScreen({super.key, this.initialFilter = EncounterListFilter.encounter});
+  const EncounterListScreen.encounters({super.key})
+      : initialFilter = EncounterListFilter.encounter;
+  const EncounterListScreen.reunions({super.key})
+      : initialFilter = EncounterListFilter.reunion;
+  const EncounterListScreen.resonances({super.key})
+      : initialFilter = EncounterListFilter.resonance;
+
+  final EncounterListFilter initialFilter;
 
   @override
   State<EncounterListScreen> createState() => _EncounterListScreenState();
@@ -21,10 +31,12 @@ class EncounterListScreen extends StatefulWidget {
 
 class _EncounterListScreenState extends State<EncounterListScreen> {
   bool _scanAttempted = false;
+  late EncounterListFilter _selectedFilter;
 
   @override
   void initState() {
     super.initState();
+    _selectedFilter = widget.initialFilter;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureStreetPassStarted();
     });
@@ -112,6 +124,8 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
             }
 
             final encounters = manager.encounters;
+            final reunionEntries = manager.reunionEntries;
+            final resonanceEntries = manager.resonanceEntries;
 
             List<Widget> buildBanners() {
               return [
@@ -130,28 +144,87 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
               ];
             }
 
-            final listTab = Column(
-              children: [
-                ...buildBanners(),
-                if (encounters.isEmpty)
-                  Expanded(
+            Widget buildFilteredList() {
+              final filter = _selectedFilter;
+              if (filter == EncounterListFilter.encounter) {
+                if (encounters.isEmpty) {
+                  return Expanded(
                     child: _EmptyEncountersMessage(
                       scanAttempted: _scanAttempted,
                     ),
-                  )
-                else
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 12, horizontal: 16),
-                      itemBuilder: (context, index) {
-                        final encounter = encounters[index];
-                        return _EncounterTile(encounter: encounter);
-                      },
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemCount: encounters.length,
-                    ),
+                  );
+                }
+                return Expanded(
+                  child: ListView.separated(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    itemBuilder: (context, index) {
+                      final encounter = encounters[index];
+                      return _EncounterTile(encounter: encounter);
+                    },
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemCount: encounters.length,
                   ),
+                );
+              }
+              final entries = filter == EncounterListFilter.reunion
+                  ? reunionEntries
+                  : resonanceEntries;
+              if (entries.isEmpty) {
+                return const Expanded(
+                  child: Center(
+                    child: Text('\u307e\u3060\u8a18\u9332\u304c\u3042\u308a\u307e\u305b\u3093\u3002'),
+                  ),
+                );
+              }
+              return Expanded(
+                child: ListView.separated(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    return _HighlightEntryTile(entry: entry);
+                  },
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemCount: entries.length,
+                ),
+              );
+            }
+
+            final filterRow = Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: SegmentedButton<EncounterListFilter>(
+                segments: const [
+                  ButtonSegment(
+                    value: EncounterListFilter.encounter,
+                    label: Text('すれ違い'),
+                    icon: Icon(Icons.people_alt_outlined),
+                  ),
+                  ButtonSegment(
+                    value: EncounterListFilter.reunion,
+                    label: Text('再会'),
+                    icon: Icon(Icons.repeat),
+                  ),
+                  ButtonSegment(
+                    value: EncounterListFilter.resonance,
+                    label: Text('共鳴'),
+                    icon: Icon(Icons.favorite_border),
+                  ),
+                ],
+                selected: {_selectedFilter},
+                showSelectedIcon: false,
+                onSelectionChanged: (selection) {
+                  if (selection.isEmpty) return;
+                  setState(() => _selectedFilter = selection.first);
+                },
+              ),
+            );
+
+            final listTab = Column(
+              children: [
+                ...buildBanners(),
+                filterRow,
+                buildFilteredList(),
               ],
             );
 
@@ -248,8 +321,8 @@ class _EncounterTile extends StatelessWidget {
                             color: const Color(0xFFFFF4C7),
                             borderRadius: BorderRadius.circular(999),
                           ),
-                          child: Text(
-                            _relativeTime(encounter.encounteredAt),
+                            child: Text(
+                              _formatRelativeTime(encounter.encounteredAt),
                             style: theme.textTheme.labelSmall?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
@@ -337,13 +410,78 @@ class _EncounterTile extends StatelessWidget {
     );
   }
 
-  String _relativeTime(DateTime time) {
-    final diff = DateTime.now().difference(time);
-    if (diff.inMinutes < 1) return '\u305f\u3063\u305f\u4eca';
-    if (diff.inHours < 1) return '${diff.inMinutes}\u5206\u524d';
-    if (diff.inHours < 24) return '${diff.inHours}\u6642\u9593\u524d';
-    return '${diff.inDays}\u65e5\u524d';
+}
+
+class _HighlightEntryTile extends StatelessWidget {
+  const _HighlightEntryTile({required this.entry});
+
+  final EncounterHighlightEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hashtags = entry.profile.favoriteGames.take(3).join(' ');
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          ProfileAvatar(
+            profile: entry.profile,
+            radius: 24,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.profile.displayName,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                if (hashtags.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      hashtags,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: Colors.black54),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    _formatRelativeTime(entry.occurredAt),
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: Colors.black54),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+String _formatRelativeTime(DateTime time) {
+  final diff = DateTime.now().difference(time);
+  if (diff.inMinutes < 1) return '\u305f\u3063\u305f\u4eca';
+  if (diff.inHours < 1) return '${diff.inMinutes}\u5206\u524d';
+  if (diff.inHours < 24) return '${diff.inHours}\u6642\u9593\u524d';
+  return '${diff.inDays}\u65e5\u524d';
 }
 
 class _EmptyEncountersMessage extends StatelessWidget {
