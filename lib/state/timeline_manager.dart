@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 
@@ -53,17 +54,30 @@ class TimelineManager extends ChangeNotifier {
       final payload = _prepareImagePayload(imageBytes);
       optimizedBytes = payload.bytes;
       encodedImage = payload.inlineBase64;
-      final storageRef =
-          FirebaseStorage.instance.ref('timelinePosts/${docRef.id}.jpg');
-      try {
-        await storageRef.putData(
-          optimizedBytes,
-          SettableMetadata(contentType: 'image/jpeg'),
-        );
-        imageUrl = await storageRef.getDownloadURL();
-      } catch (error, stackTrace) {
-        debugPrint('TimelineManager: failed to upload image: $error');
-        debugPrintStack(stackTrace: stackTrace);
+
+      // On web, Firebase Storage uploads can hang due to CORS/permissions.
+      // Prefer inlined base64; if too large, recompress harder and avoid Storage.
+      if (kIsWeb) {
+        if (encodedImage == null) {
+          final forced = _prepareImagePayload(imageBytes,
+              forceInlineForWeb: true);
+          optimizedBytes = forced.bytes;
+          encodedImage = forced.inlineBase64;
+          encodedImage ??= base64Encode(optimizedBytes);
+        }
+      } else {
+        final storageRef =
+            FirebaseStorage.instance.ref('timelinePosts/${docRef.id}.jpg');
+        try {
+          await storageRef.putData(
+            optimizedBytes,
+            SettableMetadata(contentType: 'image/jpeg'),
+          );
+          imageUrl = await storageRef.getDownloadURL();
+        } catch (error, stackTrace) {
+          debugPrint('TimelineManager: failed to upload image: $error');
+          debugPrintStack(stackTrace: stackTrace);
+        }
       }
     }
     await docRef.set({
@@ -282,9 +296,11 @@ class TimelineManager extends ChangeNotifier {
   bool get _hasAuthUser => FirebaseAuth.instance.currentUser != null;
 
   ({Uint8List bytes, String? inlineBase64}) _prepareImagePayload(
-    Uint8List source,
-  ) {
+    Uint8List source, {
+    bool forceInlineForWeb = false,
+  }) {
     const inlineByteLimit = 700000; // ~933KB once base64-encoded.
+    const webMaxSide = 1080; // reduce further for web to keep size small
     try {
       final decoded = img.decodeImage(source);
       if (decoded == null) {
@@ -294,7 +310,7 @@ class TimelineManager extends ChangeNotifier {
               source.length <= inlineByteLimit ? base64Encode(source) : null,
         );
       }
-      const maxSide = 1440;
+      final maxSide = forceInlineForWeb ? webMaxSide : 1440;
       img.Image processed = decoded;
       if (decoded.width > maxSide || decoded.height > maxSide) {
         processed = img.copyResize(
@@ -308,7 +324,7 @@ class TimelineManager extends ChangeNotifier {
         img.encodeJpg(processed, quality: 80),
       );
       String? inlineBase64;
-      const qualities = [80, 72, 64, 56, 48];
+      const qualities = [80, 72, 64, 56, 48, 40, 32, 24, 16, 12, 8];
       for (final quality in qualities) {
         encoded = Uint8List.fromList(
           img.encodeJpg(processed, quality: quality),
