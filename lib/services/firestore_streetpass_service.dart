@@ -301,15 +301,18 @@ class FirestoreStreetPassService implements StreetPassService {
       }
     }
 
-    try {
-      final lastKnown = await _geolocator.getLastKnownPosition();
-      if (lastKnown != null) {
-        _lastPosition = lastKnown;
-        _lastPositionUpdatedAt = now;
-        return lastKnown;
+    // geolocator_web does not support getLastKnownPosition; skip on web.
+    if (!kIsWeb) {
+      try {
+        final lastKnown = await _geolocator.getLastKnownPosition();
+        if (lastKnown != null) {
+          _lastPosition = lastKnown;
+          _lastPositionUpdatedAt = now;
+          return lastKnown;
+        }
+      } catch (error, stackTrace) {
+        _encounterController.addError(error, stackTrace);
       }
-    } catch (error, stackTrace) {
-      _encounterController.addError(error, stackTrace);
     }
 
     try {
