@@ -1,24 +1,39 @@
 {
-	"functions": {
-		"source": "functions"
-	},
-	"flutter": {
-		"platforms": {
-			"android": {
-				"default": {
-					"projectId": "vib-sns-prod",
-					"appId": "1:115691400203:android:bc6c68aaf31e54be6eab0e",
-					"fileOutput": "android/app/google-services.json"
-				}
-			},
-			"dart": {
-				"lib/firebase_options.dart": {
-					"projectId": "vib-sns-prod",
-					"configurations": {
-						"android": "1:115691400203:android:bc6c68aaf31e54be6eab0e"
-					}
-				}
-			}
-		}
-	}
+  "functions": {
+    "source": "functions"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "vib-sns-prod",
+          "appId": "1:115691400203:android:bc6c68aaf31e54be6eab0e",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "vib-sns-prod",
+          "configurations": {
+            "android": "1:115691400203:android:bc6c68aaf31e54be6eab0e",
+            "web": "1:115691400203:web:9fdd9f9de392913a6eab0e"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
 }

@@ -20,6 +20,10 @@
             "package_name": "com.example.vib_sns",
             "certificate_hash": "845be023fbcc163b014fa4ddcd518d13b4c963a4"
           }
+        },
+        {
+          "client_id": "115691400203-dms8j44ja8vbv2acof21msu37e3gkqkd.apps.googleusercontent.com",
+          "client_type": 3
         }
       ],
       "api_key": [
@@ -29,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "115691400203-dms8j44ja8vbv2acof21msu37e3gkqkd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
