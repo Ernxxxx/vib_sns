@@ -47,7 +47,7 @@ class _ProfileSetupPageState extends State<_ProfileSetupPage> {
   late final TextEditingController _nameController =
       TextEditingController(text: widget.initialName ?? '');
   late final Set<String> _selected = {
-    if (widget.initialHashtags != null) ...widget.initialHashtags!
+    ...?widget.initialHashtags,
   };
 
   bool get _hasValidName => _nameController.text.trim().isNotEmpty;
@@ -144,8 +144,10 @@ class _ProfileSetupPageState extends State<_ProfileSetupPage> {
                     label: Text(tag),
                     selected: isSelected,
                     backgroundColor: Colors.white,
-                    selectedColor:
-                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                    selectedColor: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.25),
                     side: BorderSide(
                       color: isSelected
                           ? Theme.of(context).colorScheme.primary

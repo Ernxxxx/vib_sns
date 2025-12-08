@@ -115,7 +115,26 @@ Future<UserCredential?> signInWithGoogle() async {
   if (account == null) {
     return null;
   }
-  final auth = await account.authentication;
+
+  GoogleSignInAuthentication auth;
+  try {
+    auth = await account.authentication;
+  } catch (e) {
+    debugPrint('Error getting Google authentication: $e');
+    rethrow;
+  }
+
+  // On Web, idToken might be null if serverClientId is not configured.
+  // accessToken can also be null in some cases.
+  if (auth.idToken == null && auth.accessToken == null) {
+    debugPrint(
+        'Google Sign-In returned null tokens. Check OAuth configuration.');
+    throw FirebaseAuthException(
+      code: 'invalid-credential',
+      message: 'Google認証に失敗しました。再度お試しください。',
+    );
+  }
+
   final credential = GoogleAuthProvider.credential(
     idToken: auth.idToken,
     accessToken: auth.accessToken,

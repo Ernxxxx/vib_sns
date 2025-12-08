@@ -7,6 +7,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../services/firestore_streetpass_service.dart';
 
 import 'encounter_list_screen.dart';
 import 'notifications_screen.dart';
@@ -1321,22 +1324,80 @@ class _ProfileScreenState extends State<_ProfileScreen> {
     final firestore = FirebaseFirestore.instance;
     final presences = firestore.collection('streetpass_presences');
 
-    // Delete own doc (deviceId == profileId)
+    // Get the actual deviceId from SharedPreferences (this is the document ID)
+    String? deviceId;
     try {
-      await presences.doc(profileId).delete();
-    } catch (_) {
-      // ignore
+      final prefs = await SharedPreferences.getInstance();
+      deviceId = prefs.getString(FirestoreStreetPassService.prefsDeviceIdKey);
+      debugPrint('Found deviceId from SharedPreferences: $deviceId');
+    } catch (e) {
+      debugPrint('Failed to get deviceId from SharedPreferences: $e');
     }
 
-    // Delete any doc with the same beaconId (defensive)
+    // Delete by deviceId (the actual document ID used by FirestoreStreetPassService)
+    if (deviceId != null && deviceId.isNotEmpty) {
+      try {
+        debugPrint('Deleting streetpass_presences doc by deviceId: $deviceId');
+        await presences.doc(deviceId).delete();
+      } catch (e) {
+        debugPrint('Failed to delete presence doc by deviceId: $e');
+      }
+    }
+
+    // Also try deleting by profileId (fallback if they differ)
+    if (profileId != deviceId) {
+      try {
+        debugPrint(
+            'Deleting streetpass_presences doc by profileId: $profileId');
+        await presences.doc(profileId).delete();
+      } catch (e) {
+        debugPrint('Failed to delete presence doc by profileId: $e');
+      }
+    }
+
+    // Delete any doc with matching profile.id
     try {
-      final byBeacon =
-          await presences.where('beaconId', isEqualTo: beaconId).get();
-      for (final doc in byBeacon.docs) {
+      final byProfileId =
+          await presences.where('profile.id', isEqualTo: profileId).get();
+      debugPrint(
+          'Found ${byProfileId.docs.length} docs with profile.id=$profileId');
+      for (final doc in byProfileId.docs) {
+        debugPrint('Deleting presence doc ${doc.id} (matched by profile.id)');
         await doc.reference.delete();
       }
-    } catch (_) {
-      // ignore
+    } catch (e) {
+      debugPrint('Failed to query/delete by profile.id: $e');
+    }
+
+    // Also query by deviceId in profile.id
+    if (deviceId != null && deviceId != profileId) {
+      try {
+        final byDeviceId =
+            await presences.where('profile.id', isEqualTo: deviceId).get();
+        debugPrint(
+            'Found ${byDeviceId.docs.length} docs with profile.id=$deviceId');
+        for (final doc in byDeviceId.docs) {
+          debugPrint(
+              'Deleting presence doc ${doc.id} (matched by deviceId in profile.id)');
+          await doc.reference.delete();
+        }
+      } catch (e) {
+        debugPrint('Failed to query/delete by deviceId in profile.id: $e');
+      }
+    }
+
+    // Delete any doc with the same beaconId
+    try {
+      final byBeacon =
+          await presences.where('profile.beaconId', isEqualTo: beaconId).get();
+      debugPrint(
+          'Found ${byBeacon.docs.length} docs with profile.beaconId=$beaconId');
+      for (final doc in byBeacon.docs) {
+        debugPrint('Deleting presence doc ${doc.id} (matched by beaconId)');
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      debugPrint('Failed to query/delete by beaconId: $e');
     }
   }
 

@@ -18,7 +18,8 @@ class NameSetupScreen extends StatefulWidget {
 
 class _NameSetupScreenState extends State<NameSetupScreen> {
   final TextEditingController _loginEmailController = TextEditingController();
-  final TextEditingController _loginPasswordController = TextEditingController();
+  final TextEditingController _loginPasswordController =
+      TextEditingController();
   bool _loginEmailSubmitting = false;
   bool _googleSubmitting = false;
 
@@ -118,8 +119,6 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -132,43 +131,41 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '\u306f\u3058\u3081\u307e\u3057\u3066',
+                'ログイン',
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                '\u30e1\u30fc\u30eb\u3042\u308b\u3044\u306fGoogle\u3067\u30ed\u30b0\u30a4\u30f3\u3067\u304d\u307e\u3059\u3002\u521d\u3081\u3066\u306e\u65b9\u306f\u4e0b\u306e\u65b0\u898f\u767b\u9332\u30da\u30fc\u30b8\u3067\u8868\u793a\u540d\u3068\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0\uff082件以上\uff09\u3092\u6c7a\u3081\u3066\u304f\u3060\u3055\u3044\u3002',
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 24),
               _buildEmailLoginSection(theme),
               const SizedBox(height: 24),
+              const Row(
+                children: [
+                  Expanded(child: Divider()),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text('または', style: TextStyle(color: Colors.grey)),
+                  ),
+                  Expanded(child: Divider()),
+                ],
+              ),
+              const SizedBox(height: 24),
               GoogleAuthButton(
-                label: 'Googleアカウントでログイン',
+                label: 'Googleでログイン',
                 loading: _googleSubmitting,
                 onPressed: _googleSubmitting ? null : _handleGoogleAuth,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 48),
               Center(
-                child: Column(
-                  children: [
-                    Text(
-                      'アカウントをお持ちでない方はこちらから登録できます。',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const RegisterAccountScreen(),
-                          ),
-                        );
-                      },
-                      child: const Text('新規登録ページへ'),
-                    ),
-                  ],
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const RegisterAccountScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text('初めての方はこちら（新規登録）'),
                 ),
               ),
             ],
@@ -236,5 +233,4 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
       ],
     );
   }
-
 }

@@ -902,6 +902,16 @@ class EncounterManager extends ChangeNotifier {
       {bool skipSync = false}) async {
     debugPrint(
         'EncounterManager.switchLocalProfile: switching to profile.id=${profile.id} beaconId=${profile.beaconId} skipSync=$skipSync');
+
+    // Always clear encounters when switching profiles to prevent data leakage
+    await _cancelInteractionSubscriptions();
+    _encountersByRemoteId.clear();
+    _resonanceHighlights.clear();
+    _reunionHighlights.clear();
+    _targetBeaconIds.clear();
+    _clearPresenceTracking();
+    notifyListeners();
+
     try {
       await reset().timeout(const Duration(seconds: 5));
     } on TimeoutException {
@@ -910,19 +920,13 @@ class EncounterManager extends ChangeNotifier {
     } catch (error, stackTrace) {
       debugPrint(
           'Failed to reset before switching profile: $error\n$stackTrace');
-    } finally {
-      _localProfile = profile;
-      debugPrint(
-          'EncounterManager.switchLocalProfile: local profile set to ${_localProfile.id}');
-      if (!skipSync) {
-        _subscribeToLocalProfile();
-      }
-      if (_encountersByRemoteId.isNotEmpty) {
-        await _cancelInteractionSubscriptions();
-        for (final remoteId in _encountersByRemoteId.keys) {
-          _ensureInteractionSubscription(remoteId);
-        }
-      }
+    }
+
+    _localProfile = profile;
+    debugPrint(
+        'EncounterManager.switchLocalProfile: local profile set to ${_localProfile.id}');
+    if (!skipSync) {
+      _subscribeToLocalProfile();
     }
   }
 }
