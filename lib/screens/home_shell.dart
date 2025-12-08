@@ -1143,6 +1143,11 @@ class _ProfileScreenState extends State<_ProfileScreen> {
         } catch (e, st) {
           debugPrint('deleteUserProfile failed: $e');
           debugPrintStack(stackTrace: st);
+          // Fallback: best-effort client-side cleanup while still authenticated.
+          await _purgeProfileData(
+            profileId: controller.profile.id,
+            beaconId: controller.profile.beaconId,
+          );
         }
       }
 
@@ -1222,6 +1227,35 @@ class _ProfileScreenState extends State<_ProfileScreen> {
     } catch (_) {
       // ignore
     }
+  }
+
+  Future<void> _purgeProfileData({
+    required String profileId,
+    required String beaconId,
+  }) async {
+    final firestore = FirebaseFirestore.instance;
+    try {
+      await firestore.collection('profiles').doc(profileId).delete();
+    } catch (_) {}
+    try {
+      await _deleteStreetpassPresence(profileId: profileId, beaconId: beaconId);
+    } catch (_) {}
+    try {
+      final timeline =
+          await firestore.collection('timelinePosts').where('authorId', isEqualTo: profileId).get();
+      for (final doc in timeline.docs) {
+        await doc.reference.delete();
+      }
+    } catch (_) {}
+    try {
+      final emotions = await firestore
+          .collection('emotion_map_posts')
+          .where('profileId', isEqualTo: profileId)
+          .get();
+      for (final doc in emotions.docs) {
+        await doc.reference.delete();
+      }
+    } catch (_) {}
   }
 
   void _openRelationsSheet(

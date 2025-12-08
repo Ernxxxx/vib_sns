@@ -55,6 +55,8 @@ class EncounterManager extends ChangeNotifier {
   final Map<String, DateTime> _lastNotificationAt = {};
   final Map<String, DateTime> _lastVibrationAt = {};
   final Map<String, DateTime> _lastHashtagMatchAt = {};
+  final Map<String, DateTime> _lastResonanceAt = {};
+  final Map<String, DateTime> _lastReunionAt = {};
   final Map<String, Set<String>> _remoteHashtagCache = {};
   final Map<String, _BleDistanceWindow> _bleDistanceWindows = {};
   final Map<String, bool> _pendingLikeStates = {};
@@ -269,6 +271,11 @@ class EncounterManager extends ChangeNotifier {
       gpsDistanceMeters: data.gpsDistanceMeters,
       hasSharedHashtag: hasSharedHashtag,
     );
+    final shouldResonate = hasSharedHashtag &&
+        _inProximityRange(
+          gpsDistanceMeters: data.gpsDistanceMeters,
+          isBleHit: false,
+        );
     if (!triggeredProximityVibration) {
       _maybeTriggerHashtagMatchFeedback(
         remoteId: data.remoteId,
@@ -278,7 +285,7 @@ class EncounterManager extends ChangeNotifier {
     if (encounter != null) {
       _updateResonanceAndReunion(
         encounter,
-        hasSharedHashtag,
+        shouldResonate,
         countedAsRepeat: countedAsRepeat,
       );
     }
@@ -408,12 +415,22 @@ class EncounterManager extends ChangeNotifier {
       isBleHit: true,
       hasSharedHashtag: hasSharedHashtag,
     );
+    final shouldResonate = hasSharedHashtag &&
+        _inProximityRange(
+          bleDistanceMeters: smoothedDistance,
+          isBleHit: true,
+        );
     if (!triggeredProximityVibration) {
       _maybeTriggerHashtagMatchFeedback(
         remoteId: matched.profile.id,
         hasSharedHashtag: hasSharedHashtag,
       );
     }
+    _updateResonanceAndReunion(
+      matched,
+      shouldResonate,
+      countedAsRepeat: true, // BLE hit implies already encountered.
+    );
     notifyListeners();
   }
 
@@ -426,6 +443,10 @@ class EncounterManager extends ChangeNotifier {
   }
 
   double _recordBleDistance(String beaconId, double distance) {
+    // On web we skip BLE distance aggregation to hide BLE proximity values.
+    if (kIsWeb) {
+      return distance;
+    }
     final window = _bleDistanceWindows.putIfAbsent(
       beaconId,
       () => _BleDistanceWindow(),
@@ -443,7 +464,9 @@ class EncounterManager extends ChangeNotifier {
     bool? hasSharedHashtag,
   }) {
     if (kIsWeb) {
-      return false;
+      // On web BLE is not supported; only GPS distance can trigger.
+      isBleHit = false;
+      bleDistanceMeters = null;
     }
     final sharedHashtag =
         hasSharedHashtag ?? _hasSharedHashtag(remoteId, remoteProfile);
@@ -503,7 +526,7 @@ class EncounterManager extends ChangeNotifier {
     double? gpsDistanceMeters,
     double? bleDistanceMeters,
   }) {
-    if (bleDistanceMeters != null && bleDistanceMeters.isFinite) {
+    if (!kIsWeb && bleDistanceMeters != null && bleDistanceMeters.isFinite) {
       return bleDistanceMeters;
     }
     if (gpsDistanceMeters != null && gpsDistanceMeters.isFinite) {
@@ -551,23 +574,17 @@ class EncounterManager extends ChangeNotifier {
     return false;
   }
 
-  bool _shouldRecordResonance(Encounter encounter, bool hasSharedHashtag) {
-    if (!hasSharedHashtag) {
-      return false;
-    }
-    if (!encounter.liked) {
-      return false;
-    }
+  bool _shouldRecordResonance(Encounter encounter, bool shouldResonate) {
+    // 共鳴: (相互いいね) OR (共有ハッシュタグ + 近接条件=バイブ条件)
     final notificationManager = _notificationManager;
-    if (notificationManager == null) {
-      return false;
-    }
-    return notificationManager.hasLikedMe(encounter.profile.id);
+    final mutualLike = encounter.liked &&
+        (notificationManager?.hasLikedMe(encounter.profile.id) ?? false);
+    return mutualLike || shouldResonate;
   }
 
   void _updateResonanceAndReunion(
     Encounter encounter,
-    bool hasSharedHashtag, {
+    bool shouldResonate, {
     required bool countedAsRepeat,
   }) {
     final remoteId = encounter.profile.id;
@@ -575,24 +592,55 @@ class EncounterManager extends ChangeNotifier {
       return;
     }
     final hadResonated = _resonanceHighlights.containsKey(remoteId);
-    final didResonate = _shouldRecordResonance(encounter, hasSharedHashtag);
+    final didResonate = _shouldRecordResonance(encounter, shouldResonate);
     if (didResonate) {
       final entry = EncounterHighlightEntry(
         profile: encounter.profile,
         occurredAt: encounter.encounteredAt,
       );
       _resonanceHighlights[remoteId] = entry;
-      if (hadResonated || countedAsRepeat) {
+      _lastResonanceAt[remoteId] = encounter.encounteredAt;
+      if (hadResonated &&
+          countedAsRepeat &&
+          _canRecordReunion(remoteId, encounter.encounteredAt)) {
         _reunionHighlights[remoteId] = entry;
+        _lastReunionAt[remoteId] = encounter.encounteredAt;
       }
       return;
     }
-    if (hadResonated && countedAsRepeat) {
+    if (hadResonated &&
+        countedAsRepeat &&
+        _canRecordReunion(remoteId, encounter.encounteredAt)) {
       _reunionHighlights[remoteId] = EncounterHighlightEntry(
         profile: encounter.profile,
         occurredAt: encounter.encounteredAt,
       );
+      _lastReunionAt[remoteId] = encounter.encounteredAt;
     }
+  }
+
+  bool _canRecordReunion(String remoteId, DateTime at) {
+    final last = _lastReunionAt[remoteId] ?? _lastResonanceAt[remoteId];
+    if (last == null) return true;
+    return at.difference(last) >= _reencounterCooldown;
+  }
+
+  bool _inProximityRange({
+    double? gpsDistanceMeters,
+    double? bleDistanceMeters,
+    bool isBleHit = false,
+  }) {
+    final distance = _resolveProximityDistance(
+      gpsDistanceMeters: gpsDistanceMeters,
+      bleDistanceMeters: bleDistanceMeters,
+    );
+    if (distance == null || distance <= 0 || !distance.isFinite) {
+      return false;
+    }
+    final maxDistance = isBleHit
+        ? _closeProximityRadiusMeters + _bleVibrationBufferMeters
+        : _farProximityRadiusMeters;
+    return distance <= maxDistance;
   }
 
   Set<String> _normalizedHashtagSet(List<String> tags) {

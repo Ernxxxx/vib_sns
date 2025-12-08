@@ -109,35 +109,209 @@ const List<_BotStaticSpot> _botStaticSpots = [
   _BotStaticSpot(id: 'adachi', center: LatLng(35.7743, 139.8040), radiusMeters: 1200, count: 5, happyProbability: 0.85),
   _BotStaticSpot(id: 'katsushika', center: LatLng(35.7433, 139.8470), radiusMeters: 1200, count: 5, happyProbability: 0.85),
   _BotStaticSpot(id: 'edogawa', center: LatLng(35.7061, 139.8683), radiusMeters: 1300, count: 5, happyProbability: 0.85),
+  // 神奈川
+  _BotStaticSpot(id: 'yokohama', center: LatLng(35.465, 139.622), radiusMeters: 1300, count: 20, happyProbability: 0.9),
+  _BotStaticSpot(id: 'kawasaki', center: LatLng(35.530, 139.703), radiusMeters: 1100, count: 14, happyProbability: 0.88),
+  _BotStaticSpot(id: 'yokosuka', center: LatLng(35.281, 139.672), radiusMeters: 950, count: 8, happyProbability: 0.82),
+  _BotStaticSpot(id: 'kamakura', center: LatLng(35.319, 139.546), radiusMeters: 850, count: 7, happyProbability: 0.86),
+  _BotStaticSpot(id: 'hiratsuka', center: LatLng(35.327, 139.349), radiusMeters: 900, count: 8, happyProbability: 0.85),
+  _BotStaticSpot(id: 'hakone', center: LatLng(35.232, 139.105), radiusMeters: 800, count: 6, happyProbability: 0.78),
+  // 埼玉
+  _BotStaticSpot(id: 'saitama', center: LatLng(35.8617, 139.6455), radiusMeters: 1100, count: 14, happyProbability: 0.88),
+  _BotStaticSpot(id: 'omiya', center: LatLng(35.9061, 139.6237), radiusMeters: 850, count: 12, happyProbability: 0.85),
+  _BotStaticSpot(id: 'kawagoe', center: LatLng(35.9251, 139.4850), radiusMeters: 800, count: 7, happyProbability: 0.82),
+  // 千葉
+  _BotStaticSpot(id: 'chiba', center: LatLng(35.6073, 140.1063), radiusMeters: 1200, count: 14, happyProbability: 0.87),
+  _BotStaticSpot(id: 'funabashi', center: LatLng(35.6940, 139.9820), radiusMeters: 900, count: 10, happyProbability: 0.86),
+  _BotStaticSpot(id: 'kashiwa', center: LatLng(35.8629, 139.9726), radiusMeters: 850, count: 9, happyProbability: 0.84),
+  _BotStaticSpot(id: 'matsudo', center: LatLng(35.7799, 139.9030), radiusMeters: 850, count: 9, happyProbability: 0.84),
+  // 茨城
+  _BotStaticSpot(id: 'tsukuba', center: LatLng(36.0820, 140.1100), radiusMeters: 950, count: 9, happyProbability: 0.83),
+  _BotStaticSpot(id: 'mito', center: LatLng(36.3659, 140.4716), radiusMeters: 1000, count: 9, happyProbability: 0.82),
+  // 栃木
+  _BotStaticSpot(id: 'utsunomiya', center: LatLng(36.5551, 139.8828), radiusMeters: 950, count: 9, happyProbability: 0.83),
+  _BotStaticSpot(id: 'nikko', center: LatLng(36.7199, 139.6982), radiusMeters: 850, count: 6, happyProbability: 0.8),
+  // 群馬
+  _BotStaticSpot(id: 'maebashi', center: LatLng(36.3890, 139.0630), radiusMeters: 950, count: 8, happyProbability: 0.82),
+  _BotStaticSpot(id: 'takasaki', center: LatLng(36.3220, 139.0120), radiusMeters: 900, count: 8, happyProbability: 0.82),
+  // 追加スポット（関東広域）
+  _BotStaticSpot(id: 'sagamihara', center: LatLng(35.5710, 139.3730), radiusMeters: 1050, count: 12, happyProbability: 0.86),
+  _BotStaticSpot(id: 'fujisawa', center: LatLng(35.3380, 139.4870), radiusMeters: 900, count: 10, happyProbability: 0.86),
+  _BotStaticSpot(id: 'chigasaki', center: LatLng(35.3364, 139.4080), radiusMeters: 850, count: 8, happyProbability: 0.85),
+  _BotStaticSpot(id: 'odawara', center: LatLng(35.2550, 139.1590), radiusMeters: 900, count: 8, happyProbability: 0.82),
+  _BotStaticSpot(id: 'atsugi', center: LatLng(35.4425, 139.3690), radiusMeters: 850, count: 7, happyProbability: 0.84),
+  _BotStaticSpot(id: 'tokorozawa', center: LatLng(35.7990, 139.4690), radiusMeters: 900, count: 9, happyProbability: 0.85),
+  _BotStaticSpot(id: 'kawaguchi', center: LatLng(35.8070, 139.7240), radiusMeters: 850, count: 10, happyProbability: 0.86),
+  _BotStaticSpot(id: 'koshigaya', center: LatLng(35.8910, 139.7900), radiusMeters: 850, count: 8, happyProbability: 0.84),
+  _BotStaticSpot(id: 'soka', center: LatLng(35.8250, 139.8050), radiusMeters: 820, count: 7, happyProbability: 0.83),
+  _BotStaticSpot(id: 'narita', center: LatLng(35.7760, 140.3180), radiusMeters: 950, count: 8, happyProbability: 0.84),
+  _BotStaticSpot(id: 'kisarazu', center: LatLng(35.3730, 139.9160), radiusMeters: 900, count: 8, happyProbability: 0.85),
+  _BotStaticSpot(id: 'choshi', center: LatLng(35.7340, 140.8260), radiusMeters: 850, count: 6, happyProbability: 0.8),
+  _BotStaticSpot(id: 'hitachi', center: LatLng(36.5960, 140.6510), radiusMeters: 900, count: 7, happyProbability: 0.8),
+  _BotStaticSpot(id: 'kashima', center: LatLng(35.9650, 140.6390), radiusMeters: 900, count: 7, happyProbability: 0.8),
+  _BotStaticSpot(id: 'oyama', center: LatLng(36.3130, 139.8000), radiusMeters: 900, count: 7, happyProbability: 0.82),
+  _BotStaticSpot(id: 'ashikaga', center: LatLng(36.3140, 139.4550), radiusMeters: 850, count: 6, happyProbability: 0.82),
+  _BotStaticSpot(id: 'kiryu', center: LatLng(36.4050, 139.3300), radiusMeters: 850, count: 6, happyProbability: 0.82),
+  _BotStaticSpot(id: 'isesaki', center: LatLng(36.3220, 139.1930), radiusMeters: 850, count: 6, happyProbability: 0.82),
+  // 追加の悲しいスポット（集中度高め）
+  _BotStaticSpot(
+      id: 'yokohama_sad',
+      center: LatLng(35.465, 139.622),
+      radiusMeters: 900,
+      count: 26, // 25+狙い
+      happyProbability: 0.25,
+      sadMemoPool: ['ライブ終わりでロス…', '海風が冷たい', '乗り換えミスで遅刻しそう']),
+  _BotStaticSpot(
+      id: 'shibuya_sad',
+      center: LatLng(35.6617, 139.7041),
+      radiusMeters: 750,
+      count: 30, // 25+狙い
+      happyProbability: 0.2,
+      sadMemoPool: ['人混みでぐったり', '終電逃した…', '雨でびしょ濡れ']),
+  _BotStaticSpot(
+      id: 'ikebukuro_sad',
+      center: LatLng(35.7289, 139.7101),
+      radiusMeters: 800,
+      count: 25, // 25+狙い
+      happyProbability: 0.2,
+      sadMemoPool: ['イベント落選した…', '荷物が重すぎて肩が痛い', '並び疲れた']),
+  _BotStaticSpot(
+      id: 'takasaki_sad',
+      center: LatLng(36.3220, 139.0120),
+      radiusMeters: 850,
+      count: 25,
+      happyProbability: 0.25,
+      sadMemoPool: ['寒くてつらい', '道に迷った', '予定がキャンセルに…']),
+  _BotStaticSpot(
+      id: 'mito_sad',
+      center: LatLng(36.3659, 140.4716),
+      radiusMeters: 900,
+      count: 25,
+      happyProbability: 0.25,
+      sadMemoPool: ['雨で観光断念', '帰りの特急が遅延', 'お目当ての店が閉まってた']),
+  _BotStaticSpot(
+      id: 'kisarazu_sad',
+      center: LatLng(35.3730, 139.9160),
+      radiusMeters: 850,
+      count: 18,
+      happyProbability: 0.2,
+      sadMemoPool: ['フェリー欠航で足止め', '渋滞で海岸まで行けなかった', '潮風で寒い…']),
+  _BotStaticSpot(
+      id: 'narita_sad',
+      center: LatLng(35.7760, 140.3180),
+      radiusMeters: 900,
+      count: 18,
+      happyProbability: 0.2,
+      sadMemoPool: ['フライト遅延', '免税店がお休みだった', '空港までの道が大渋滞']),
+  _BotStaticSpot(
+      id: 'tsukuba_sad',
+      center: LatLng(36.0820, 140.1100),
+      radiusMeters: 900,
+      count: 18,
+      happyProbability: 0.25,
+      sadMemoPool: ['実験が失敗…', '会議が長引いた', 'バスに乗り遅れた']),
+  _BotStaticSpot(
+      id: 'umi_hita_sad',
+      center: LatLng(35.7340, 140.8260),
+      radiusMeters: 900,
+      count: 7,
+      happyProbability: 0.3,
+      sadMemoPool: ['強風で撮影断念', '電車が止まった', '海が荒れてる']),
+  // 大規模悲しいクラスタ（例: 千葉の事故渋滞）
+  _BotStaticSpot(
+      id: 'chiba_accident_sad',
+      center: LatLng(35.6073, 140.1063),
+      radiusMeters: 1200,
+      count: 60,
+      happyProbability: 0.15,
+      sadMemoPool: ['事故で大渋滞…', '電車が遅延してる', '通行止めで足止め', '予定に間に合わない', '信号待ちが長すぎる']),
+  _BotStaticSpot(
+      id: 'funabashi_sad',
+      center: LatLng(35.6940, 139.9820),
+      radiusMeters: 900,
+      count: 26,
+      happyProbability: 0.2,
+      sadMemoPool: ['踏切が開かない', '総武線が遅延', '渋滞で帰れない']),
+  _BotStaticSpot(
+      id: 'choshi_sad_cluster',
+      center: LatLng(35.7340, 140.8260),
+      radiusMeters: 950,
+      count: 26,
+      happyProbability: 0.2,
+      sadMemoPool: ['強風で電車が止まった', '海が荒れて漁ができない', '観光船が欠航']),
+  _BotStaticSpot(
+      id: 'kawasaki_sad',
+      center: LatLng(35.530, 139.703),
+      radiusMeters: 950,
+      count: 26,
+      happyProbability: 0.2,
+      sadMemoPool: ['工場夜景が見られなかった', 'バス遅延で遅刻', '雨でイベント中止']),
+  _BotStaticSpot(
+      id: 'saitama_sad',
+      center: LatLng(35.8617, 139.6455),
+      radiusMeters: 1000,
+      count: 26,
+      happyProbability: 0.2,
+      sadMemoPool: ['大宮までの電車が遅延', '試合が中止になった', '渋滞で帰宅できない']),
 ];
 
 const double _clusterZoomThreshold = 14.0;
-const int _clusterMinDenseCount = 10;
+const int _clusterMinDenseCount = 5; // 小さい固まりもまとめて重なりを減らす
 const double _clusterMinCellSizeDegrees = 0.004;
-const double _clusterMaxCellSizeDegrees = 0.02;
-const double _clusterJitterFraction = 0.35; // オーバーラップ防止用のジッター
+const double _clusterMaxCellSizeDegrees = 0.08; // さらに広く集約してズームアウト時に進化しやすく
+const double _clusterJitterFraction = 0.0; // ジッターなしで海側へのズレを抑える
 
-const List<_ClusterTier> _clusterTiers = [
-  _ClusterTier(
+const List<_ClusterStamp> _happyClusterStamps = [
+  _ClusterStamp(
     minCount: 50,
-    label: '50+人',
-    emoji: '🐘',
-    color: Color(0xFF8E44AD),
+    label: '花が満開',
+    emoji: '🌸',
+    color: Color(0xFFE91E63),
     sizeFactor: 1.15,
+    isSad: false,
   ),
-  _ClusterTier(
+  _ClusterStamp(
     minCount: 25,
-    label: '25+人',
-    emoji: '🐕',
-    color: Color(0xFF2E86C1),
-    sizeFactor: 1.0,
+    label: '一輪の花',
+    emoji: '🌼',
+    color: Color(0xFFF7B801),
+    sizeFactor: 1.05,
+    isSad: false,
   ),
-  _ClusterTier(
+  _ClusterStamp(
     minCount: 10,
-    label: '10+人',
-    emoji: '🐁',
-    color: Color(0xFFF39C12),
-    sizeFactor: 0.9,
+    label: '花の芽',
+    emoji: '🌱',
+    color: Color(0xFF4CAF50),
+    sizeFactor: 0.95,
+    isSad: false,
+  ),
+];
+
+const List<_ClusterStamp> _sadClusterStamps = [
+  _ClusterStamp(
+    minCount: 50,
+    label: 'ラフレシア',
+    emoji: '🌺', // 花アイコンで統一（ドクロをやめる）
+    color: Color(0xFF5A0F6A), // さらに濃い赤紫
+    sizeFactor: 1.15,
+    isSad: true,
+  ),
+  _ClusterStamp(
+    minCount: 25,
+    label: '枯れた花',
+    emoji: '🥀',
+    color: Color(0xFF8D6E63),
+    sizeFactor: 1.05,
+    isSad: true,
+  ),
+  _ClusterStamp(
+    minCount: 10,
+    label: '花びらが散った花',
+    emoji: '🍂',
+    color: Color(0xFF9E9E9E),
+    sizeFactor: 0.95,
+    isSad: true,
   ),
 ];
 
@@ -152,6 +326,8 @@ class _EmotionMapState extends State<EmotionMap> {
   bool _hasAutoFitted = false;
   LatLng? _userLocation;
   String _lastPostSignature = '';
+  String _lastClusterSignature = '';
+  _ClusterResult _cachedClusterResult = _ClusterResult.empty();
   StreamSubscription<MapEvent>? _mapEventSub;
   double _currentZoom = 14;
   List<EmotionMapPost> _botPosts = const [];
@@ -255,7 +431,7 @@ class _EmotionMapState extends State<EmotionMap> {
     }
 
     if (showClusters) {
-      final clusterResult = _clusterPosts(posts, _botPosts);
+      final clusterResult = _ensureClusterCache(posts, _botPosts);
       for (final cluster in clusterResult.denseBuckets) {
         clusterMarkers.add(_buildClusterMarker(cluster));
       }
@@ -394,6 +570,43 @@ class _EmotionMapState extends State<EmotionMap> {
     const baseWidth = 40.0;
     final scale = _markerScaleForZoom(_currentZoom);
     final visualScale = scale.clamp(0.75, 1.0);
+    final circlePadding = 11.0;
+    const emojiSize = 18.0;
+    final circleHeight = (circlePadding * 2 + emojiSize) * scale;
+
+    // メモ非表示のときはシンプルな円だけを中心揃えで描画し、ズレを最小化する
+    if (!showMemo) {
+      final size = circleHeight;
+      return Marker(
+        point: LatLng(post.latitude, post.longitude),
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _showPostDetails(post, canDelete: canDelete),
+          child: Container(
+            decoration: BoxDecoration(
+              color: emotion.color,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 8 * scale,
+                  offset: Offset(0, 3 * scale),
+                ),
+              ],
+            ),
+            padding: EdgeInsets.all(circlePadding * scale),
+            child: Text(
+              emotion.emoji,
+              style: TextStyle(fontSize: emojiSize * scale),
+            ),
+          ),
+        ),
+      );
+    }
+
     final labelStyle = TextStyle(
       fontSize: 11 * visualScale,
       fontWeight: FontWeight.w600,
@@ -412,9 +625,6 @@ class _EmotionMapState extends State<EmotionMap> {
       maxInnerWidth: _memoMaxInnerWidth * scale,
       widthStep: _memoWidthStep * scale,
     );
-    const circlePadding = 11.0;
-    const emojiSize = 18.0;
-    final circleHeight = (circlePadding * 2 + emojiSize) * scale;
     final bubbleOffset = circleHeight + memoSpacing * scale;
     final width = max(baseWidth * scale, memoLayout.outerWidth);
     final height = memoLayout.height + bubbleOffset + 2 * scale;
@@ -748,6 +958,18 @@ class _EmotionMapState extends State<EmotionMap> {
     return posts.map((post) => post.id).join('|');
   }
 
+  _ClusterResult _ensureClusterCache(
+    List<EmotionMapPost> userPosts,
+    List<EmotionMapPost> botPosts,
+  ) {
+    final signature = '${_signatureForPosts(userPosts)}|${_signatureForPosts(botPosts)}';
+    if (signature != _lastClusterSignature) {
+      _cachedClusterResult = _clusterPosts(userPosts, botPosts);
+      _lastClusterSignature = signature;
+    }
+    return _cachedClusterResult;
+  }
+
   String _randomBotMemo(EmotionType emotion) {
     final memos = _botMemosByEmotion[emotion.id];
     if (memos == null || memos.isEmpty) {
@@ -839,33 +1061,27 @@ class _EmotionMapState extends State<EmotionMap> {
   }
 
   double _clusterCellSizeForZoom(double zoom) {
-    const minZoom = 10.0;
-    const maxZoom = _clusterZoomThreshold;
-    if (maxZoom <= minZoom) {
-      return _clusterMinCellSizeDegrees;
-    }
-    final clampedZoom = zoom.clamp(minZoom, maxZoom);
-    final t = (clampedZoom - minZoom) / (maxZoom - minZoom);
-    return _clusterMaxCellSizeDegrees -
-        (_clusterMaxCellSizeDegrees - _clusterMinCellSizeDegrees) * t;
+    // ズームによるセルサイズ変動をやめ、安定した配置にする
+    return _clusterMaxCellSizeDegrees;
   }
 
   Marker _buildClusterMarker(_ClusterBucket cluster) {
-    final center = _jitteredClusterCenter(cluster);
-    final tier = _resolveClusterTier(cluster.count);
-    final scale = (_markerScaleForZoom(_currentZoom) * tier.sizeFactor)
+    final center = _clusterMarkerPosition(cluster);
+    final stamp = _resolveClusterStamp(cluster);
+    final scale = (_markerScaleForZoom(_currentZoom) * stamp.sizeFactor)
         .clamp(0.65, 1.2);
-    final stampSize = 110.0 * scale;
-    final haloSize = stampSize * 1.25;
-    final labelHeight = 38.0 * scale;
-    final baseColor = tier.color;
-    final highlight = Color.lerp(baseColor, Colors.white, 0.35)!;
-    final displayLabel = tier.label;
+    final bool isTopHappy = !stamp.isSad && stamp.minCount == 50;
+    final stampSize = isTopHappy ? 105.0 * scale : 90.0 * scale;
+    final haloSize = isTopHappy ? stampSize * 1.25 : stampSize * 1.1;
+    final baseColor = stamp.color;
+    final highlight = isTopHappy
+        ? Color.lerp(baseColor, Colors.white, 0.5)!
+        : Color.lerp(baseColor, Colors.white, 0.35)!;
     return Marker(
       point: center,
       width: haloSize,
-      height: haloSize + labelHeight,
-      alignment: Alignment.bottomCenter,
+      height: haloSize,
+      alignment: Alignment.center,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _showClusterDetails(cluster),
@@ -894,46 +1110,48 @@ class _EmotionMapState extends State<EmotionMap> {
                   height: stampSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [highlight, baseColor],
-                    ),
+                    gradient: isTopHappy
+                        ? LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.orangeAccent,
+                              highlight,
+                              baseColor,
+                            ],
+                          )
+                        : LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [highlight, baseColor],
+                          ),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      width: 4 * scale.clamp(0.8, 1.2),
+                      color: Colors.white.withValues(alpha: 0.9),
+                      width: isTopHappy
+                          ? 5 * scale.clamp(0.9, 1.3)
+                          : 4 * scale.clamp(0.8, 1.2),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: baseColor.withValues(alpha: 0.35),
-                        blurRadius: 18 * scale,
-                        offset: Offset(0, 6 * scale),
+                        color: baseColor.withValues(alpha: 0.42),
+                        blurRadius: isTopHappy ? 22 * scale : 18 * scale,
+                        offset: Offset(0, isTopHappy ? 7 * scale : 6 * scale),
                       ),
+                      if (isTopHappy)
+                        BoxShadow(
+                          color: Colors.amber.withValues(alpha: 0.35),
+                          blurRadius: 28 * scale,
+                          spreadRadius: 2 * scale,
+                        ),
                     ],
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        tier.emoji,
-                        style: TextStyle(fontSize: 28 * scale),
-                      ),
-                      SizedBox(height: 4 * scale),
-                      Text(
-                        displayLabel,
+                        stamp.emoji,
                         style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 17 * scale,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      Text(
-                        'タップで詳細',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 10 * scale,
-                          fontWeight: FontWeight.w600,
+                          fontSize: isTopHappy ? 32 * scale : 28 * scale,
                         ),
                       ),
                     ],
@@ -956,20 +1174,40 @@ class _EmotionMapState extends State<EmotionMap> {
     _mapController.move(target, targetZoom);
   }
 
-  _ClusterTier _resolveClusterTier(int count) {
-    for (final tier in _clusterTiers) {
-      if (count >= tier.minCount) return tier;
+  _ClusterStamp _resolveClusterStamp(_ClusterBucket bucket) {
+    // 合計人数でティアを決定し、優勢な感情でスタンプセットを選択。
+    final total = bucket.count;
+    final sad = bucket.sadCount;
+    final happy = bucket.happyCount;
+    final isSadDominant = sad >= happy;
+
+    List<_ClusterStamp> stamps =
+        isSadDominant ? _sadClusterStamps : _happyClusterStamps;
+    // 50/25/10 の閾値に総数でマッピング
+    for (final stamp in stamps) {
+      if (total >= stamp.minCount) return stamp;
     }
-    return _clusterTiers.last;
+    return stamps.last;
   }
 
-  LatLng _jitteredClusterCenter(_ClusterBucket cluster) {
+  LatLng _clusterMarkerPosition(_ClusterBucket cluster) {
+    // クラスタの重心に最も近いポストの位置を使う（海に落ちにくくする）
     final base = cluster.center;
-    final cellSize = _clusterCellSizeForZoom(_currentZoom);
-    final hash = cluster.key.hashCode;
-    final dx = ((hash & 0xff) / 255.0 - 0.5) * cellSize * _clusterJitterFraction;
-    final dy = (((hash >> 8) & 0xff) / 255.0 - 0.5) * cellSize * _clusterJitterFraction;
-    return LatLng(base.latitude + dy, base.longitude + dx);
+    _ClusterEntry? closest;
+    double best = double.infinity;
+    for (final entry in cluster.entries) {
+      final dx = entry.post.latitude - base.latitude;
+      final dy = entry.post.longitude - base.longitude;
+      final dist2 = dx * dx + dy * dy;
+      if (dist2 < best) {
+        best = dist2;
+        closest = entry;
+      }
+    }
+    if (closest != null) {
+      return LatLng(closest.post.latitude, closest.post.longitude);
+    }
+    return base;
   }
 
   double _markerScaleForZoom(double zoom) {
@@ -1179,13 +1417,14 @@ class _MemoBubbleLayout {
   final double height;
 }
 
-class _ClusterTier {
-  const _ClusterTier({
+class _ClusterStamp {
+  const _ClusterStamp({
     required this.minCount,
     required this.label,
     required this.emoji,
     required this.color,
     required this.sizeFactor,
+    required this.isSad,
   });
 
   final int minCount;
@@ -1193,6 +1432,7 @@ class _ClusterTier {
   final String emoji;
   final Color color;
   final double sizeFactor;
+  final bool isSad;
 }
 
 class _ClusterEntry {
@@ -1209,14 +1449,24 @@ class _ClusterBucket {
   final List<_ClusterEntry> entries = [];
   double _latSum = 0;
   double _lngSum = 0;
+  int _happyCount = 0;
+  int _sadCount = 0;
 
   void add(_ClusterEntry entry) {
     entries.add(entry);
     _latSum += entry.post.latitude;
     _lngSum += entry.post.longitude;
+    final emotion = entry.post.emotion;
+    if (_isHappyEmotion(emotion)) {
+      _happyCount++;
+    } else if (_isSadEmotion(emotion)) {
+      _sadCount++;
+    }
   }
 
   int get count => entries.length;
+  int get happyCount => _happyCount;
+  int get sadCount => _sadCount;
 
   LatLng get center {
     if (entries.isEmpty) {
@@ -1239,6 +1489,17 @@ class _ClusterResult {
 
   final List<_ClusterBucket> denseBuckets;
   final List<_ClusterEntry> remainder;
+}
+
+bool _isHappyEmotion(EmotionType emotion) {
+  return emotion == EmotionType.happy ||
+      emotion == EmotionType.excited ||
+      emotion == EmotionType.calm ||
+      emotion == EmotionType.surprised;
+}
+
+bool _isSadEmotion(EmotionType emotion) {
+  return emotion == EmotionType.sad || emotion == EmotionType.tired;
 }
 
 class _BotStaticSpot {

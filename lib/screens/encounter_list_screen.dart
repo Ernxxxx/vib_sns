@@ -42,6 +42,10 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
     });
   }
 
+  Future<void> _handleRefresh() async {
+    await _handleScanPressed();
+  }
+
   Future<void> _ensureStreetPassStarted() async {
     final manager = context.read<EncounterManager>();
     if (manager.isRunning) return;
@@ -97,7 +101,13 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
         appBar: AppBar(
           title: const AppLogo(),
           centerTitle: true,
-          actions: const [],
+          actions: [
+            IconButton(
+              tooltip: '\u518d\u8aad\u307f\u8fbc\u307f',
+              icon: const Icon(Icons.refresh),
+              onPressed: _handleScanPressed,
+            ),
+          ],
           bottom: const TabBar(
             tabs: [
               Tab(
@@ -149,21 +159,35 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
               if (filter == EncounterListFilter.encounter) {
                 if (encounters.isEmpty) {
                   return Expanded(
-                    child: _EmptyEncountersMessage(
-                      scanAttempted: _scanAttempted,
+                    child: RefreshIndicator(
+                      onRefresh: _handleRefresh,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 16),
+                        children: [
+                          _EmptyEncountersMessage(
+                            scanAttempted: _scanAttempted,
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }
                 return Expanded(
-                  child: ListView.separated(
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    itemBuilder: (context, index) {
-                      final encounter = encounters[index];
-                      return _EncounterTile(encounter: encounter);
-                    },
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemCount: encounters.length,
+                  child: RefreshIndicator(
+                    onRefresh: _handleRefresh,
+                    child: ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 16),
+                      itemBuilder: (context, index) {
+                        final encounter = encounters[index];
+                        return _EncounterTile(encounter: encounter);
+                      },
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemCount: encounters.length,
+                    ),
                   ),
                 );
               }
@@ -171,22 +195,35 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
                   ? reunionEntries
                   : resonanceEntries;
               if (entries.isEmpty) {
-                return const Expanded(
-                  child: Center(
-                    child: Text('\u307e\u3060\u8a18\u9332\u304c\u3042\u308a\u307e\u305b\u3093\u3002'),
+                return Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _handleRefresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(height: 120),
+                        Center(
+                          child: Text('\u307e\u3060\u8a18\u9332\u304c\u3042\u308a\u307e\u305b\u3093\u3002'),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               }
               return Expanded(
-                child: ListView.separated(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  itemBuilder: (context, index) {
-                    final entry = entries[index];
-                    return _HighlightEntryTile(entry: entry);
-                  },
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemCount: entries.length,
+                child: RefreshIndicator(
+                  onRefresh: _handleRefresh,
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 16),
+                    itemBuilder: (context, index) {
+                      final entry = entries[index];
+                      return _HighlightEntryTile(entry: entry);
+                    },
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemCount: entries.length,
+                  ),
                 ),
               );
             }

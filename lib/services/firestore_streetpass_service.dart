@@ -20,7 +20,7 @@ class FirestoreStreetPassService implements StreetPassService {
         _geolocator = geolocator ?? GeolocatorPlatform.instance,
         _sharedPreferences = sharedPreferences,
         _presenceTimeout = presenceTimeout ?? const Duration(minutes: 10),
-        _detectionRadiusMeters = detectionRadiusMeters ?? 5000,
+        _detectionRadiusMeters = detectionRadiusMeters ?? 100,
         _encounterController =
             StreamController<StreetPassEncounterData>.broadcast();
 
