@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -626,131 +627,241 @@ class _TimelineComposerState extends State<_TimelineComposer> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              '\u4eca\u306e\u77ac\u9593\u3092\u30b7\u30a7\u30a2',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: const Color(0xFFF2B705).withValues(alpha: 0.3),
+                width: 1.5,
+              ),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withValues(alpha: 0.8),
+                  Colors.white.withValues(alpha: 0.5),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _controller,
-              minLines: 2,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                hintText:
-                    '\u4eca\u306e\u6c17\u6301\u3061\u3084\u3082\u3088\u3044\u3092\u5171\u6709...',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0\u3092\u9078\u3076 (\u6700\u5927$_maxHashtagSelection\u500b)',
-              style: theme.textTheme.labelLarge,
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 200,
-              child: SingleChildScrollView(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final tag in presetHashtags)
-                      FilterChip(
-                        showCheckmark: false,
-                        label: Text(tag),
-                        selected: _selectedHashtags.contains(tag),
-                        backgroundColor: Colors.white,
-                        selectedColor:
-                            theme.colorScheme.primary.withValues(alpha: 0.25),
-                        side: BorderSide(
-                          color: _selectedHashtags.contains(tag)
-                              ? theme.colorScheme.primary
-                              : Colors.grey.shade300,
-                        ),
-                        labelStyle: TextStyle(
-                          color: _selectedHashtags.contains(tag)
-                              ? theme.colorScheme.primary
-                              : Colors.black87,
-                        ),
-                        onSelected: (_) => _toggleHashtag(tag),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            if (_imageBytes != null) ...[
-              const SizedBox(height: 12),
-              Stack(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.memory(
-                      _imageBytes!,
-                      height: 220,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF2B705).withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.auto_awesome,
+                          color: Color(0xFFF2B705),
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '今の瞬間をシェア',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: _controller,
+                    minLines: 3,
+                    maxLines: 5,
+                    style: const TextStyle(height: 1.5),
+                    decoration: InputDecoration(
+                      hintText: '今の気持ちや思い出を共有...',
+                      hintStyle:
+                          TextStyle(color: Colors.black.withValues(alpha: 0.4)),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.5),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.all(16),
                     ),
                   ),
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: IconButton.filled(
-                      onPressed: _removeImage,
-                      icon: const Icon(Icons.close),
+                  const SizedBox(height: 20),
+                  Text(
+                    'ハッシュタグを選ぶ (最大$_maxHashtagSelection個)',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w600,
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 180,
+                    child: SingleChildScrollView(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final tag in presetHashtags)
+                            FilterChip(
+                              showCheckmark: false,
+                              label: Text(tag),
+                              selected: _selectedHashtags.contains(tag),
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.6),
+                              selectedColor: const Color(0xFFF2B705)
+                                  .withValues(alpha: 0.2),
+                              side: BorderSide(
+                                color: _selectedHashtags.contains(tag)
+                                    ? const Color(0xFFF2B705)
+                                    : Colors.black.withValues(alpha: 0.05),
+                              ),
+                              labelStyle: TextStyle(
+                                color: _selectedHashtags.contains(tag)
+                                    ? Colors.black87
+                                    : Colors.black54,
+                                fontWeight: _selectedHashtags.contains(tag)
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              onSelected: (_) => _toggleHashtag(tag),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_imageBytes != null) ...[
+                    const SizedBox(height: 16),
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.memory(
+                            _imageBytes!,
+                            height: 200,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            gaplessPlayback: true,
+                          ),
+                        ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: IconButton.filled(
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.black54,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: _removeImage,
+                            icon: const Icon(Icons.close, size: 20),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.5),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                            side: BorderSide(
+                              color: Colors.black.withValues(alpha: 0.05),
+                            ),
+                          ),
+                        ),
+                        onPressed: _submitting ? null : _pickImage,
+                        icon:
+                            const Icon(Icons.photo_library_outlined, size: 20),
+                        label: const Text('画像を選ぶ'),
+                      ),
+                      const Spacer(),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFF2B705)
+                                  .withValues(alpha: 0.4),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFFFFD85F),
+                              Color(0xFFF2B705),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            foregroundColor: Colors.black87,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 32, vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          onPressed: _submitting ? null : _submit,
+                          child: _submitting
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.black87),
+                                  ),
+                                )
+                              : const Text(
+                                  'シェア',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                FilledButton.tonalIcon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: theme.colorScheme.primary,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    minimumSize: const Size(0, 44),
-                    side: BorderSide(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  onPressed: _submitting ? null : _pickImage,
-                  icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('\u753b\u50cf\u3092\u3048\u3089\u3076'),
-                ),
-                const Spacer(),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 14),
-                    minimumSize: const Size(0, 44),
-                  ),
-                  onPressed: _submitting ? null : _submit,
-                  child: _submitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('\u30b7\u30a7\u30a2'),
-                ),
-              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1241,8 +1352,10 @@ class _ProfileScreenState extends State<_ProfileScreen> {
       await _deleteStreetpassPresence(profileId: profileId, beaconId: beaconId);
     } catch (_) {}
     try {
-      final timeline =
-          await firestore.collection('timelinePosts').where('authorId', isEqualTo: profileId).get();
+      final timeline = await firestore
+          .collection('timelinePosts')
+          .where('authorId', isEqualTo: profileId)
+          .get();
       for (final doc in timeline.docs) {
         await doc.reference.delete();
       }

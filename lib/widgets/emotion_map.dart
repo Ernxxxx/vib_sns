@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -86,172 +87,478 @@ const List<_BotStaticSpot> _botStaticSpots = [
       'サークル落ちちゃって凹んでる',
     ],
   ),
-  _BotStaticSpot(id: 'chiyoda', center: LatLng(35.694, 139.753), radiusMeters: 800, count: 6, happyProbability: 0.85),
-  _BotStaticSpot(id: 'chuo', center: LatLng(35.6704, 139.772), radiusMeters: 800, count: 6, happyProbability: 0.85),
-  _BotStaticSpot(id: 'minato', center: LatLng(35.6581, 139.7516), radiusMeters: 900, count: 6, happyProbability: 0.85),
-  _BotStaticSpot(id: 'shinjuku', center: LatLng(35.6938, 139.7034), radiusMeters: 900, count: 6, happyProbability: 0.88),
-  _BotStaticSpot(id: 'bunkyo', center: LatLng(35.7175, 139.7517), radiusMeters: 650, count: 5, happyProbability: 0.85),
-  _BotStaticSpot(id: 'taito', center: LatLng(35.7121, 139.7807), radiusMeters: 750, count: 5, happyProbability: 0.85),
-  _BotStaticSpot(id: 'sumida', center: LatLng(35.7100, 139.8016), radiusMeters: 750, count: 5, happyProbability: 0.85),
-  _BotStaticSpot(id: 'koto', center: LatLng(35.6730, 139.8174), radiusMeters: 1000, count: 6, happyProbability: 0.85),
-  _BotStaticSpot(id: 'shinagawa', center: LatLng(35.6093, 139.7300), radiusMeters: 900, count: 5, happyProbability: 0.85),
-  _BotStaticSpot(id: 'meguro', center: LatLng(35.6412, 139.6980), radiusMeters: 700, count: 5, happyProbability: 0.85),
-  _BotStaticSpot(id: 'ota', center: LatLng(35.5614, 139.7160), radiusMeters: 1200, count: 6, happyProbability: 0.85),
-  _BotStaticSpot(id: 'setagaya', center: LatLng(35.6467, 139.6530), radiusMeters: 1200, count: 6, happyProbability: 0.85),
-  _BotStaticSpot(id: 'shibuya', center: LatLng(35.6617, 139.7041), radiusMeters: 700, count: 5, happyProbability: 0.88),
-  _BotStaticSpot(id: 'nakano', center: LatLng(35.7074, 139.6636), radiusMeters: 750, count: 4, happyProbability: 0.85),
-  _BotStaticSpot(id: 'suginami', center: LatLng(35.6995, 139.6360), radiusMeters: 1000, count: 5, happyProbability: 0.85),
-  _BotStaticSpot(id: 'toshima', center: LatLng(35.7289, 139.7101), radiusMeters: 750, count: 4, happyProbability: 0.85),
-  _BotStaticSpot(id: 'kita', center: LatLng(35.7528, 139.7330), radiusMeters: 950, count: 4, happyProbability: 0.85),
-  _BotStaticSpot(id: 'arakawa', center: LatLng(35.7365, 139.7830), radiusMeters: 800, count: 4, happyProbability: 0.85),
-  _BotStaticSpot(id: 'itabashi', center: LatLng(35.7512, 139.7101), radiusMeters: 1000, count: 4, happyProbability: 0.85),
-  _BotStaticSpot(id: 'nerima', center: LatLng(35.7356, 139.6522), radiusMeters: 1200, count: 5, happyProbability: 0.85),
-  _BotStaticSpot(id: 'adachi', center: LatLng(35.7743, 139.8040), radiusMeters: 1200, count: 5, happyProbability: 0.85),
-  _BotStaticSpot(id: 'katsushika', center: LatLng(35.7433, 139.8470), radiusMeters: 1200, count: 5, happyProbability: 0.85),
-  _BotStaticSpot(id: 'edogawa', center: LatLng(35.7061, 139.8683), radiusMeters: 1300, count: 5, happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'chiyoda',
+      center: LatLng(35.694, 139.753),
+      radiusMeters: 800,
+      count: 9,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'chuo',
+      center: LatLng(35.6704, 139.772),
+      radiusMeters: 800,
+      count: 9,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'minato',
+      center: LatLng(35.6581, 139.7516),
+      radiusMeters: 900,
+      count: 9,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'shinjuku',
+      center: LatLng(35.6938, 139.7034),
+      radiusMeters: 900,
+      count: 9,
+      happyProbability: 0.88),
+  _BotStaticSpot(
+      id: 'bunkyo',
+      center: LatLng(35.7175, 139.7517),
+      radiusMeters: 650,
+      count: 8,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'taito',
+      center: LatLng(35.7121, 139.7807),
+      radiusMeters: 750,
+      count: 8,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'sumida',
+      center: LatLng(35.7100, 139.8016),
+      radiusMeters: 750,
+      count: 8,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'koto',
+      center: LatLng(35.6730, 139.8174),
+      radiusMeters: 1000,
+      count: 9,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'shinagawa',
+      center: LatLng(35.6093, 139.7300),
+      radiusMeters: 900,
+      count: 8,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'meguro',
+      center: LatLng(35.6412, 139.6980),
+      radiusMeters: 700,
+      count: 8,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'ota',
+      center: LatLng(35.5614, 139.7160),
+      radiusMeters: 1200,
+      count: 9,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'setagaya',
+      center: LatLng(35.6467, 139.6530),
+      radiusMeters: 1200,
+      count: 9,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'shibuya',
+      center: LatLng(35.6617, 139.7041),
+      radiusMeters: 700,
+      count: 8,
+      happyProbability: 0.88),
+  _BotStaticSpot(
+      id: 'nakano',
+      center: LatLng(35.7074, 139.6636),
+      radiusMeters: 750,
+      count: 6,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'suginami',
+      center: LatLng(35.6995, 139.6360),
+      radiusMeters: 1000,
+      count: 8,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'toshima',
+      center: LatLng(35.7289, 139.7101),
+      radiusMeters: 750,
+      count: 6,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'kita',
+      center: LatLng(35.7528, 139.7330),
+      radiusMeters: 950,
+      count: 6,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'arakawa',
+      center: LatLng(35.7365, 139.7830),
+      radiusMeters: 800,
+      count: 6,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'itabashi',
+      center: LatLng(35.7512, 139.7101),
+      radiusMeters: 1000,
+      count: 6,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'nerima',
+      center: LatLng(35.7356, 139.6522),
+      radiusMeters: 1200,
+      count: 8,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'adachi',
+      center: LatLng(35.7743, 139.8040),
+      radiusMeters: 1200,
+      count: 8,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'katsushika',
+      center: LatLng(35.7433, 139.8470),
+      radiusMeters: 1200,
+      count: 8,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'edogawa',
+      center: LatLng(35.7061, 139.8683),
+      radiusMeters: 1300,
+      count: 8,
+      happyProbability: 0.85),
   // 神奈川
-  _BotStaticSpot(id: 'yokohama', center: LatLng(35.465, 139.622), radiusMeters: 1300, count: 20, happyProbability: 0.9),
-  _BotStaticSpot(id: 'kawasaki', center: LatLng(35.530, 139.703), radiusMeters: 1100, count: 14, happyProbability: 0.88),
-  _BotStaticSpot(id: 'yokosuka', center: LatLng(35.281, 139.672), radiusMeters: 950, count: 8, happyProbability: 0.82),
-  _BotStaticSpot(id: 'kamakura', center: LatLng(35.319, 139.546), radiusMeters: 850, count: 7, happyProbability: 0.86),
-  _BotStaticSpot(id: 'hiratsuka', center: LatLng(35.327, 139.349), radiusMeters: 900, count: 8, happyProbability: 0.85),
-  _BotStaticSpot(id: 'hakone', center: LatLng(35.232, 139.105), radiusMeters: 800, count: 6, happyProbability: 0.78),
+  _BotStaticSpot(
+      id: 'yokohama',
+      center: LatLng(35.465, 139.622),
+      radiusMeters: 1300,
+      count: 30,
+      happyProbability: 0.9),
+  _BotStaticSpot(
+      id: 'kawasaki',
+      center: LatLng(35.530, 139.703),
+      radiusMeters: 1100,
+      count: 21,
+      happyProbability: 0.88),
+  _BotStaticSpot(
+      id: 'yokosuka',
+      center: LatLng(35.281, 139.672),
+      radiusMeters: 950,
+      count: 12,
+      happyProbability: 0.82),
+  _BotStaticSpot(
+      id: 'kamakura',
+      center: LatLng(35.319, 139.546),
+      radiusMeters: 850,
+      count: 11,
+      happyProbability: 0.86),
+  _BotStaticSpot(
+      id: 'hiratsuka',
+      center: LatLng(35.327, 139.349),
+      radiusMeters: 900,
+      count: 12,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'hakone',
+      center: LatLng(35.232, 139.105),
+      radiusMeters: 800,
+      count: 9,
+      happyProbability: 0.78),
   // 埼玉
-  _BotStaticSpot(id: 'saitama', center: LatLng(35.8617, 139.6455), radiusMeters: 1100, count: 14, happyProbability: 0.88),
-  _BotStaticSpot(id: 'omiya', center: LatLng(35.9061, 139.6237), radiusMeters: 850, count: 12, happyProbability: 0.85),
-  _BotStaticSpot(id: 'kawagoe', center: LatLng(35.9251, 139.4850), radiusMeters: 800, count: 7, happyProbability: 0.82),
+  _BotStaticSpot(
+      id: 'saitama',
+      center: LatLng(35.8617, 139.6455),
+      radiusMeters: 1100,
+      count: 21,
+      happyProbability: 0.88),
+  _BotStaticSpot(
+      id: 'omiya',
+      center: LatLng(35.9061, 139.6237),
+      radiusMeters: 850,
+      count: 18,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'kawagoe',
+      center: LatLng(35.9251, 139.4850),
+      radiusMeters: 800,
+      count: 11,
+      happyProbability: 0.82),
   // 千葉
-  _BotStaticSpot(id: 'chiba', center: LatLng(35.6073, 140.1063), radiusMeters: 1200, count: 14, happyProbability: 0.87),
-  _BotStaticSpot(id: 'funabashi', center: LatLng(35.6940, 139.9820), radiusMeters: 900, count: 10, happyProbability: 0.86),
-  _BotStaticSpot(id: 'kashiwa', center: LatLng(35.8629, 139.9726), radiusMeters: 850, count: 9, happyProbability: 0.84),
-  _BotStaticSpot(id: 'matsudo', center: LatLng(35.7799, 139.9030), radiusMeters: 850, count: 9, happyProbability: 0.84),
+  _BotStaticSpot(
+      id: 'chiba',
+      center: LatLng(35.6073, 140.1063),
+      radiusMeters: 1200,
+      count: 21,
+      happyProbability: 0.87),
+  _BotStaticSpot(
+      id: 'funabashi',
+      center: LatLng(35.6940, 139.9820),
+      radiusMeters: 900,
+      count: 15,
+      happyProbability: 0.86),
+  _BotStaticSpot(
+      id: 'kashiwa',
+      center: LatLng(35.8629, 139.9726),
+      radiusMeters: 850,
+      count: 14,
+      happyProbability: 0.84),
+  _BotStaticSpot(
+      id: 'matsudo',
+      center: LatLng(35.7799, 139.9030),
+      radiusMeters: 850,
+      count: 14,
+      happyProbability: 0.84),
   // 茨城
-  _BotStaticSpot(id: 'tsukuba', center: LatLng(36.0820, 140.1100), radiusMeters: 950, count: 9, happyProbability: 0.83),
-  _BotStaticSpot(id: 'mito', center: LatLng(36.3659, 140.4716), radiusMeters: 1000, count: 9, happyProbability: 0.82),
+  _BotStaticSpot(
+      id: 'tsukuba',
+      center: LatLng(36.0820, 140.1100),
+      radiusMeters: 950,
+      count: 14,
+      happyProbability: 0.83),
+  _BotStaticSpot(
+      id: 'mito',
+      center: LatLng(36.3659, 140.4716),
+      radiusMeters: 1000,
+      count: 14,
+      happyProbability: 0.82),
   // 栃木
-  _BotStaticSpot(id: 'utsunomiya', center: LatLng(36.5551, 139.8828), radiusMeters: 950, count: 9, happyProbability: 0.83),
-  _BotStaticSpot(id: 'nikko', center: LatLng(36.7199, 139.6982), radiusMeters: 850, count: 6, happyProbability: 0.8),
+  _BotStaticSpot(
+      id: 'utsunomiya',
+      center: LatLng(36.5551, 139.8828),
+      radiusMeters: 950,
+      count: 14,
+      happyProbability: 0.83),
+  _BotStaticSpot(
+      id: 'nikko',
+      center: LatLng(36.7199, 139.6982),
+      radiusMeters: 850,
+      count: 9,
+      happyProbability: 0.8),
   // 群馬
-  _BotStaticSpot(id: 'maebashi', center: LatLng(36.3890, 139.0630), radiusMeters: 950, count: 8, happyProbability: 0.82),
-  _BotStaticSpot(id: 'takasaki', center: LatLng(36.3220, 139.0120), radiusMeters: 900, count: 8, happyProbability: 0.82),
+  _BotStaticSpot(
+      id: 'maebashi',
+      center: LatLng(36.3890, 139.0630),
+      radiusMeters: 950,
+      count: 12,
+      happyProbability: 0.82),
+  _BotStaticSpot(
+      id: 'takasaki',
+      center: LatLng(36.3220, 139.0120),
+      radiusMeters: 900,
+      count: 12,
+      happyProbability: 0.82),
   // 追加スポット（関東広域）
-  _BotStaticSpot(id: 'sagamihara', center: LatLng(35.5710, 139.3730), radiusMeters: 1050, count: 12, happyProbability: 0.86),
-  _BotStaticSpot(id: 'fujisawa', center: LatLng(35.3380, 139.4870), radiusMeters: 900, count: 10, happyProbability: 0.86),
-  _BotStaticSpot(id: 'chigasaki', center: LatLng(35.3364, 139.4080), radiusMeters: 850, count: 8, happyProbability: 0.85),
-  _BotStaticSpot(id: 'odawara', center: LatLng(35.2550, 139.1590), radiusMeters: 900, count: 8, happyProbability: 0.82),
-  _BotStaticSpot(id: 'atsugi', center: LatLng(35.4425, 139.3690), radiusMeters: 850, count: 7, happyProbability: 0.84),
-  _BotStaticSpot(id: 'tokorozawa', center: LatLng(35.7990, 139.4690), radiusMeters: 900, count: 9, happyProbability: 0.85),
-  _BotStaticSpot(id: 'kawaguchi', center: LatLng(35.8070, 139.7240), radiusMeters: 850, count: 10, happyProbability: 0.86),
-  _BotStaticSpot(id: 'koshigaya', center: LatLng(35.8910, 139.7900), radiusMeters: 850, count: 8, happyProbability: 0.84),
-  _BotStaticSpot(id: 'soka', center: LatLng(35.8250, 139.8050), radiusMeters: 820, count: 7, happyProbability: 0.83),
-  _BotStaticSpot(id: 'narita', center: LatLng(35.7760, 140.3180), radiusMeters: 950, count: 8, happyProbability: 0.84),
-  _BotStaticSpot(id: 'kisarazu', center: LatLng(35.3730, 139.9160), radiusMeters: 900, count: 8, happyProbability: 0.85),
-  _BotStaticSpot(id: 'choshi', center: LatLng(35.7340, 140.8260), radiusMeters: 850, count: 6, happyProbability: 0.8),
-  _BotStaticSpot(id: 'hitachi', center: LatLng(36.5960, 140.6510), radiusMeters: 900, count: 7, happyProbability: 0.8),
-  _BotStaticSpot(id: 'kashima', center: LatLng(35.9650, 140.6390), radiusMeters: 900, count: 7, happyProbability: 0.8),
-  _BotStaticSpot(id: 'oyama', center: LatLng(36.3130, 139.8000), radiusMeters: 900, count: 7, happyProbability: 0.82),
-  _BotStaticSpot(id: 'ashikaga', center: LatLng(36.3140, 139.4550), radiusMeters: 850, count: 6, happyProbability: 0.82),
-  _BotStaticSpot(id: 'kiryu', center: LatLng(36.4050, 139.3300), radiusMeters: 850, count: 6, happyProbability: 0.82),
-  _BotStaticSpot(id: 'isesaki', center: LatLng(36.3220, 139.1930), radiusMeters: 850, count: 6, happyProbability: 0.82),
+  _BotStaticSpot(
+      id: 'sagamihara',
+      center: LatLng(35.5710, 139.3730),
+      radiusMeters: 1050,
+      count: 18,
+      happyProbability: 0.86),
+  _BotStaticSpot(
+      id: 'fujisawa',
+      center: LatLng(35.3380, 139.4870),
+      radiusMeters: 900,
+      count: 15,
+      happyProbability: 0.86),
+  _BotStaticSpot(
+      id: 'chigasaki',
+      center: LatLng(35.3364, 139.4080),
+      radiusMeters: 850,
+      count: 12,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'odawara',
+      center: LatLng(35.2550, 139.1590),
+      radiusMeters: 900,
+      count: 12,
+      happyProbability: 0.82),
+  _BotStaticSpot(
+      id: 'atsugi',
+      center: LatLng(35.4425, 139.3690),
+      radiusMeters: 850,
+      count: 11,
+      happyProbability: 0.84),
+  _BotStaticSpot(
+      id: 'tokorozawa',
+      center: LatLng(35.7990, 139.4690),
+      radiusMeters: 900,
+      count: 14,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'kawaguchi',
+      center: LatLng(35.8070, 139.7240),
+      radiusMeters: 850,
+      count: 15,
+      happyProbability: 0.86),
+  _BotStaticSpot(
+      id: 'koshigaya',
+      center: LatLng(35.8910, 139.7900),
+      radiusMeters: 850,
+      count: 12,
+      happyProbability: 0.84),
+  _BotStaticSpot(
+      id: 'soka',
+      center: LatLng(35.8250, 139.8050),
+      radiusMeters: 820,
+      count: 11,
+      happyProbability: 0.83),
+  _BotStaticSpot(
+      id: 'narita',
+      center: LatLng(35.7760, 140.3180),
+      radiusMeters: 950,
+      count: 12,
+      happyProbability: 0.84),
+  _BotStaticSpot(
+      id: 'kisarazu',
+      center: LatLng(35.3730, 139.9160),
+      radiusMeters: 900,
+      count: 12,
+      happyProbability: 0.85),
+  _BotStaticSpot(
+      id: 'choshi',
+      center: LatLng(35.7340, 140.8260),
+      radiusMeters: 850,
+      count: 9,
+      happyProbability: 0.8),
+  _BotStaticSpot(
+      id: 'hitachi',
+      center: LatLng(36.5960, 140.6510),
+      radiusMeters: 900,
+      count: 11,
+      happyProbability: 0.8),
+  _BotStaticSpot(
+      id: 'kashima',
+      center: LatLng(35.9650, 140.6390),
+      radiusMeters: 900,
+      count: 11,
+      happyProbability: 0.8),
+  _BotStaticSpot(
+      id: 'oyama',
+      center: LatLng(36.3130, 139.8000),
+      radiusMeters: 900,
+      count: 11,
+      happyProbability: 0.82),
+  _BotStaticSpot(
+      id: 'ashikaga',
+      center: LatLng(36.3140, 139.4550),
+      radiusMeters: 850,
+      count: 9,
+      happyProbability: 0.82),
+  _BotStaticSpot(
+      id: 'kiryu',
+      center: LatLng(36.4050, 139.3300),
+      radiusMeters: 850,
+      count: 9,
+      happyProbability: 0.82),
+  _BotStaticSpot(
+      id: 'isesaki',
+      center: LatLng(36.3220, 139.1930),
+      radiusMeters: 850,
+      count: 9,
+      happyProbability: 0.82),
   // 追加の悲しいスポット（集中度高め）
   _BotStaticSpot(
       id: 'yokohama_sad',
       center: LatLng(35.465, 139.622),
       radiusMeters: 900,
-      count: 26, // 25+狙い
-      happyProbability: 0.25,
+      count: 39, // 25+狙い
+      happyProbability: 0.55,
       sadMemoPool: ['ライブ終わりでロス…', '海風が冷たい', '乗り換えミスで遅刻しそう']),
   _BotStaticSpot(
       id: 'shibuya_sad',
       center: LatLng(35.6617, 139.7041),
       radiusMeters: 750,
-      count: 30, // 25+狙い
-      happyProbability: 0.2,
+      count: 45, // 25+狙い
+      happyProbability: 0.5,
       sadMemoPool: ['人混みでぐったり', '終電逃した…', '雨でびしょ濡れ']),
   _BotStaticSpot(
       id: 'ikebukuro_sad',
       center: LatLng(35.7289, 139.7101),
       radiusMeters: 800,
-      count: 25, // 25+狙い
-      happyProbability: 0.2,
+      count: 38, // 25+狙い
+      happyProbability: 0.5,
       sadMemoPool: ['イベント落選した…', '荷物が重すぎて肩が痛い', '並び疲れた']),
   _BotStaticSpot(
       id: 'takasaki_sad',
       center: LatLng(36.3220, 139.0120),
       radiusMeters: 850,
-      count: 25,
-      happyProbability: 0.25,
+      count: 38,
+      happyProbability: 0.55,
       sadMemoPool: ['寒くてつらい', '道に迷った', '予定がキャンセルに…']),
   _BotStaticSpot(
       id: 'mito_sad',
       center: LatLng(36.3659, 140.4716),
       radiusMeters: 900,
-      count: 25,
-      happyProbability: 0.25,
+      count: 38,
+      happyProbability: 0.55,
       sadMemoPool: ['雨で観光断念', '帰りの特急が遅延', 'お目当ての店が閉まってた']),
   _BotStaticSpot(
       id: 'kisarazu_sad',
       center: LatLng(35.3730, 139.9160),
       radiusMeters: 850,
-      count: 18,
-      happyProbability: 0.2,
+      count: 27,
+      happyProbability: 0.5,
       sadMemoPool: ['フェリー欠航で足止め', '渋滞で海岸まで行けなかった', '潮風で寒い…']),
   _BotStaticSpot(
       id: 'narita_sad',
       center: LatLng(35.7760, 140.3180),
       radiusMeters: 900,
-      count: 18,
-      happyProbability: 0.2,
+      count: 27,
+      happyProbability: 0.5,
       sadMemoPool: ['フライト遅延', '免税店がお休みだった', '空港までの道が大渋滞']),
   _BotStaticSpot(
       id: 'tsukuba_sad',
       center: LatLng(36.0820, 140.1100),
       radiusMeters: 900,
-      count: 18,
-      happyProbability: 0.25,
+      count: 27,
+      happyProbability: 0.55,
       sadMemoPool: ['実験が失敗…', '会議が長引いた', 'バスに乗り遅れた']),
   _BotStaticSpot(
       id: 'umi_hita_sad',
       center: LatLng(35.7340, 140.8260),
       radiusMeters: 900,
-      count: 7,
-      happyProbability: 0.3,
+      count: 11,
+      happyProbability: 0.6,
       sadMemoPool: ['強風で撮影断念', '電車が止まった', '海が荒れてる']),
   // 大規模悲しいクラスタ（例: 千葉の事故渋滞）
   _BotStaticSpot(
       id: 'chiba_accident_sad',
       center: LatLng(35.6073, 140.1063),
       radiusMeters: 1200,
-      count: 60,
-      happyProbability: 0.15,
-      sadMemoPool: ['事故で大渋滞…', '電車が遅延してる', '通行止めで足止め', '予定に間に合わない', '信号待ちが長すぎる']),
+      count: 90,
+      happyProbability: 0.4,
+      sadMemoPool: [
+        '事故で大渋滞…',
+        '電車が遅延してる',
+        '通行止めで足止め',
+        '予定に間に合わない',
+        '信号待ちが長すぎる'
+      ]),
   _BotStaticSpot(
       id: 'funabashi_sad',
       center: LatLng(35.6940, 139.9820),
       radiusMeters: 900,
-      count: 26,
-      happyProbability: 0.2,
+      count: 39,
+      happyProbability: 0.5,
       sadMemoPool: ['踏切が開かない', '総武線が遅延', '渋滞で帰れない']),
   _BotStaticSpot(
       id: 'choshi_sad_cluster',
       center: LatLng(35.7340, 140.8260),
       radiusMeters: 950,
-      count: 26,
-      happyProbability: 0.2,
+      count: 39,
+      happyProbability: 0.5,
       sadMemoPool: ['強風で電車が止まった', '海が荒れて漁ができない', '観光船が欠航']),
   _BotStaticSpot(
       id: 'kawasaki_sad',
       center: LatLng(35.530, 139.703),
       radiusMeters: 950,
-      count: 26,
-      happyProbability: 0.2,
+      count: 39,
+      happyProbability: 0.5,
       sadMemoPool: ['工場夜景が見られなかった', 'バス遅延で遅刻', '雨でイベント中止']),
   _BotStaticSpot(
       id: 'saitama_sad',
       center: LatLng(35.8617, 139.6455),
       radiusMeters: 1000,
-      count: 26,
-      happyProbability: 0.2,
+      count: 39,
+      happyProbability: 0.5,
       sadMemoPool: ['大宮までの電車が遅延', '試合が中止になった', '渋滞で帰宅できない']),
 ];
 
@@ -263,11 +570,19 @@ const double _clusterJitterFraction = 0.0; // ジッターなしで海側への�
 
 const List<_ClusterStamp> _happyClusterStamps = [
   _ClusterStamp(
-    minCount: 50,
+    minCount: 100, // Evolution Threshold raised to 100
     label: '花が満開',
     emoji: '🌸',
     color: Color(0xFFE91E63),
-    sizeFactor: 1.15,
+    sizeFactor: 1.25, // Slightly larger
+    isSad: false,
+  ),
+  _ClusterStamp(
+    minCount: 25,
+    label: '一輪の花',
+    emoji: '🌼',
+    color: Color(0xFFF7B801),
+    sizeFactor: 1.05,
     isSad: false,
   ),
   _ClusterStamp(
@@ -290,11 +605,19 @@ const List<_ClusterStamp> _happyClusterStamps = [
 
 const List<_ClusterStamp> _sadClusterStamps = [
   _ClusterStamp(
-    minCount: 50,
+    minCount: 100, // Evolution Threshold raised to 100
     label: 'ラフレシア',
-    emoji: '🌺', // 花アイコンで統一（ドクロをやめる）
-    color: Color(0xFF5A0F6A), // さらに濃い赤紫
-    sizeFactor: 1.15,
+    emoji: '🌺',
+    color: Color(0xFF5A0F6A),
+    sizeFactor: 1.25,
+    isSad: true,
+  ),
+  _ClusterStamp(
+    minCount: 25,
+    label: '枯れた花',
+    emoji: '🥀',
+    color: Color(0xFF8D6E63),
+    sizeFactor: 1.05,
     isSad: true,
   ),
   _ClusterStamp(
@@ -368,7 +691,8 @@ class _EmotionMapState extends State<EmotionMap> {
       }
 
       // マップの移動終了を検知してからコメント表示を更新
-      if (event is MapEventMoveEnd || event is MapEventFlingAnimationEnd ||
+      if (event is MapEventMoveEnd ||
+          event is MapEventFlingAnimationEnd ||
           event is MapEventDoubleTapZoomEnd) {
         // 少し遅延させてから更新（連続したイベントをまとめる）
         _memoUpdateDebounce?.cancel();
@@ -413,8 +737,7 @@ class _EmotionMapState extends State<EmotionMap> {
     final baseMarkers = <Marker>[];
     final overlayMarkers = <Marker>[];
     final clusterMarkers = <Marker>[];
-    final showClusters =
-        !_isMapMoving && _currentZoom <= _clusterZoomThreshold;
+    final showClusters = !_isMapMoving && _currentZoom <= _clusterZoomThreshold;
 
     void addPostMarkers(List<EmotionMapPost> source, bool isBot) {
       for (final post in source) {
@@ -432,7 +755,19 @@ class _EmotionMapState extends State<EmotionMap> {
 
     if (showClusters) {
       final clusterResult = _ensureClusterCache(posts, _botPosts);
-      for (final cluster in clusterResult.denseBuckets) {
+      // Sort buckets: 1) by minCount (low to high), 2) sad before happy (so happy renders on top)
+      final sortedBuckets = clusterResult.denseBuckets.toList()
+        ..sort((a, b) {
+          final stampA = _resolveClusterStamp(a);
+          final stampB = _resolveClusterStamp(b);
+          // First sort by minCount
+          final countCompare = stampA.minCount.compareTo(stampB.minCount);
+          if (countCompare != 0) return countCompare;
+          // Then sad (isSad=true=1) before happy (isSad=false=0), so happy ends up LAST (on top)
+          return (stampA.isSad ? 0 : 1).compareTo(stampB.isSad ? 0 : 1);
+        });
+
+      for (final cluster in sortedBuckets) {
         clusterMarkers.add(_buildClusterMarker(cluster));
       }
       final remainderUserPosts = <EmotionMapPost>[];
@@ -534,17 +869,91 @@ class _EmotionMapState extends State<EmotionMap> {
                     : const Icon(Icons.my_location),
               ),
               const SizedBox(height: 12),
-              FloatingActionButton.extended(
-                heroTag: 'emotionMap_add',
-                onPressed: _isPosting ? null : _openAddEmotionSheet,
-                icon: const Icon(Icons.mood),
-                label: _isPosting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('気持ちを投稿'),
+              // Glassmorphism Button for "Share Moment"
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(32),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFF2B705).withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                      spreadRadius: 2,
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(32),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.7),
+                            Colors.white.withValues(alpha: 0.3),
+                          ],
+                        ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _isPosting ? null : _openAddEmotionSheet,
+                          borderRadius: BorderRadius.circular(32),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 16,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_isPosting)
+                                  const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.black87),
+                                    ),
+                                  )
+                                else
+                                  const Icon(
+                                    Icons.auto_awesome,
+                                    color: Colors.black87,
+                                    size: 20,
+                                  ),
+                                const SizedBox(width: 10),
+                                const Text(
+                                  '今の瞬間をシェア',
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -742,7 +1151,6 @@ class _EmotionMapState extends State<EmotionMap> {
     );
   }
 
-
   Future<void> _openAddEmotionSheet() async {
     if (_isPosting) return;
     final location = await _locateUser(
@@ -758,6 +1166,7 @@ class _EmotionMapState extends State<EmotionMap> {
     final result = await showModalBottomSheet<_EmotionFormResult>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent, // Transparent for Glassmorphism
       builder: (_) => const _EmotionPostSheet(),
     );
     if (!mounted) return;
@@ -904,6 +1313,7 @@ class _EmotionMapState extends State<EmotionMap> {
       {required bool canDelete}) async {
     await showModalBottomSheet<void>(
       context: context,
+      backgroundColor: Colors.transparent, // Transparent for Glassmorphism
       builder: (context) {
         return _EmotionPostDetailSheet(
           post: post,
@@ -925,6 +1335,7 @@ class _EmotionMapState extends State<EmotionMap> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent, // Transparent for Glassmorphism
       builder: (context) {
         return _ClusterDetailSheet(
           cluster: cluster,
@@ -962,7 +1373,11 @@ class _EmotionMapState extends State<EmotionMap> {
     List<EmotionMapPost> userPosts,
     List<EmotionMapPost> botPosts,
   ) {
-    final signature = '${_signatureForPosts(userPosts)}|${_signatureForPosts(botPosts)}';
+    // Include zoom in signature so clusters are re-calculated when zoom changes
+    final zoomBucket =
+        _currentZoom.floor(); // Round to avoid too frequent recalculations
+    final signature =
+        '$zoomBucket|${_signatureForPosts(userPosts)}|${_signatureForPosts(botPosts)}';
     if (signature != _lastClusterSignature) {
       _cachedClusterResult = _clusterPosts(userPosts, botPosts);
       _lastClusterSignature = signature;
@@ -995,8 +1410,7 @@ class _EmotionMapState extends State<EmotionMap> {
     const maxVisible = 5;
     final shuffled = List<EmotionMapPost>.from(visiblePosts)..shuffle(_random);
     final targetCount = min(maxVisible, shuffled.length);
-    final nextIds =
-        shuffled.take(targetCount).map((post) => post.id).toSet();
+    final nextIds = shuffled.take(targetCount).map((post) => post.id).toSet();
     _updateVisibleMemoIds(nextIds);
   }
 
@@ -1044,8 +1458,7 @@ class _EmotionMapState extends State<EmotionMap> {
       final latBucket = (entry.post.latitude / bucketSize).floor();
       final lngBucket = (entry.post.longitude / bucketSize).floor();
       final key = '$latBucket:$lngBucket';
-      final bucket =
-          buckets.putIfAbsent(key, () => _ClusterBucket(key: key));
+      final bucket = buckets.putIfAbsent(key, () => _ClusterBucket(key: key));
       bucket.add(entry);
     }
     final denseBuckets = <_ClusterBucket>[];
@@ -1061,105 +1474,216 @@ class _EmotionMapState extends State<EmotionMap> {
   }
 
   double _clusterCellSizeForZoom(double zoom) {
-    // ズームによるセルサイズ変動をやめ、安定した配置にする
-    return _clusterMaxCellSizeDegrees;
+    // Aggressive scaling to encourage clustering + larger min size to reduce overlap
+    // Base 0.15 at zoom 10 (~15km), min 0.02 (~2km) for good separation
+    final size = 0.15 * pow(2, 10 - zoom);
+    return size.clamp(0.02, 5.0);
   }
 
   Marker _buildClusterMarker(_ClusterBucket cluster) {
     final center = _clusterMarkerPosition(cluster);
     final stamp = _resolveClusterStamp(cluster);
-    final scale = (_markerScaleForZoom(_currentZoom) * stamp.sizeFactor)
-        .clamp(0.65, 1.2);
-    final bool isTopHappy = !stamp.isSad && stamp.minCount == 50;
-    final stampSize = isTopHappy ? 105.0 * scale : 90.0 * scale;
-    final haloSize = isTopHappy ? stampSize * 1.25 : stampSize * 1.1;
-    final baseColor = stamp.color;
-    final highlight = isTopHappy
-        ? Color.lerp(baseColor, Colors.white, 0.5)!
-        : Color.lerp(baseColor, Colors.white, 0.35)!;
+    final scale =
+        (_markerScaleForZoom(_currentZoom) * stamp.sizeFactor).clamp(0.65, 1.2);
+    final bool isTopHappy = !stamp.isSad && stamp.minCount >= 100;
+    final bool isTopSad = stamp.isSad && stamp.minCount >= 100;
+
+    // Normal Stamp Logic (Visible Glass Bubble)
+    if (!isTopHappy && !isTopSad) {
+      final stampSize = 90.0 * scale;
+      final haloSize = stampSize * 1.05;
+      final baseColor = stamp.color;
+
+      return Marker(
+        point: center,
+        width: haloSize,
+        height: haloSize,
+        alignment: Alignment.center,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _showClusterDetails(cluster),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: stampSize,
+                height: stampSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  // Solid visibility
+                  color: baseColor.withValues(alpha: 0.85),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.9),
+                      baseColor.withValues(alpha: 0.8),
+                      baseColor.withValues(alpha: 0.6),
+                    ],
+                    stops: const [0.0, 0.4, 1.0],
+                  ),
+                  border: Border.all(
+                    color: Colors.white,
+                    width: 3 * scale,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: baseColor.withValues(alpha: 0.3),
+                      blurRadius: 10 * scale,
+                      offset: Offset(0, 4 * scale),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    stamp.emoji,
+                    style: TextStyle(fontSize: 32 * scale, shadows: [
+                      Shadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 4,
+                        offset: const Offset(1, 1),
+                      )
+                    ]),
+                  ),
+                ),
+              ),
+              // Gloss Highlight
+              Positioned(
+                top: stampSize * 0.1,
+                left: stampSize * 0.2,
+                child: Container(
+                  width: stampSize * 0.35,
+                  height: stampSize * 0.18,
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.all(
+                          Radius.elliptical(stampSize, stampSize * 0.5)),
+                      gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.8),
+                            Colors.white.withValues(alpha: 0.1),
+                          ])),
+                ),
+              )
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Sad 50+ Design ("Dark Mood")
+    if (isTopSad) {
+      final stampSize =
+          110.0 * scale; // Larger than normal, smaller than happy 50+
+      final haloSize = stampSize * 1.25;
+
+      final darkColor = const Color(0xFF455A64); // Blue Grey
+      final tearColor = const Color(0xFF2196F3); // Blue for accent
+
+      return Marker(
+        point: center,
+        width: haloSize,
+        height: haloSize,
+        alignment: Alignment.center,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _showClusterDetails(cluster),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Melancholy Halo
+              Container(
+                width: haloSize,
+                height: haloSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      darkColor.withValues(alpha: 0.5),
+                      tearColor.withValues(alpha: 0.2),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.3, 0.6, 1.0],
+                  ),
+                ),
+              ),
+
+              // Dark Glass Container
+              Container(
+                width: stampSize,
+                height: stampSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: darkColor.withValues(alpha: 0.85),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF607D8B), // Lighter Blue Grey
+                      Color(0xFF263238), // Dark Blue Grey
+                    ],
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    width: 3 * scale,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 15 * scale,
+                      offset: Offset(0, 8 * scale),
+                    ),
+                    BoxShadow(
+                      color: tearColor.withValues(alpha: 0.3),
+                      blurRadius: 20 * scale,
+                      spreadRadius: -2,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    stamp.emoji,
+                    style: TextStyle(
+                        fontSize: 40 * scale, // Prominent
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ]),
+                  ),
+                ),
+              ),
+
+              // Raindrop/Tear Highlight
+              Positioned(
+                top: stampSize * 0.15,
+                right: stampSize * 0.2,
+                child: Icon(Icons.water_drop,
+                    color: Colors.white.withValues(alpha: 0.3),
+                    size: 16 * scale),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Gemini流: Happy 50+デザイン "Cosmic Bloom"
+    // Statefulな専用ウィジェットを使用してアニメーションを実現
     return Marker(
       point: center,
-      width: haloSize,
-      height: haloSize,
+      width: 160 * scale, // 広めのエリア確保
+      height: 160 * scale,
       alignment: Alignment.center,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _showClusterDetails(cluster),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: haloSize,
-                  height: haloSize,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        highlight.withValues(alpha: 0.45),
-                        Colors.transparent,
-                      ],
-                      stops: const [0.55, 1],
-                    ),
-                  ),
-                ),
-                Container(
-                  width: stampSize,
-                  height: stampSize,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: isTopHappy
-                        ? LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Colors.orangeAccent,
-                              highlight,
-                              baseColor,
-                            ],
-                          )
-                        : LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [highlight, baseColor],
-                          ),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      width: isTopHappy
-                          ? 5 * scale.clamp(0.9, 1.3)
-                          : 4 * scale.clamp(0.8, 1.2),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: baseColor.withValues(alpha: 0.42),
-                        blurRadius: isTopHappy ? 22 * scale : 18 * scale,
-                        offset: Offset(0, isTopHappy ? 7 * scale : 6 * scale),
-                      ),
-                      if (isTopHappy)
-                        BoxShadow(
-                          color: Colors.amber.withValues(alpha: 0.35),
-                          blurRadius: 28 * scale,
-                          spreadRadius: 2 * scale,
-                        ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        stamp.emoji,
-                        style: TextStyle(
-                          fontSize: isTopHappy ? 32 * scale : 28 * scale,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
+        child: _GeminiStyleMarker(
+          scale: scale,
+          emoji: stamp.emoji,
         ),
       ),
     );
@@ -1167,8 +1691,7 @@ class _EmotionMapState extends State<EmotionMap> {
 
   void _zoomIntoCluster(LatLng target) {
     final currentZoom = _mapController.camera.zoom;
-    final safeZoom =
-        currentZoom.isNaN ? _clusterZoomThreshold : currentZoom;
+    final safeZoom = currentZoom.isNaN ? _clusterZoomThreshold : currentZoom;
     final targetZoom =
         (safeZoom + 1.8).clamp(_clusterZoomThreshold + 0.8, 17.0);
     _mapController.move(target, targetZoom);
@@ -1176,6 +1699,7 @@ class _EmotionMapState extends State<EmotionMap> {
 
   _ClusterStamp _resolveClusterStamp(_ClusterBucket bucket) {
     // 合計人数でティアを決定し、優勢な感情でスタンプセットを選択。
+    // Happyを前面に出すため、Sadが2倍以上の場合のみSadを表示
     final total = bucket.count;
     final sad = bucket.sadCount;
     final happy = bucket.happyCount;
@@ -1283,11 +1807,11 @@ class _EmotionMapState extends State<EmotionMap> {
       }
       // 利用可能な感情は「うれしい」と「かなしい」の2種類のみ
       const availableEmotions = [EmotionType.happy, EmotionType.sad];
-      final emotion = availableEmotions[_random.nextInt(availableEmotions.length)];
+      final emotion =
+          availableEmotions[_random.nextInt(availableEmotions.length)];
       final ageMinutes = _random.nextInt(6 * 60); // within last 6 hours
       final post = EmotionMapPost(
-        id:
-            'bot_${now.microsecondsSinceEpoch}_${bots.length}_${_random.nextInt(1 << 16)}',
+        id: 'bot_${now.microsecondsSinceEpoch}_${bots.length}_${_random.nextInt(1 << 16)}',
         emotion: emotion,
         latitude: position.latitude,
         longitude: position.longitude,
@@ -1320,8 +1844,8 @@ class _EmotionMapState extends State<EmotionMap> {
     final dLon = _degToRad(b.longitude - a.longitude);
     final lat1 = _degToRad(a.latitude);
     final lat2 = _degToRad(b.latitude);
-    final h = pow(sin(dLat / 2), 2) +
-        cos(lat1) * cos(lat2) * pow(sin(dLon / 2), 2);
+    final h =
+        pow(sin(dLat / 2), 2) + cos(lat1) * cos(lat2) * pow(sin(dLon / 2), 2);
     final c = 2 * atan2(sqrt(h), sqrt(1 - h));
     return earthRadius * c;
   }
@@ -1331,11 +1855,10 @@ class _EmotionMapState extends State<EmotionMap> {
     final latRad = _degToRad(origin.latitude);
     final lonRad = _degToRad(origin.longitude);
     final angular = distanceMeters / earthRadius;
-    final nextLat = asin(sin(latRad) * cos(angular) +
-        cos(latRad) * sin(angular) * cos(bearing));
+    final nextLat = asin(
+        sin(latRad) * cos(angular) + cos(latRad) * sin(angular) * cos(bearing));
     final nextLon = lonRad +
-        atan2(
-            sin(bearing) * sin(angular) * cos(latRad),
+        atan2(sin(bearing) * sin(angular) * cos(latRad),
             cos(angular) - sin(latRad) * sin(nextLat));
     return LatLng(_radToDeg(nextLat), _radToDeg(nextLon));
   }
@@ -1390,8 +1913,7 @@ class _EmotionMapState extends State<EmotionMap> {
       }
       bots.add(
         EmotionMapPost(
-          id:
-              'bot_static_${spot.id}_${generated}_${now.microsecondsSinceEpoch}_${_random.nextInt(1 << 16)}',
+          id: 'bot_static_${spot.id}_${generated}_${now.microsecondsSinceEpoch}_${_random.nextInt(1 << 16)}',
           emotion: emotion,
           latitude: position.latitude,
           longitude: position.longitude,
@@ -1549,72 +2071,117 @@ class _EmotionPostSheetState extends State<_EmotionPostSheet> {
   @override
   Widget build(BuildContext context) {
     final viewInsets = MediaQuery.of(context).viewInsets.bottom;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: viewInsets),
-          child: SafeArea(
-            top: false,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight == double.infinity
-                      ? 0
-                      : constraints.maxHeight,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Align(
-                      child: Container(
-                        width: 42,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade400,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context)
+                .scaffoldBackgroundColor
+                .withValues(alpha: 0.85),
+            border: Border(
+              top: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.5), width: 1),
+            ),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Padding(
+                padding: EdgeInsets.only(bottom: viewInsets),
+                child: SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight == double.infinity
+                            ? 0
+                            : constraints.maxHeight,
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '気持ちを投稿',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Center(
+                            child: Container(
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
                           ),
-                    ),
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: const [EmotionType.happy, EmotionType.sad].map((emotion) {
-                        final selected = _selectedEmotion == emotion;
-                        return ChoiceChip(
-                          label: Text('${emotion.emoji} ${emotion.label}'),
-                          selected: selected,
-                          onSelected: (_) {
-                            setState(() => _selectedEmotion = emotion);
-                          },
-                        );
-                      }).toList(growable: false),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _controller,
-                      maxLength: 60,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'ひとことメモ（任意）',
-                        border: OutlineInputBorder(),
-                      ),
-                      textInputAction: TextInputAction.done,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton.icon(
+                          const SizedBox(height: 24),
+                          Text(
+                            '今の気持ちは？',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                          const SizedBox(height: 24),
+                          Center(
+                            child: Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              alignment: WrapAlignment.center,
+                              children: const [
+                                EmotionType.happy,
+                                EmotionType.sad
+                              ].map((emotion) {
+                                final selected = _selectedEmotion == emotion;
+                                return ChoiceChip(
+                                  label: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 4, vertical: 8),
+                                    child: Text(
+                                      '${emotion.emoji} ${emotion.label}',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: selected
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                                  selected: selected,
+                                  selectedColor:
+                                      emotion.color.withValues(alpha: 0.3),
+                                  backgroundColor:
+                                      Colors.grey.withValues(alpha: 0.1),
+                                  side: BorderSide.none,
+                                  onSelected: (_) {
+                                    setState(() => _selectedEmotion = emotion);
+                                  },
+                                );
+                              }).toList(growable: false),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          TextField(
+                            controller: _controller,
+                            maxLength: 60,
+                            maxLines: 3,
+                            decoration: InputDecoration(
+                              labelText: 'ひとことメモ（任意）',
+                              alignLabelWithHint: true,
+                              filled: true,
+                              fillColor: Colors.grey.withValues(alpha: 0.1),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.all(16),
+                            ),
+                            textInputAction: TextInputAction.done,
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
                             onPressed: _selectedEmotion == null
                                 ? null
                                 : () {
@@ -1628,19 +2195,27 @@ class _EmotionPostSheetState extends State<_EmotionPostSheet> {
                                       ),
                                     );
                                   },
-                            icon: const Icon(Icons.send),
-                            label: const Text('投稿する'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            icon: const Icon(Icons.send_rounded),
+                            label: const Text('投稿する',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold)),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -1661,60 +2236,98 @@ class _EmotionPostDetailSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final emotion = post.emotion;
     final formattedTime = _formatTimestamp(post.createdAt);
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: emotion.color,
-                    shape: BoxShape.circle,
-                  ),
-                  padding: const EdgeInsets.all(10),
-                  child: Text(
-                    emotion.emoji,
-                    style: const TextStyle(fontSize: 22),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      emotion.label,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor.withValues(alpha: 0.85),
+            border: Border(
+              top: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.5), width: 1),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      formattedTime,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: Colors.grey.shade600),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                if (canDelete)
-                  IconButton(
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline),
-                    tooltip: '削除',
                   ),
-              ],
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: emotion.color.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          emotion.emoji,
+                          style: const TextStyle(fontSize: 28),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            emotion.label,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            formattedTime,
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      if (canDelete)
+                        IconButton.filledTonal(
+                          onPressed: onDelete,
+                          icon: const Icon(Icons.delete_outline),
+                          tooltip: '削除',
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.red.withValues(alpha: 0.1),
+                            foregroundColor: Colors.red,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      post.displayMessage,
+                      style: theme.textTheme.bodyLarge,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              post.displayMessage,
-              style: theme.textTheme.bodyMedium,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1750,8 +2363,11 @@ class _ClusterDetailSheet extends StatelessWidget {
     final posts = cluster.entries.map((e) => e.post).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    final happyCount = cluster.entries.where((e) => e.post.emotion == EmotionType.happy).length;
-    final sadCount = cluster.entries.where((e) => e.post.emotion == EmotionType.sad).length;
+    final happyCount = cluster.entries
+        .where((e) => e.post.emotion == EmotionType.happy)
+        .length;
+    final sadCount =
+        cluster.entries.where((e) => e.post.emotion == EmotionType.sad).length;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
@@ -1759,110 +2375,127 @@ class _ClusterDetailSheet extends StatelessWidget {
       maxChildSize: 0.9,
       expand: false,
       builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: theme.scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade400,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Icon(Icons.groups_2_rounded, size: 28, color: theme.colorScheme.primary),
-                        const SizedBox(width: 12),
-                        Text(
-                          'この地域の気持ち',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        _buildEmotionSummary(context, EmotionType.happy, happyCount),
-                        const SizedBox(width: 16),
-                        _buildEmotionSummary(context, EmotionType.sad, sadCount),
-                        const Spacer(),
-                        Text(
-                          '合計 ${cluster.count}人',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: onZoomIn,
-                        icon: const Icon(Icons.zoom_in),
-                        label: const Text('ズームインして個別に見る'),
-                      ),
-                    ),
-                  ],
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: Container(
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor.withValues(alpha: 0.85),
+                border: Border(
+                  top: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.5), width: 1),
                 ),
               ),
-              const Divider(height: 1),
-              Expanded(
-                child: ListView.separated(
-                  controller: scrollController,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: posts.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1, indent: 72),
-                  itemBuilder: (context, index) {
-                    final post = posts[index];
-                    final isBot = cluster.entries.firstWhere((e) => e.post.id == post.id).isBot;
-                    final emotion = post.emotion;
-                    final formattedTime = _formatRelativeTime(post.createdAt);
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade400,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Icon(Icons.groups_2_rounded,
+                                size: 28, color: theme.colorScheme.primary),
+                            const SizedBox(width: 12),
+                            Text(
+                              'この地域の気持ち',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            _buildEmotionSummary(
+                                context, EmotionType.happy, happyCount),
+                            const SizedBox(width: 16),
+                            _buildEmotionSummary(
+                                context, EmotionType.sad, sadCount),
+                            const Spacer(),
+                            Text(
+                              '合計 ${cluster.count}人',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: onZoomIn,
+                            icon: const Icon(Icons.zoom_in),
+                            label: const Text('ズームインして個別に見る'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: posts.length,
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1, indent: 72),
+                      itemBuilder: (context, index) {
+                        final post = posts[index];
+                        final isBot = cluster.entries
+                            .firstWhere((e) => e.post.id == post.id)
+                            .isBot;
+                        final emotion = post.emotion;
+                        final formattedTime =
+                            _formatRelativeTime(post.createdAt);
 
-                    return ListTile(
-                      onTap: () => onPostTap(post, isBot),
-                      leading: Container(
-                        decoration: BoxDecoration(
-                          color: emotion.color,
-                          shape: BoxShape.circle,
-                        ),
-                        padding: const EdgeInsets.all(8),
-                        child: Text(
-                          emotion.emoji,
-                          style: const TextStyle(fontSize: 20),
-                        ),
-                      ),
-                      title: Text(
-                        post.displayMessage,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(formattedTime),
-                      trailing: const Icon(Icons.chevron_right),
-                    );
-                  },
-                ),
+                        return ListTile(
+                          onTap: () => onPostTap(post, isBot),
+                          leading: Container(
+                            decoration: BoxDecoration(
+                              color: emotion.color,
+                              shape: BoxShape.circle,
+                            ),
+                            padding: const EdgeInsets.all(8),
+                            child: Text(
+                              emotion.emoji,
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                          ),
+                          title: Text(
+                            post.displayMessage,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(formattedTime),
+                          trailing: const Icon(Icons.chevron_right),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildEmotionSummary(BuildContext context, EmotionType emotion, int count) {
+  Widget _buildEmotionSummary(
+      BuildContext context, EmotionType emotion, int count) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1871,8 +2504,8 @@ class _ClusterDetailSheet extends StatelessWidget {
         Text(
           '$count人',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+                fontWeight: FontWeight.w600,
+              ),
         ),
       ],
     );
@@ -1895,4 +2528,218 @@ class _ClusterDetailSheet extends StatelessWidget {
       return '${local.month}/${local.day}';
     }
   }
+}
+
+class _GeminiStyleMarker extends StatefulWidget {
+  const _GeminiStyleMarker({
+    required this.scale,
+    required this.emoji,
+  });
+
+  final double scale;
+  final String emoji;
+
+  @override
+  State<_GeminiStyleMarker> createState() => _GeminiStyleMarkerState();
+}
+
+class _GeminiStyleMarkerState extends State<_GeminiStyleMarker>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  final List<_GeminiParticle> _particles = [];
+  final Random _random = Random();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4000), // 少しゆっくりに
+    )..repeat();
+
+    // Initial stars configuration
+    const particleColors = [
+      Color(0xFFD946EF), // Fuchsia
+      Color(0xFF8B5CF6), // Violet
+      Color(0xFF0EA5E9), // Sky Blue
+      Color(0xFFFFD700), // Gold
+      Colors.white,
+    ];
+
+    for (int i = 0; i < 12; i++) {
+      _particles.add(_GeminiParticle(
+        angle: _random.nextDouble() * 2 * pi,
+        distance: 0.5 + _random.nextDouble() * 0.25, // radius multiplier
+        speed:
+            (0.2 + _random.nextDouble() * 0.4) * (_random.nextBool() ? 1 : -1),
+        size: 3 + _random.nextDouble() * 5,
+        color: particleColors[_random.nextInt(particleColors.length)],
+        initialOpacity: 0.3 + _random.nextDouble() * 0.7,
+      ));
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Gemini Color Palette: Aurora Effect
+    const auroraColors = [
+      Color(0xFFD946EF), // Fuchsia
+      Color(0xFF8B5CF6), // Violet
+      Color(0xFF0EA5E9), // Sky Blue
+      Color(0xFFEC4899), // Pink
+    ];
+
+    final size = 130 * widget.scale;
+    final outerSize = size * 1.5; // パーティクルエリア用に少し拡大
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // Pulse mapping: 0.0->0.5 (expand), 0.5->1.0 (shrink) handled by manual sin wave
+        final t = _controller.value;
+        final pulseVal = 0.95 + 0.1 * sin(t * 2 * pi).abs();
+
+        return SizedBox(
+          width: outerSize,
+          height: outerSize,
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              // Outer Glow (Pulsing)
+              Transform.scale(
+                scale: pulseVal,
+                child: Container(
+                  width: size * 1.35,
+                  height: size * 1.35,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        auroraColors[1].withValues(alpha: 0.4),
+                        auroraColors[2].withValues(alpha: 0.2),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.4, 0.7, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Orbiting Particles
+              ..._particles.map((p) {
+                final currentAngle = p.angle + t * 2 * pi * p.speed;
+                final r = size * p.distance * 1.2; // 距離調整
+                final dx = r * cos(currentAngle);
+                final dy = r * sin(currentAngle);
+                // Twinkle effect
+                final flicker = (sin(t * 20 * p.speed + p.angle) + 1) / 2;
+                final opacity =
+                    (p.initialOpacity * 0.5 + flicker * 0.5).clamp(0.0, 1.0);
+
+                return Transform.translate(
+                  offset: Offset(dx, dy),
+                  child: Opacity(
+                    opacity: opacity,
+                    child: Icon(Icons.star,
+                        color: p.color, size: p.size * widget.scale),
+                  ),
+                );
+              }),
+
+              // Middle Magic Ring
+              Container(
+                width: size * 1.15,
+                height: size * 1.15,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const SweepGradient(
+                    colors: auroraColors,
+                  ),
+                ),
+              ),
+
+              // Glassy Content
+              Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.8),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.95),
+                      Colors.white.withValues(alpha: 0.6),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: auroraColors[0].withValues(alpha: 0.3),
+                      blurRadius: 15 * widget.scale,
+                      offset: Offset(0, 4 * widget.scale),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Inner sparkle
+                    Positioned(
+                      top: size * 0.15,
+                      right: size * 0.15,
+                      child: Opacity(
+                        opacity: 0.8,
+                        child: Icon(Icons.auto_awesome,
+                            color: auroraColors[2], size: 24 * widget.scale),
+                      ),
+                    ),
+                    // Main Emoji
+                    Text(
+                      widget.emoji,
+                      style: TextStyle(
+                        fontSize: 48 * widget.scale,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Label Pill removed
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _GeminiParticle {
+  final double angle;
+  final double distance;
+  final double speed;
+  final double size;
+  final Color color;
+  final double initialOpacity;
+
+  _GeminiParticle({
+    required this.angle,
+    required this.distance,
+    required this.speed,
+    required this.size,
+    required this.color,
+    required this.initialOpacity,
+  });
 }
