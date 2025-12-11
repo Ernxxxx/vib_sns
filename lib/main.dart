@@ -12,7 +12,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'firebase_options.dart';
 import 'models/profile.dart';
 import 'screens/home_shell.dart';
-import 'screens/name_setup_screen.dart';
+import 'screens/welcome_screen.dart';
 import 'services/ble_proximity_scanner.dart';
 import 'services/ble_proximity_scanner_impl.dart';
 import 'services/firestore_streetpass_service.dart';
@@ -310,6 +310,6 @@ class _RootGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final needsSetup = context.watch<ProfileController>().needsSetup;
-    return needsSetup ? const NameSetupScreen() : const HomeShell();
+    return needsSetup ? const WelcomeScreen() : const HomeShell();
   }
 }
