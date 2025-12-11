@@ -17,25 +17,66 @@ class RegisterAccountScreen extends StatefulWidget {
 class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _passwordConfirmController =
+      TextEditingController();
   bool _emailSubmitting = false;
   bool _googleSubmitting = false;
+
+  // 許可された記号: ~ ! @ # $ % ^ & * ( ) _ + { } [ ] \ ? : " ; ' , . / = -
+  static final RegExp _validPasswordChars =
+      RegExp(r'^[a-zA-Z0-9~!@#$%^&*()_+\}\{\[\]\\?:";' r"'" r',./=\-]+$');
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _passwordConfirmController.dispose();
     super.dispose();
+  }
+
+  /// パスワードバリデーション
+  /// 条件:
+  /// - 6文字以上
+  /// - 半角英数字と許可された記号のみ
+  /// - スペース、全角文字、その他の無効な文字を含まない
+  String? _validatePassword(String password) {
+    if (password.isEmpty) {
+      return 'パスワードを入力してください。';
+    }
+    if (password.length < 6) {
+      return 'パスワードは6文字以上で入力してください。';
+    }
+    // スペースのチェック
+    if (password.contains(' ') || password.contains('　')) {
+      return 'パスワードにスペースを含めることはできません。';
+    }
+    // 許可された文字のみかチェック
+    if (!_validPasswordChars.hasMatch(password)) {
+      return 'パスワードは半角英数字と許可された記号のみ使用できます。\n(利用可能な記号: ~ ! @ # \$ % ^ & * ( ) _ + { } [ ] \\ ? : " ; \' , . / = -)';
+    }
+    return null;
   }
 
   Future<void> _handleEmailRegister() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    final passwordConfirm = _passwordConfirmController.text;
+
     if (email.isEmpty || !email.contains('@')) {
       _showSnack('正しいメールアドレスを入力してください。');
       return;
     }
-    if (password.length < 6) {
-      _showSnack('パスワードは6文字以上で入力してください。');
+
+    // パスワードバリデーション
+    final passwordError = _validatePassword(password);
+    if (passwordError != null) {
+      _showSnack(passwordError);
+      return;
+    }
+
+    // パスワード確認チェック
+    if (password != passwordConfirm) {
+      _showSnack('パスワードが一致しません。再度ご確認ください。');
       return;
     }
     setState(() => _emailSubmitting = true);
@@ -147,6 +188,25 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
               decoration: const InputDecoration(
                 labelText: 'パスワード',
                 border: OutlineInputBorder(),
+                helperText: '6文字以上、半角英数字と記号のみ使用可能',
+                helperMaxLines: 2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _passwordConfirmController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'パスワード（確認用）',
+                border: OutlineInputBorder(),
+                helperText: '確認のため、もう一度パスワードを入力してください',
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '利用可能な記号: ~ ! @ # \$ % ^ & * ( ) _ + { } [ ] \\ ? : " ; \' , . / = -',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 16),
