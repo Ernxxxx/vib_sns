@@ -22,6 +22,7 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
       TextEditingController();
   bool _loginEmailSubmitting = false;
   bool _googleSubmitting = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -78,8 +79,15 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
     }
     setState(() => _loginEmailSubmitting = true);
     try {
-      final credential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password);
+      final auth = FirebaseAuth.instance;
+
+      // 匿名ユーザーがいる場合はサインアウト
+      if (auth.currentUser != null && auth.currentUser!.isAnonymous) {
+        await auth.signOut();
+      }
+
+      final credential = await auth.signInWithEmailAndPassword(
+          email: email, password: password);
       final user = credential.user;
       if (user != null) {
         await persistAuthUid(user);
@@ -224,10 +232,16 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
         const SizedBox(height: 12),
         TextField(
           controller: passwordController,
-          obscureText: true,
-          decoration: const InputDecoration(
+          obscureText: _obscurePassword,
+          decoration: InputDecoration(
             labelText: 'パスワード',
-            border: OutlineInputBorder(),
+            border: const OutlineInputBorder(),
+            suffixIcon: IconButton(
+              icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility),
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
+            ),
           ),
         ),
       ],

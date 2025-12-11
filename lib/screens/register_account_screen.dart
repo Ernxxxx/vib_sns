@@ -21,6 +21,8 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
       TextEditingController();
   bool _emailSubmitting = false;
   bool _googleSubmitting = false;
+  bool _obscurePassword = true;
+  bool _obscurePasswordConfirm = true;
 
   // 許可された記号: ~ ! @ # $ % ^ & * ( ) _ + { } [ ] \ ? : " ; ' , . / = -
   static final RegExp _validPasswordChars =
@@ -81,10 +83,33 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
     }
     setState(() => _emailSubmitting = true);
     try {
-      final credential = await linkOrSignInWithEmail(
-        email: email,
-        password: password,
-      );
+      final auth = FirebaseAuth.instance;
+
+      // 匿名ユーザーがいる場合はサインアウト
+      if (auth.currentUser != null && auth.currentUser!.isAnonymous) {
+        await auth.signOut();
+      }
+
+      UserCredential credential;
+      try {
+        // 新規登録を試行
+        credential = await auth.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'email-already-in-use') {
+          // 既に登録済みの場合はログイン
+          _showSnack('このメールアドレスは既に登録されています。ログインを試みます...');
+          credential = await auth.signInWithEmailAndPassword(
+            email: email,
+            password: password,
+          );
+        } else {
+          rethrow;
+        }
+      }
+
       final user = credential.user;
       if (user != null) {
         await persistAuthUid(user);
@@ -125,6 +150,31 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
         _showSnack('Googleアカウントでの登録がキャンセルされました。');
         return;
       }
+
+      // パスワード設定ダイアログを表示
+      if (!mounted) return;
+      final password = await _showPasswordSetupDialog(user.email);
+      if (password == null) {
+        _showSnack('パスワードの設定がキャンセルされました。');
+        // ユーザーをサインアウト
+        await FirebaseAuth.instance.signOut();
+        return;
+      }
+
+      // メール/パスワード認証をリンク
+      if (user.email != null) {
+        try {
+          final emailCredential = EmailAuthProvider.credential(
+            email: user.email!,
+            password: password,
+          );
+          await user.linkWithCredential(emailCredential);
+        } catch (e) {
+          debugPrint('Failed to link email credential: $e');
+          // リンク失敗してもGoogle認証は成功しているので続行
+        }
+      }
+
       await persistAuthUid(user);
       if (!mounted) return;
       final setup = await showProfileSetupModal(
@@ -156,6 +206,104 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
     }
   }
 
+  Future<String?> _showPasswordSetupDialog(String? email) async {
+    final passwordController = TextEditingController();
+    final confirmController = TextEditingController();
+    bool obscurePassword = true;
+    bool obscureConfirm = true;
+    String? errorMessage;
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('パスワードを設定'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (email != null) ...[
+                  Text('メールアドレス: $email', style: const TextStyle(fontSize: 14)),
+                  const SizedBox(height: 12),
+                ],
+                const Text(
+                  'メールアドレスでもログインできるようにパスワードを設定してください。',
+                  style: TextStyle(fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordController,
+                  obscureText: obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'パスワード',
+                    border: const OutlineInputBorder(),
+                    helperText: '6文字以上、半角英数字と記号',
+                    suffixIcon: IconButton(
+                      icon: Icon(obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility),
+                      onPressed: () => setDialogState(
+                          () => obscurePassword = !obscurePassword),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: confirmController,
+                  obscureText: obscureConfirm,
+                  decoration: InputDecoration(
+                    labelText: 'パスワード（確認用）',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(obscureConfirm
+                          ? Icons.visibility_off
+                          : Icons.visibility),
+                      onPressed: () => setDialogState(
+                          () => obscureConfirm = !obscureConfirm),
+                    ),
+                  ),
+                ),
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Text(errorMessage!,
+                      style: const TextStyle(color: Colors.red, fontSize: 12)),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('キャンセル'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final password = passwordController.text;
+                final confirm = confirmController.text;
+
+                // バリデーション
+                final validationError = _validatePassword(password);
+                if (validationError != null) {
+                  setDialogState(() => errorMessage = validationError);
+                  return;
+                }
+                if (password != confirm) {
+                  setDialogState(() => errorMessage = 'パスワードが一致しません。');
+                  return;
+                }
+
+                Navigator.of(context).pop(password);
+              },
+              child: const Text('設定する'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -184,22 +332,36 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
+              obscureText: _obscurePassword,
+              decoration: InputDecoration(
                 labelText: 'パスワード',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
                 helperText: '6文字以上、半角英数字と記号のみ使用可能',
                 helperMaxLines: 2,
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePassword
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                ),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _passwordConfirmController,
-              obscureText: true,
-              decoration: const InputDecoration(
+              obscureText: _obscurePasswordConfirm,
+              decoration: InputDecoration(
                 labelText: 'パスワード（確認用）',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
                 helperText: '確認のため、もう一度パスワードを入力してください',
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePasswordConfirm
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () => setState(
+                      () => _obscurePasswordConfirm = !_obscurePasswordConfirm),
+                ),
               ),
             ),
             const SizedBox(height: 8),
