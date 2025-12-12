@@ -197,6 +197,7 @@ class VibSnsApp extends StatelessWidget {
             profileController: profileController,
             interactionService: interactionService,
             notificationManager: notificationManager,
+            timelineManager: timelineManager,
           ),
         ),
       ],

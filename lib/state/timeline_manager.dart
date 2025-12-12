@@ -40,6 +40,26 @@ class TimelineManager extends ChangeNotifier {
   List<TimelinePost> get posts => List.unmodifiable(_posts);
   bool get isLoaded => _isLoaded;
 
+  /// 指定ユーザーの最近の投稿で使用されているハッシュタグのセットを取得
+  Set<String> getPostHashtagsForUser(String userId) {
+    final hashtags = <String>{};
+    final now = DateTime.now();
+    final cutoff = now.subtract(const Duration(hours: 24)); // 24時間以内の投稿
+    for (final post in _posts) {
+      if (post.authorId == userId && post.createdAt.isAfter(cutoff)) {
+        for (final tag in post.hashtags) {
+          final normalized = tag.trim().toLowerCase();
+          final clean =
+              normalized.startsWith('#') ? normalized.substring(1) : normalized;
+          if (clean.isNotEmpty) {
+            hashtags.add(clean);
+          }
+        }
+      }
+    }
+    return hashtags;
+  }
+
   Future<void> addPost({
     required String caption,
     Uint8List? imageBytes,
@@ -59,8 +79,8 @@ class TimelineManager extends ChangeNotifier {
       // Prefer inlined base64; if too large, recompress harder and avoid Storage.
       if (kIsWeb) {
         if (encodedImage == null) {
-          final forced = _prepareImagePayload(imageBytes,
-              forceInlineForWeb: true);
+          final forced =
+              _prepareImagePayload(imageBytes, forceInlineForWeb: true);
           optimizedBytes = forced.bytes;
           encodedImage = forced.inlineBase64;
           encodedImage ??= base64Encode(optimizedBytes);

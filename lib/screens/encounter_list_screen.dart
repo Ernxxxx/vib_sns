@@ -15,7 +15,8 @@ import 'encounter_detail_screen.dart';
 enum EncounterListFilter { encounter, reunion, resonance }
 
 class EncounterListScreen extends StatefulWidget {
-  const EncounterListScreen({super.key, this.initialFilter = EncounterListFilter.encounter});
+  const EncounterListScreen(
+      {super.key, this.initialFilter = EncounterListFilter.encounter});
   const EncounterListScreen.encounters({super.key})
       : initialFilter = EncounterListFilter.encounter;
   const EncounterListScreen.reunions({super.key})
@@ -203,7 +204,8 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
                       children: const [
                         SizedBox(height: 120),
                         Center(
-                          child: Text('\u307e\u3060\u8a18\u9332\u304c\u3042\u308a\u307e\u305b\u3093\u3002'),
+                          child: Text(
+                              '\u307e\u3060\u8a18\u9332\u304c\u3042\u308a\u307e\u305b\u3093\u3002'),
                         ),
                       ],
                     ),
@@ -358,8 +360,8 @@ class _EncounterTile extends StatelessWidget {
                             color: const Color(0xFFFFF4C7),
                             borderRadius: BorderRadius.circular(999),
                           ),
-                            child: Text(
-                              _formatRelativeTime(encounter.encounteredAt),
+                          child: Text(
+                            _formatRelativeTime(encounter.encounteredAt),
                             style: theme.textTheme.labelSmall?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
@@ -446,7 +448,6 @@ class _EncounterTile extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class _HighlightEntryTile extends StatelessWidget {
@@ -457,57 +458,166 @@ class _HighlightEntryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final accent = theme.colorScheme.primary;
     final hashtags = entry.profile.favoriteGames.take(3).join(' ');
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          ProfileAvatar(
-            profile: entry.profile,
-            radius: 24,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  entry.profile.displayName,
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
+        onTap: () {
+          // プロフィール詳細画面へ遷移（対応するEncounterを探す）
+          final manager = context.read<EncounterManager>();
+          for (final encounter in manager.encounters) {
+            if (encounter.profile.id == entry.profile.id) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      EncounterDetailScreen(encounterId: encounter.id),
                 ),
-                if (hashtags.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      hashtags,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: Colors.black54),
-                    ),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    _formatRelativeTime(entry.occurredAt),
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: Colors.black54),
-                  ),
-                ),
-              ],
+              );
+              return;
+            }
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.black.withValues(alpha: 0.06),
+              width: 1.2,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: accent.withValues(alpha: 0.08),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-        ],
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ProfileAvatar(profile: entry.profile),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            entry.profile.displayName,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF4C7),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            _formatRelativeTime(entry.occurredAt),
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (hashtags.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          hashtags,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 10),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final double availableWidth = constraints.maxWidth;
+                        final double rawWidth = (availableWidth - 10) / 2;
+                        final double buttonWidth =
+                            rawWidth.isFinite && rawWidth > 0
+                                ? rawWidth
+                                : availableWidth / 2;
+                        // Find the corresponding encounter for like/follow buttons
+                        final manager = context.watch<EncounterManager>();
+                        Encounter? matchedEncounter;
+                        for (final encounter in manager.encounters) {
+                          if (encounter.profile.id == entry.profile.id) {
+                            matchedEncounter = encounter;
+                            break;
+                          }
+                        }
+                        if (matchedEncounter == null) {
+                          return const SizedBox.shrink();
+                        }
+                        final displayLikeCount = matchedEncounter.liked
+                            ? (matchedEncounter.profile.receivedLikes > 0
+                                ? matchedEncounter.profile.receivedLikes
+                                : 1)
+                            : 0;
+                        return Row(
+                          children: [
+                            SizedBox(
+                              width: buttonWidth,
+                              child: FittedBox(
+                                alignment: Alignment.centerLeft,
+                                fit: BoxFit.scaleDown,
+                                child: LikeButton(
+                                  variant: LikeButtonVariant.chip,
+                                  isLiked: matchedEncounter.liked,
+                                  likeCount: displayLikeCount,
+                                  onPressed: () {
+                                    context
+                                        .read<EncounterManager>()
+                                        .toggleLike(matchedEncounter!.id);
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              width: buttonWidth,
+                              child: FittedBox(
+                                alignment: Alignment.centerRight,
+                                fit: BoxFit.scaleDown,
+                                child: FollowButton(
+                                  variant: LikeButtonVariant.chip,
+                                  isFollowing:
+                                      matchedEncounter.profile.following,
+                                  onPressed: () {
+                                    context
+                                        .read<EncounterManager>()
+                                        .toggleFollow(matchedEncounter!.id);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

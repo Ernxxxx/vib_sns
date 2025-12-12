@@ -605,35 +605,19 @@ const List<_ClusterStamp> _happyClusterStamps = [
 
 const List<_ClusterStamp> _sadClusterStamps = [
   _ClusterStamp(
-    minCount: 100, // Evolution Threshold raised to 100
-    label: 'ラフレシア',
-    emoji: '🌺',
-    color: Color(0xFF5A0F6A),
+    minCount: 100,
+    label: '枯れた花',
+    emoji: '🥀',
+    color: Color(0xFF8D6E63),
     sizeFactor: 1.25,
     isSad: true,
   ),
   _ClusterStamp(
     minCount: 25,
-    label: '枯れた花',
-    emoji: '🥀',
-    color: Color(0xFF8D6E63),
-    sizeFactor: 1.05,
-    isSad: true,
-  ),
-  _ClusterStamp(
-    minCount: 25,
-    label: '枯れた花',
-    emoji: '🥀',
-    color: Color(0xFF8D6E63),
-    sizeFactor: 1.05,
-    isSad: true,
-  ),
-  _ClusterStamp(
-    minCount: 10,
     label: '花びらが散った花',
     emoji: '🍂',
     color: Color(0xFF9E9E9E),
-    sizeFactor: 0.95,
+    sizeFactor: 1.05,
     isSad: true,
   ),
 ];
@@ -739,8 +723,37 @@ class _EmotionMapState extends State<EmotionMap> {
     final clusterMarkers = <Marker>[];
     final showClusters = !_isMapMoving && _currentZoom <= _clusterZoomThreshold;
 
+    // ビューポート境界を取得（バッファ付き）
+    LatLngBounds? viewportBounds;
+    if (_mapReady) {
+      try {
+        final camera = _mapController.camera;
+        final bounds = camera.visibleBounds;
+        // 少し広めに取る（境界付近のマーカーも表示）
+        const buffer = 0.02; // 約2km分
+        viewportBounds = LatLngBounds(
+          LatLng(bounds.south - buffer, bounds.west - buffer),
+          LatLng(bounds.north + buffer, bounds.east + buffer),
+        );
+      } catch (_) {
+        // マップが準備中の場合は全マーカーを表示
+      }
+    }
+
+    bool isInViewport(double lat, double lng) {
+      if (viewportBounds == null) return true;
+      return lat >= viewportBounds.south &&
+          lat <= viewportBounds.north &&
+          lng >= viewportBounds.west &&
+          lng <= viewportBounds.east;
+    }
+
     void addPostMarkers(List<EmotionMapPost> source, bool isBot) {
       for (final post in source) {
+        // ビューポート外のマーカーはスキップ
+        if (!isInViewport(post.latitude, post.longitude)) {
+          continue;
+        }
         final showMemo = _shouldShowMemo(post, isBot);
         final marker = _buildEmotionMarker(
           context,
@@ -1510,21 +1523,10 @@ class _EmotionMapState extends State<EmotionMap> {
                 height: stampSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  // Solid visibility
-                  color: baseColor.withValues(alpha: 0.85),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.9),
-                      baseColor.withValues(alpha: 0.8),
-                      baseColor.withValues(alpha: 0.6),
-                    ],
-                    stops: const [0.0, 0.4, 1.0],
-                  ),
+                  color: Colors.white,
                   border: Border.all(
-                    color: Colors.white,
-                    width: 3 * scale,
+                    color: baseColor,
+                    width: 4 * scale,
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -1537,12 +1539,12 @@ class _EmotionMapState extends State<EmotionMap> {
                 child: Center(
                   child: Text(
                     stamp.emoji,
-                    style: TextStyle(fontSize: 32 * scale, shadows: [
+                    style: TextStyle(fontSize: 55 * scale, shadows: [
                       Shadow(
-                        color: Colors.black.withValues(alpha: 0.15),
+                        color: Colors.black.withValues(alpha: 0.3),
                         blurRadius: 4,
                         offset: const Offset(1, 1),
-                      )
+                      ),
                     ]),
                   ),
                 ),
@@ -1615,44 +1617,29 @@ class _EmotionMapState extends State<EmotionMap> {
                 height: stampSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: darkColor.withValues(alpha: 0.85),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF607D8B), // Lighter Blue Grey
-                      Color(0xFF263238), // Dark Blue Grey
-                    ],
-                  ),
+                  color: Colors.white,
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    width: 3 * scale,
+                    color: darkColor,
+                    width: 4 * scale,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.5),
+                      color: Colors.black.withValues(alpha: 0.3),
                       blurRadius: 15 * scale,
-                      offset: Offset(0, 8 * scale),
-                    ),
-                    BoxShadow(
-                      color: tearColor.withValues(alpha: 0.3),
-                      blurRadius: 20 * scale,
-                      spreadRadius: -2,
+                      offset: Offset(0, 6 * scale),
                     ),
                   ],
                 ),
                 child: Center(
                   child: Text(
                     stamp.emoji,
-                    style: TextStyle(
-                        fontSize: 40 * scale, // Prominent
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          )
-                        ]),
+                    style: TextStyle(fontSize: 65 * scale, shadows: [
+                      Shadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 4,
+                        offset: const Offset(1, 1),
+                      ),
+                    ]),
                   ),
                 ),
               ),
@@ -2653,10 +2640,10 @@ class _GeminiStyleMarkerState extends State<_GeminiStyleMarker>
                 );
               }),
 
-              // Middle Magic Ring
+              // Middle Magic Ring (colored border)
               Container(
-                width: size * 1.15,
-                height: size * 1.15,
+                width: size * 1.08,
+                height: size * 1.08,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: const SweepGradient(
@@ -2665,25 +2652,17 @@ class _GeminiStyleMarkerState extends State<_GeminiStyleMarker>
                 ),
               ),
 
-              // Glassy Content
+              // White Background Content
               Container(
                 width: size,
                 height: size,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.8),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.95),
-                      Colors.white.withValues(alpha: 0.6),
-                    ],
-                  ),
+                  color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: auroraColors[0].withValues(alpha: 0.3),
-                      blurRadius: 15 * widget.scale,
+                      color: auroraColors[0].withValues(alpha: 0.5),
+                      blurRadius: 18 * widget.scale,
                       offset: Offset(0, 4 * widget.scale),
                     ),
                   ],
@@ -2691,25 +2670,38 @@ class _GeminiStyleMarkerState extends State<_GeminiStyleMarker>
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Inner sparkle
-                    Positioned(
-                      top: size * 0.15,
-                      right: size * 0.15,
-                      child: Opacity(
-                        opacity: 0.8,
-                        child: Icon(Icons.auto_awesome,
-                            color: auroraColors[2], size: 24 * widget.scale),
-                      ),
-                    ),
                     // Main Emoji
                     Text(
                       widget.emoji,
                       style: TextStyle(
-                        fontSize: 48 * widget.scale,
+                        fontSize: 80 * widget.scale,
                         shadows: [
+                          // 白い縁取り効果
+                          const Shadow(
+                            color: Colors.white,
+                            blurRadius: 0,
+                            offset: Offset(1, 0),
+                          ),
+                          const Shadow(
+                            color: Colors.white,
+                            blurRadius: 0,
+                            offset: Offset(-1, 0),
+                          ),
+                          const Shadow(
+                            color: Colors.white,
+                            blurRadius: 0,
+                            offset: Offset(0, 1),
+                          ),
+                          const Shadow(
+                            color: Colors.white,
+                            blurRadius: 0,
+                            offset: Offset(0, -1),
+                          ),
+                          // ドロップシャドウ
                           Shadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 10,
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(2, 2),
                           ),
                         ],
                       ),

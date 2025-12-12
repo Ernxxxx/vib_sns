@@ -12,6 +12,7 @@ import '../services/profile_interaction_service.dart';
 import '../services/streetpass_service.dart';
 import 'profile_controller.dart';
 import 'notification_manager.dart';
+import 'timeline_manager.dart';
 
 class EncounterManager extends ChangeNotifier {
   EncounterManager({
@@ -22,6 +23,7 @@ class EncounterManager extends ChangeNotifier {
     ProfileController? profileController,
     ProfileInteractionService? interactionService,
     NotificationManager? notificationManager,
+    TimelineManager? timelineManager,
   })  : _streetPassService = streetPassService,
         _localProfile = localProfile,
         _bleScanner = bleScanner,
@@ -29,6 +31,7 @@ class EncounterManager extends ChangeNotifier {
         _profileController = profileController,
         _interactionService = interactionService,
         _notificationManager = notificationManager,
+        _timelineManager = timelineManager,
         _profileSyncPaused = (profileController?.needsSetup ?? false) ||
             FirebaseAuth.instance.currentUser == null {
     _authSubscription =
@@ -49,6 +52,7 @@ class EncounterManager extends ChangeNotifier {
   final ProfileController? _profileController;
   final ProfileInteractionService? _interactionService;
   final NotificationManager? _notificationManager;
+  final TimelineManager? _timelineManager;
 
   final Map<String, Encounter> _encountersByRemoteId = {};
   final Map<String, _BeaconPresence> _presenceByBeaconId = {};
@@ -63,6 +67,8 @@ class EncounterManager extends ChangeNotifier {
   final Map<String, bool> _pendingFollowStates = {};
   final Map<String, EncounterHighlightEntry> _resonanceHighlights = {};
   final Map<String, EncounterHighlightEntry> _reunionHighlights = {};
+  final Map<String, DateTime> _proximityUserLastSeen = {}; // BLE近接ユーザーの最終検出時刻
+  static const Duration _proximityTimeout = Duration(seconds: 60); // 近接タイムアウト
 
   static const Duration _presenceTimeout = Duration(seconds: 45);
   static const Duration _reencounterCooldown = Duration(minutes: 15);
@@ -101,6 +107,25 @@ class EncounterManager extends ChangeNotifier {
 
   List<EncounterHighlightEntry> get reunionEntries =>
       _sortedHighlightEntries(_reunionHighlights);
+
+  /// BLE近接範囲内のユーザーIDセット（共有ハッシュタグあり）
+  Set<String> get proximityUserIds {
+    final now = DateTime.now();
+    final validIds = <String>{};
+    final expiredIds = <String>[];
+    for (final entry in _proximityUserLastSeen.entries) {
+      if (now.difference(entry.value) < _proximityTimeout) {
+        validIds.add(entry.key);
+      } else {
+        expiredIds.add(entry.key);
+      }
+    }
+    // 期限切れを削除
+    for (final id in expiredIds) {
+      _proximityUserLastSeen.remove(id);
+    }
+    return validIds;
+  }
 
   void _subscribeToLocalProfile() {
     if (_profileSyncPaused) {
@@ -496,7 +521,9 @@ class EncounterManager extends ChangeNotifier {
       return false;
     }
     _lastVibrationAt[beaconId] = now;
-    debugPrint('[VIBE] trigger vibration');
+    // 近接ユーザーを登録（タイムラインフィルタ用）
+    _proximityUserLastSeen[remoteId] = now;
+    debugPrint('[VIBE] trigger vibration, added $remoteId to proximity users');
     unawaited(_triggerProximityHaptics());
     unawaited(SystemSound.play(SystemSoundType.click));
     return true;
@@ -551,23 +578,38 @@ class EncounterManager extends ChangeNotifier {
   }
 
   bool _hasSharedHashtag(String remoteId, Profile remoteProfile) {
-    final localTags = _normalizedHashtagSet(_localProfile.favoriteGames);
-    if (localTags.isEmpty) {
-      return false;
-    }
-    var remoteTags = _remoteHashtagCache[remoteId];
-    if (remoteTags == null) {
-      remoteTags = _normalizedHashtagSet(remoteProfile.favoriteGames);
-      _remoteHashtagCache[remoteId] = remoteTags;
-      if (remoteTags.isEmpty) {
+    // 1. プロフィールのハッシュタグを取得
+    final localProfileTags = _normalizedHashtagSet(_localProfile.favoriteGames);
+    var remoteProfileTags = _remoteHashtagCache[remoteId];
+    if (remoteProfileTags == null) {
+      remoteProfileTags = _normalizedHashtagSet(remoteProfile.favoriteGames);
+      _remoteHashtagCache[remoteId] = remoteProfileTags;
+      if (remoteProfileTags.isEmpty) {
         unawaited(_prefetchRemoteHashtags(remoteId));
       }
     }
-    if (remoteTags.isEmpty) {
+
+    // 2. 投稿のハッシュタグを取得（TimelineManagerがあれば）
+    final timelineManager = _timelineManager;
+    Set<String> localPostTags = {};
+    Set<String> remotePostTags = {};
+    if (timelineManager != null) {
+      localPostTags = timelineManager.getPostHashtagsForUser(_localProfile.id);
+      remotePostTags = timelineManager.getPostHashtagsForUser(remoteId);
+    }
+
+    // 3. すべてのローカルタグとリモートタグを統合
+    final allLocalTags = {...localProfileTags, ...localPostTags};
+    final allRemoteTags = {...remoteProfileTags, ...remotePostTags};
+
+    if (allLocalTags.isEmpty || allRemoteTags.isEmpty) {
       return false;
     }
-    for (final tag in localTags) {
-      if (remoteTags.contains(tag)) {
+
+    // 4. 共有ハッシュタグがあるかチェック
+    for (final tag in allLocalTags) {
+      if (allRemoteTags.contains(tag)) {
+        debugPrint('[VIBE] shared hashtag found: #$tag');
         return true;
       }
     }

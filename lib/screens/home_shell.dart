@@ -191,6 +191,7 @@ class _TimelineScreen extends StatelessWidget {
       timelineManager.posts,
       localProfile,
       encounterManager.encounters,
+      encounterManager.proximityUserIds,
     );
     final feedPosts = _buildFeedPosts(filteredPosts);
 
@@ -267,6 +268,7 @@ List<TimelinePost> _filterTimelinePosts(
   List<TimelinePost> posts,
   Profile localProfile,
   List<Encounter> encounters,
+  Set<String> proximityUserIds,
 ) {
   final followedIds = <String>{};
   final encounteredIds = <String>{};
@@ -287,10 +289,18 @@ List<TimelinePost> _filterTimelinePosts(
     if (isSelf) return true;
     if (followedIds.contains(authorId)) return true;
     if (encounteredIds.contains(authorId)) return true;
-    if (localTags.isEmpty) return false;
+
+    // 共有ハッシュタグがあるかチェック
     final postTags = _canonicalHashtagSet(post.hashtags);
-    if (postTags.isEmpty) return false;
-    return postTags.any(localTags.contains);
+    final hasSharedHashtag = localTags.isNotEmpty &&
+        postTags.isNotEmpty &&
+        postTags.any(localTags.contains);
+
+    // BLE近接範囲内のユーザーかつ共有ハッシュタグがあれば表示
+    if (proximityUserIds.contains(authorId) && hasSharedHashtag) return true;
+
+    // 共有ハッシュタグのみでも表示（既存の機能を維持）
+    return hasSharedHashtag;
   }).toList();
 }
 
