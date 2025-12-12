@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'utils/auth_helpers.dart';
@@ -204,6 +205,15 @@ class VibSnsApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Vib SNS',
         debugShowCheckedModeBanner: false,
+        locale: const Locale('ja', 'JP'),
+        supportedLocales: const [
+          Locale('ja', 'JP'),
+        ],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         theme: _buildTheme(),
         home: const _RootGate(),
       ),
