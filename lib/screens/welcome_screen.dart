@@ -26,7 +26,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   @override
   void initState() {
     super.initState();
-    // Entrance animations
+    // エントランスアニメーション
     _entranceController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
@@ -56,7 +56,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       ),
     );
 
-    // Background pulsing
+    // 背景の脈動アニメーション
     _bgPulseController = AnimationController(
       duration: const Duration(seconds: 4),
       vsync: this,
@@ -69,7 +69,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       ),
     );
 
-    // Transition animations: Implosion (suck in) -> Shockwave (expand)
+    // 画面遷移アニメーション: 内破裂（吸い込み）→ 衝撃波（拡大）
     _implosionController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -110,7 +110,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           ),
         )
             .then((_) {
-          // Reset animations when coming back
+          // 戻ってきたときにアニメーションをリセット
           if (mounted) {
             setState(() => _isTransitioning = false);
             _shockwaveController.reset();
@@ -129,7 +129,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       backgroundColor: backgroundColor,
       body: Stack(
         children: [
-          // Dynamic Background + Transition Effects
+          // 動的な背景 + 画面遷移エフェクト
           Positioned.fill(
             child: AnimatedBuilder(
               animation: Listenable.merge([
@@ -149,13 +149,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
             ),
           ),
 
-          // Main Content (Fades out during transition)
+          // メインコンテンツ（遷移中にフェードアウト）
           if (!_isTransitioning || _implosionController.value < 1.0)
             Center(
               child: AnimatedBuilder(
                 animation: _implosionController,
                 builder: (context, child) {
-                  // Slight scale down and fade out during implosion
+                  // 内破裂中に少し縮小してフェードアウト
                   final val = _implosionController.value;
                   return Transform.scale(
                     scale: 1.0 - (val * 0.1),
@@ -172,7 +172,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // App Logo with Pulse
+                        // アプリロゴ（脈動付き）
                         ScaleTransition(
                           scale: _logoScaleAnimation,
                           child: Container(
@@ -207,7 +207,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                         ),
                         const SizedBox(height: 48),
-                        // Styled Text
+                        // スタイル付きテキスト
                         const Text(
                           'Vib SNS',
                           style: TextStyle(
@@ -244,7 +244,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ),
             ),
 
-          // Action Button
+          // アクションボタン
           Positioned(
             bottom: 60,
             left: 24,
@@ -253,7 +253,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               animation: _implosionController,
               builder: (context, child) {
                 final val = _implosionController.value;
-                // Button shrinks and disappears as it implodes
+                // ボタンが内破裂と共に縮小して消える
                 return Transform.scale(
                   scale: (1.0 - val).clamp(0.0, 1.0),
                   child: Opacity(
@@ -384,7 +384,7 @@ class _ThemedEffectPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final buttonCenter =
-        Offset(size.width / 2, size.height - 90); // Approx button center
+        Offset(size.width / 2, size.height - 90); // ボタンのおおよその中心
 
     _drawBackground(canvas, size, center);
 

@@ -1229,13 +1229,13 @@ class _ProfileScreenState extends State<_ProfileScreen> {
     final timelineManager = context.read<TimelineManager>();
     final emotionMapManager = context.read<EmotionMapManager>();
     try {
-      // Stop subscriptions before auth is cleared to avoid permission errors.
+      // 認証がクリアされる前にサブスクリプションを停止（権限エラー回避）
       manager.pauseProfileSync();
       notificationManager.pauseForLogout();
       timelineManager.pauseForLogout();
       emotionMapManager.pauseForLogout();
 
-      // Best-effort cleanup of streetpass_presences while still authenticated.
+      // 認証が有効な間にstreetpass_presencesをクリーンアップ
       try {
         await _deleteStreetpassPresence(
           profileId: controller.profile.id,
@@ -1246,9 +1246,8 @@ class _ProfileScreenState extends State<_ProfileScreen> {
         debugPrintStack(stackTrace: st);
       }
 
-      // If the user is authenticated, call the server-side function to
-      // delete their profile and related server-side data before clearing
-      // local state. We catch and continue on error to avoid blocking logout.
+      // ユーザーが認証済みの場合、ローカル状態をクリアする前に
+      // サーバー側関数を呼び出してプロフィールと関連データを削除
       final user = FirebaseAuth.instance.currentUser;
       var serverDeleted = false;
       if (user != null) {
@@ -1267,7 +1266,7 @@ class _ProfileScreenState extends State<_ProfileScreen> {
         } catch (e, st) {
           debugPrint('deleteUserProfile failed: $e');
           debugPrintStack(stackTrace: st);
-          // Fallback: best-effort client-side cleanup while still authenticated.
+          // フォールバック: 認証が有効な間にクライアント側でクリーンアップ
           await _purgeProfileData(
             profileId: controller.profile.id,
             beaconId: controller.profile.beaconId,
@@ -1275,50 +1274,45 @@ class _ProfileScreenState extends State<_ProfileScreen> {
         }
       }
 
-      // Sign out from Firebase Auth.
+      // Firebase Authからサインアウト
       debugPrint('HomeShell._logout: signing out FirebaseAuth');
       await FirebaseAuth.instance.signOut();
 
-      // Clear locally stored timeline posts so previous shares do not
-      // reappear after logout.
+      // ローカルに保存されたタイムライン投稿をクリア
       await timelineManager.clearPostsForCurrentProfile();
 
       if (serverDeleted) {
-        // Wipe local identity only if server-side deletion succeeded. This
-        // prevents generating a fresh device id/profile when the server
-        // couldn't delete the old one (which was causing profile proliferation).
+        // サーバー側削除が成功した場合のみローカルIDをリセット
+        // これによりサーバーが削除できなかった場合のプロフィール增殖を防止
         debugPrint(
             'HomeShell._logout: resetting local profile with wipeIdentity=true');
         await LocalProfileLoader.resetLocalProfile(wipeIdentity: true);
         final refreshed = await LocalProfileLoader.loadOrCreate();
         debugPrint(
             'HomeShell._logout: new local profile id=${refreshed.id} beaconId=${refreshed.beaconId}');
-        // Do not bootstrap profile on logout and avoid re-subscribing to server
-        // stats so that follower/following/likes counts are reset locally.
+        // ログアウト時はプロフィールをブートストラップせずサーバー統計再購読もしない
         await manager.switchLocalProfile(refreshed, skipSync: true);
-        // Do NOT call resetForProfile here - we're not authenticated yet!
-        // The managers will be restarted after login in NameSetupScreen.
-        // Reset UI-visible stats to zero on logout.
+        // ここでresetForProfileを呼ばない - まだ認証されていないため
+        // マネージャーはNameSetupScreenでログイン後に再起動される
+        // ログアウト時にUI表示の統計をゼロにリセット
         controller.updateStats(
             followersCount: 0, followingCount: 0, receivedLikes: 0);
         controller.updateProfile(refreshed, needsSetup: true);
       } else {
-        // Server deletion failed or wasn't attempted (no auth). Keep the local
-        // identity to avoid creating a new profile doc on next start. Still
-        // clear local UI-visible stats and reset managers to a neutral state.
+        // サーバー削除が失敗または未実行。ローカルIDは保持して
+        // 次回起動時に新しいプロフィールが作られるのを防止
         debugPrint(
             'HomeShell._logout: server deletion failed or not attempted; wiping local identity to avoid lingering presence');
         await LocalProfileLoader.resetLocalProfile(wipeIdentity: true);
         final refreshed = await LocalProfileLoader.loadOrCreate();
         await manager.switchLocalProfile(refreshed, skipSync: true);
-        // Do NOT call resetForProfile here - we're not authenticated yet!
+        // ここでresetForProfileを呼ばない - まだ認証されていないため
         controller.updateStats(
             followersCount: 0, followingCount: 0, receivedLikes: 0);
         controller.updateProfile(refreshed, needsSetup: true);
       }
 
-      // Immediately re-establish anonymous auth so Firestore access remains allowed
-      // while the user is on the name setup flow.
+      // 即座に匿名認証を再確立してFirestoreアクセスを維持
       await ensureAnonymousAuth();
     } finally {
       if (mounted) {

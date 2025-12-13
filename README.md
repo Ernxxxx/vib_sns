@@ -1,178 +1,223 @@
-# Vib SNS
+# 🎮 Vib SNS
 
-Vib SNSは、ニンテンドー3DSの「すれちがい通信」にインスパイアされたFlutterプロトタイプアプリです。近くのプレイヤーとの出会いの瞬間—プロフィールを確認し、いいねを送り、フォローする—に焦点を当てています。
+**あの「すれちがい通信」の感動を、スマホで。**
 
-## 機能
+ニンテンドー3DSの「すれちがい通信」を覚えていますか？街を歩いているだけで見知らぬ誰かと繋がれる、あのワクワク感。Vib SNSは、そんな体験を現代のスマートフォンで再現するFlutterアプリです。
 
-- **すれちがい通信風の出会い**: ローカルユーザーの存在（位置情報、プロフィールメタデータ、BLEビーコンID）をFirestoreに公開し、アプリ実行中は常に最新の状態に保ちます
-- **ハイブリッド近接検知**: GPS距離測定（Geolocator）と高精度BLE近接検知（flutter_blue_plus + flutter_ble_peripheral）を組み合わせて、すれちがい通信風の接触検知を実現
-- **プロフィール管理**: 表示名、自己紹介、出身地、好きなゲーム、アバターでプロフィールを作成・編集
-- **プロフィール画像**: image_pickerを使用してカスタムプロフィール画像をアップロード
-- **ソーシャルインタラクション**: Firestoreによるリアルタイム同期でユーザーをフォローしたり、いいねを送信
-- **タイムライン**: 最近の出会いやインタラクションを時系列で表示
-- **マップビュー**: flutter_mapを使用したインタラクティブマップで出会ったユーザーを表示
-- **QRコード**: QRコードでプロフィールを共有
-- **認証**: セキュアなユーザー管理のためのFirebase匿名認証
-- **ログアウト**: サインアウトしてローカルデータをクリア
-- **モックモード**: Firebase/Bluetoothが利用できない場合でも、モックのすれちがい通信とBLEストリームにフォールバックするため、UIのテストが可能
-- **状態管理**: 共有アプリケーション状態にProviderを使用し、UIレイヤーにMaterial 3を採用
+近くを通りかかった人のプロフィールを見て、「お、同じゲーム好きなんだ！」と思ったらいいねを送る。気になったらフォローする。そんなシンプルだけど楽しい出会いを大切にしています。
 
-## はじめに
+---
+
+## ✨ こんなことができます
+
+### 🚶 すれちがい通信
+アプリを起動して歩くだけ！近くにいる他のユーザーを自動で検出して、出会いを記録します。GPSとBluetoothを組み合わせて、「本当に近くにいる人」を見つけ出します。
+
+### 👤 自分だけのプロフィール
+- 表示名と自己紹介
+- 出身地
+- 好きなゲーム（タグ形式で複数登録OK）
+- プロフィール写真
+
+あなたのことを知ってもらいましょう！
+
+### 💬 ソーシャル機能
+- **いいね** - 気になる人にワンタップでアピール
+- **フォロー** - 気になる人を追いかけよう
+- **タイムライン** - 最近の出会いやアクティビティをチェック
+
+### 🗺️ マップビュー
+出会った人たちをマップ上で確認できます。「こんなところで会ったんだ」という発見も楽しい。
+
+### 📱 QRコードでプロフィール共有
+その場で友達にプロフィールを見せたいとき、QRコードでサクッと共有できます。
+
+---
+
+## 🚀 セットアップガイド
+
+### 必要なもの
+- Flutter環境（3.x推奨）
+- Firebaseプロジェクト
+- Android/iOSの実機（BLEを使う場合）
+
+### 1️⃣ 最初にやること
 
 ```bash
+# 依存関係をインストール
 flutter pub get
 ```
 
-### 実際のすれちがい通信動作を有効にする
+### 2️⃣ Firebaseの設定
 
-1. Firebaseプロジェクトを作成し、アプリを登録します（Android/iOS/Webなど必要に応じて）。
-2. ネイティブ設定ファイルを配置: `android/app/google-services.json` および/または `ios/Runner/GoogleService-Info.plist`。
-3. FlutterFireで`lib/firebase_options.dart`を生成:
-   ```bash
-   dart pub global activate flutterfire_cli
-   flutterfire configure
-   ```
-4. Cloud FirestoreとFirebase Authentication（匿名サインイン）を有効にします。アプリは2つの主要なコレクションを使用します：
+1. **Firebaseコンソール**でプロジェクトを作成
+2. **Cloud Firestore**と**Authentication（匿名認証）**を有効化
+3. **FlutterFireで設定ファイルを生成**：
 
-   **プロフィールコレクション** (`profiles/{deviceId}`):
-   ```json
-   {
-     "id": "device-id",
-     "displayName": "あなた",
-     "bio": "...",
-     "homeTown": "...",
-     "favoriteGames": ["スプラトゥーン3", "マリオカート8 デラックス"],
-     "avatarColor": 305419896,
-     "photoUrl": "https://...",
-     "beaconId": "uuid-...",
-     "authUid": "firebase-auth-uid",
-     "followedBy": ["device-id-1", "device-id-2"],
-     "receivedLikes": 3
-   }
-   ```
+```bash
+# FlutterFireをインストール（初回のみ）
+dart pub global activate flutterfire_cli
 
-   **すれちがい通信プレゼンスコレクション** (`streetpass_presences/{deviceId}`):
-   ```json
-   {
-     "profile": {
-       "id": "device-id",
-       "displayName": "あなた",
-       "bio": "...",
-       "homeTown": "...",
-       "favoriteGames": ["スプラトゥーン3", "マリオカート8 デラックス"],
-       "avatarColor": 305419896,
-       "photoUrl": "https://...",
-       "following": false,
-       "receivedLikes": 0
-     },
-     "lat": 35.0,
-     "lng": 135.0,
-     "lastUpdatedMs": 1690000000000,
-     "active": true
-   }
-   ```
+# プロジェクトを設定
+flutterfire configure
+```
 
-   開発専用ルール（本番環境では使用しないでください）：
+4. **ネイティブ設定ファイルを配置**：
+   - Android: `android/app/google-services.json`
+   - iOS: `ios/Runner/GoogleService-Info.plist`
 
-   ```text
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /streetpass_presences/{deviceId} {
-         allow read, write;
-       }
-       match /profiles/{deviceId} {
-         allow read, write;
-       }
-     }
-   }
-   ```
+### 3️⃣ Firestoreのデータ構造
 
-5. （オプション）プロフィール削除などのサーバーサイド操作のためにCloud Functionsをデプロイ：
-   ```bash
-   cd functions
-   npm install
-   firebase deploy --only functions
-   ```
+アプリは主に2つのコレクションを使います：
 
-6. 位置情報とBluetooth権限をリクエスト：
-   - **Android**: 以下を`AndroidManifest.xml`に追加（minSdk/targetSdkに応じて調整）：
-     ```xml
-     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
-     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-     ```
-     Android 12以上をターゲットにする場合、必要に応じて`BLUETOOTH_SCAN`に`android:usesPermissionFlags="neverForLocation"`を追加してください。
-   - **iOS**: `Info.plist`に`NSLocationWhenInUseUsageDescription`、`NSBluetoothAlwaysUsageDescription`、`NSBluetoothPeripheralUsageDescription`、`NSPhotoLibraryUsageDescription`を追加。
+**📁 profiles/{deviceId}** - ユーザープロフィール
+```json
+{
+  "id": "device-id",
+  "displayName": "あなたの名前",
+  "bio": "自己紹介文",
+  "homeTown": "東京",
+  "favoriteGames": ["スプラトゥーン3", "マリオカート8 DX"],
+  "photoUrl": "https://...",
+  "followedBy": ["フォロワーのID"],
+  "receivedLikes": 3
+}
+```
 
-アプリの起動：
+**📁 streetpass_presences/{deviceId}** - 位置情報（すれちがい用）
+```json
+{
+  "profile": { /* プロフィール情報 */ },
+  "lat": 35.6762,
+  "lng": 139.6503,
+  "lastUpdatedMs": 1690000000000,
+  "active": true
+}
+```
+
+> ⚠️ **開発用のFirestoreルール**（本番では適切なセキュリティルールを設定してください）：
+> ```
+> rules_version = '2';
+> service cloud.firestore {
+>   match /databases/{database}/documents {
+>     match /{document=**} {
+>       allow read, write;
+>     }
+>   }
+> }
+> ```
+
+### 4️⃣ 権限の設定
+
+**Android** (`android/app/src/main/AndroidManifest.xml`)：
+```xml
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+<uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+<uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+```
+
+**iOS** (`ios/Runner/Info.plist`)：
+- `NSLocationWhenInUseUsageDescription`
+- `NSBluetoothAlwaysUsageDescription`
+- `NSBluetoothPeripheralUsageDescription`
+- `NSPhotoLibraryUsageDescription`
+
+### 5️⃣ 起動！
 
 ```bash
 flutter run
 ```
 
-初回起動時に位置情報の権限プロンプトが表示されます。拒否すると、権限が付与されるまでアプリはエラー状態になります。
+初回起動時に位置情報の権限を求められます。すれちがい検出に必要なので、許可してくださいね。
 
-## 仕組み
+---
 
-- **認証**: `FirebaseAuth`は匿名サインインを提供し、サーバーサイドの検証のためにプロフィールを認証UIDに関連付けます
-- **プロフィール永続化**: `LocalProfileLoader`は、SharedPreferencesを使用してローカルプロフィール（表示名、出身地、好きなゲーム、アバター色、ビーコンID）を永続化し、各デバイスが一貫したアイデンティティを保持します
-- **プロフィールインタラクション**: `FirestoreProfileInteractionService`は、いいね、フォロー、プロフィール更新をFirestoreにリアルタイムで同期します
-- **すれちがい通信検知**: `FirestoreStreetPassService`は、デバイスのプレゼンス（BLEビーコンIDを含む）を更新し、近くのユーザーをポーリングします。GPS距離はGeolocatorプラグインを介してローカルで計算されます
-- **BLE近接**: `BleProximityScannerImpl`は、コンパクトなビーコンUUIDをアドバタイズし、flutter_blue_plusを介して一致するUUIDを継続的にスキャンし、RSSIをサブメートルの距離推定値に変換します
-- **出会いの融合**: `EncounterManager`は、GPSとBLE信号を融合し、BLEヒットが観測されると出会いを「近く」にアップグレードし、UIにフォロー/いいねトグルを公開します
-- **タイムライン**: `TimelineManager`は、最近の出会いとインタラクションを追跡し、時系列で表示します
-- **通知**: `NotificationManager`は、バッジ表示のために未読のいいねとフォローを追跡します
-- **モックフォールバック**: `MockStreetPassService` / `MockBleProximityScanner`は、FirebaseまたはBluetoothが利用できない場合にUIをインタラクティブに保ちます
+## 🔧 技術的な仕組み
 
-## アーキテクチャ
+興味がある人向けに、裏側でどう動いているかを説明します。
+
+### すれちがい検出の流れ
+
+```
+あなたのスマホ                    Firestore                    相手のスマホ
+    │                              │                              │
+    │── 自分の位置を送信 ──────────▶│                              │
+    │                              │◀────── 相手も位置を送信 ──────│
+    │                              │                              │
+    │◀─── 近くのユーザーを取得 ─────│                              │
+    │                              │                              │
+    ▼                              │                              │
+ GPS距離を計算                     │                              │
+    +                              │                              │
+ BLEで近接確認 ─────────────────────────────────────────────────▶ BLEビーコン発信中
+    │                              │                              │
+    ▼                              │                              │
+ 出会いとして記録！                │                              │
+```
+
+### 使っている技術
+
+| 機能 | 技術 |
+|------|------|
+| UI | Flutter + Material 3 |
+| 状態管理 | Provider |
+| 認証 | Firebase Auth（匿名） |
+| データベース | Cloud Firestore |
+| 位置情報 | Geolocator |
+| Bluetooth | flutter_blue_plus, flutter_ble_peripheral |
+| 地図 | flutter_map |
+| 画像選択 | image_picker |
+
+### モックモード 🧪
+
+「Firebaseの設定めんどくさい」「Bluetooth使えない環境でテストしたい」という場合も大丈夫！
+
+Firebaseに接続できないときは自動でモックモードに切り替わり、ダミーデータでUIを試せます。開発時に便利ですよ。
+
+---
+
+## 📁 プロジェクト構成
 
 ```
 lib/
-├── main.dart                    # アプリのエントリーポイント、Firebase初期化
-├── models/
-│   ├── profile.dart            # プロフィールデータモデル
-│   ├── encounter.dart          # 出会いデータモデル
-│   └── timeline_event.dart     # タイムラインイベントデータモデル
-├── screens/
-│   ├── home_shell.dart         # メインナビゲーションシェル
-│   ├── name_setup_screen.dart  # 初期プロフィール設定
-│   ├── profile_edit_screen.dart # プロフィール編集
-│   ├── encounters_screen.dart  # 近くのユーザーリスト
-│   ├── timeline_screen.dart    # タイムラインフィード
-│   └── map_screen.dart         # マップビュー
-├── services/
-│   ├── streetpass_service.dart              # すれちがい通信インターフェース
-│   ├── firestore_streetpass_service.dart    # 実際のFirestore実装
-│   ├── mock_streetpass_service.dart         # モック実装
-│   ├── profile_interaction_service.dart     # プロフィールインタラクションインターフェース
-│   ├── firestore_profile_interaction_service.dart # 実際のFirestore実装
-│   ├── mock_profile_interaction_service.dart # モック実装
-│   ├── ble_proximity_scanner.dart           # BLEスキャナーインターフェース
-│   ├── ble_proximity_scanner_impl.dart      # 実際のBLE実装
-│   └── mock_ble_proximity_scanner.dart      # モックBLE実装
-├── state/
-│   ├── encounter_manager.dart   # 出会い状態の管理
-│   ├── local_profile_loader.dart # ローカルプロフィールの読み込み/保存
-│   ├── profile_controller.dart  # プロフィール状態管理
-│   ├── timeline_manager.dart    # タイムライン状態管理
-│   ├── notification_manager.dart # 通知バッジ管理
-│   └── runtime_config.dart      # ランタイム設定
-└── widgets/
-    └── profile_avatar.dart      # アバター表示ウィジェット
+├── main.dart                    # アプリのスタート地点
+├── models/                      # データの形を定義
+│   ├── profile.dart            # プロフィール
+│   ├── encounter.dart          # 出会い
+│   └── timeline_event.dart     # タイムラインのイベント
+├── screens/                     # 画面たち
+│   ├── home_shell.dart         # ナビゲーション
+│   ├── encounters_screen.dart  # 出会った人リスト
+│   ├── timeline_screen.dart    # タイムライン
+│   └── map_screen.dart         # マップ
+├── services/                    # バックエンドとの通信
+│   ├── streetpass_service.dart # すれちがい通信
+│   ├── ble_proximity_scanner.dart # Bluetooth
+│   └── ...
+└── state/                       # アプリの状態管理
+    ├── encounter_manager.dart
+    ├── profile_controller.dart
+    └── ...
 ```
 
-## 今後の課題
+---
 
-1. メッセージングやグループ出会いなど、より多くのソーシャル機能を追加
-2. 新しい出会いのためのプッシュ通知を実装
-3. ディスカバリーとバッテリー寿命のバランスを取るためにポーリング頻度とバックグラウンド動作を最適化
-4. プライバシーコントロール（透明モード、ブロックリスト）を追加
-5. 本番環境用の適切なFirestoreセキュリティルールを実装
-6. 分析とエラー報告を追加
+## 🛤️ 今後やりたいこと
 
-## ライセンス
+- [ ] 💬 メッセージ機能
+- [ ] 🔔 プッシュ通知（新しい出会いをお知らせ）
+- [ ] 🔋 バッテリー消費の最適化
+- [ ] 🛡️ プライバシー機能（透明モード、ブロック）
+- [ ] 📊 分析・エラーレポート
 
-これは教育目的のプロトタイププロジェクトです。
+---
+
+## 📝 ライセンス
+
+このプロジェクトは教育・プロトタイプ目的で作成されています。
+
+---
+
+**Happy StreetPassing! 🚶‍♂️🚶‍♀️**

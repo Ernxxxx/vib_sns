@@ -570,11 +570,11 @@ const double _clusterJitterFraction = 0.0; // ジッターなしで海側への�
 
 const List<_ClusterStamp> _happyClusterStamps = [
   _ClusterStamp(
-    minCount: 100, // Evolution Threshold raised to 100
+    minCount: 100, // 進化閾値を100に設定
     label: '花が満開',
     emoji: '🌸',
     color: Color(0xFFE91E63),
-    sizeFactor: 1.25, // Slightly larger
+    sizeFactor: 1.25, // やや大きめ
     isSad: false,
   ),
   _ClusterStamp(
@@ -768,15 +768,15 @@ class _EmotionMapState extends State<EmotionMap> {
 
     if (showClusters) {
       final clusterResult = _ensureClusterCache(posts, _botPosts);
-      // Sort buckets: 1) by minCount (low to high), 2) sad before happy (so happy renders on top)
+      // バケットをソート: 1) minCount順（低→高）, 2) sad→happyの順（happyが最後に描画される）
       final sortedBuckets = clusterResult.denseBuckets.toList()
         ..sort((a, b) {
           final stampA = _resolveClusterStamp(a);
           final stampB = _resolveClusterStamp(b);
-          // First sort by minCount
+          // まずminCountでソート
           final countCompare = stampA.minCount.compareTo(stampB.minCount);
           if (countCompare != 0) return countCompare;
-          // Then sad (isSad=true=1) before happy (isSad=false=0), so happy ends up LAST (on top)
+          // 次にsad→happyの順（happyが最後に描画される）
           return (stampA.isSad ? 0 : 1).compareTo(stampB.isSad ? 0 : 1);
         });
 
@@ -882,7 +882,7 @@ class _EmotionMapState extends State<EmotionMap> {
                     : const Icon(Icons.my_location),
               ),
               const SizedBox(height: 12),
-              // Glassmorphism Button for "Share Moment"
+              // 「今の瞬間をシェア」グラスモーフィズムボタン
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(32),
@@ -1179,7 +1179,7 @@ class _EmotionMapState extends State<EmotionMap> {
     final result = await showModalBottomSheet<_EmotionFormResult>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent, // Transparent for Glassmorphism
+      backgroundColor: Colors.transparent, // グラスモーフィズム用に透明
       builder: (_) => const _EmotionPostSheet(),
     );
     if (!mounted) return;
@@ -1501,7 +1501,7 @@ class _EmotionMapState extends State<EmotionMap> {
     final bool isTopHappy = !stamp.isSad && stamp.minCount >= 100;
     final bool isTopSad = stamp.isSad && stamp.minCount >= 100;
 
-    // Normal Stamp Logic (Visible Glass Bubble)
+    // 通常スタンプロジック（ガラスバブル表示）
     if (!isTopHappy && !isTopSad) {
       final stampSize = 90.0 * scale;
       final haloSize = stampSize * 1.05;
@@ -1549,7 +1549,7 @@ class _EmotionMapState extends State<EmotionMap> {
                   ),
                 ),
               ),
-              // Gloss Highlight
+              // 光沢ハイライト
               Positioned(
                 top: stampSize * 0.1,
                 left: stampSize * 0.2,
@@ -1574,14 +1574,13 @@ class _EmotionMapState extends State<EmotionMap> {
       );
     }
 
-    // Sad 50+ Design ("Dark Mood")
+    // 悲しみ100+デザイン（ダークムード）
     if (isTopSad) {
-      final stampSize =
-          110.0 * scale; // Larger than normal, smaller than happy 50+
+      final stampSize = 110.0 * scale; // 通常より大きく、happy 100+より小さい
       final haloSize = stampSize * 1.25;
 
-      final darkColor = const Color(0xFF455A64); // Blue Grey
-      final tearColor = const Color(0xFF2196F3); // Blue for accent
+      final darkColor = const Color(0xFF455A64); // ブルーグレー
+      final tearColor = const Color(0xFF2196F3); // アクセント用ブルー
 
       return Marker(
         point: center,
@@ -1594,7 +1593,7 @@ class _EmotionMapState extends State<EmotionMap> {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Melancholy Halo
+              // 憂鬱なハロー
               Container(
                 width: haloSize,
                 height: haloSize,
@@ -1611,7 +1610,7 @@ class _EmotionMapState extends State<EmotionMap> {
                 ),
               ),
 
-              // Dark Glass Container
+              // ダークガラスコンテナ
               Container(
                 width: stampSize,
                 height: stampSize,
@@ -1644,7 +1643,7 @@ class _EmotionMapState extends State<EmotionMap> {
                 ),
               ),
 
-              // Raindrop/Tear Highlight
+              // 涙ドロップハイライト
               Positioned(
                 top: stampSize * 0.15,
                 right: stampSize * 0.2,
