@@ -6,13 +6,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 import 'package:provider/provider.dart';
 
 import '../models/emotion_post.dart';
 import '../state/emotion_map_manager.dart';
 import '../state/profile_controller.dart';
 import '../utils/color_extensions.dart';
+import 'emoji_glyph.dart' if (dart.library.html) 'emoji_glyph_web.dart';
 
 class EmotionMap extends StatefulWidget {
   const EmotionMap({super.key});
@@ -570,27 +571,19 @@ const double _clusterJitterFraction = 0.0; // ジッターなしで海側への�
 
 const List<_ClusterStamp> _happyClusterStamps = [
   _ClusterStamp(
-    minCount: 100, // 進化閾値を100に設定
-    label: '花が満開',
+    minCount: 100, // 満開の桜（花びらが零れ落ちる）
+    label: '桜が満開',
     emoji: '🌸',
-    color: Color(0xFFE91E63),
-    sizeFactor: 1.25, // やや大きめ
+    color: Color(0xFFFFB7C5), // 桜色
+    sizeFactor: 1.35, // 大きめで華やか
     isSad: false,
   ),
   _ClusterStamp(
-    minCount: 25,
-    label: '一輪の花',
-    emoji: '🌼',
-    color: Color(0xFFF7B801),
-    sizeFactor: 1.05,
-    isSad: false,
-  ),
-  _ClusterStamp(
-    minCount: 25,
-    label: '一輪の花',
-    emoji: '🌼',
-    color: Color(0xFFF7B801),
-    sizeFactor: 1.05,
+    minCount: 25, // 花2輪、茎あり（チューリップ）
+    label: '花が咲いてる',
+    emoji: '🌷',
+    color: Color(0xFFFF9800), // オレンジに変更して100+（ピンク）と区別
+    sizeFactor: 1.1,
     isSad: false,
   ),
   _ClusterStamp(
@@ -603,24 +596,8 @@ const List<_ClusterStamp> _happyClusterStamps = [
   ),
 ];
 
-const List<_ClusterStamp> _sadClusterStamps = [
-  _ClusterStamp(
-    minCount: 100,
-    label: '枯れた花',
-    emoji: '🥀',
-    color: Color(0xFF8D6E63),
-    sizeFactor: 1.25,
-    isSad: true,
-  ),
-  _ClusterStamp(
-    minCount: 25,
-    label: '花びらが散った花',
-    emoji: '🍂',
-    color: Color(0xFF9E9E9E),
-    sizeFactor: 1.05,
-    isSad: true,
-  ),
-];
+// 悲しいクラスタースタンプは一旦非表示（空リスト）
+const List<_ClusterStamp> _sadClusterStamps = [];
 
 class _EmotionMapState extends State<EmotionMap> {
   final MapController _mapController = MapController();
@@ -1248,7 +1225,11 @@ class _EmotionMapState extends State<EmotionMap> {
         }
         return null;
       }
-      final position = await Geolocator.getCurrentPosition();
+      // Web版は高精度GPSが遅いことがあるので、精度を下げて高速化
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy:
+            kIsWeb ? LocationAccuracy.medium : LocationAccuracy.high,
+      );
       final latLng = LatLng(position.latitude, position.longitude);
       if (mounted) {
         setState(() {
@@ -1500,6 +1481,55 @@ class _EmotionMapState extends State<EmotionMap> {
         (_markerScaleForZoom(_currentZoom) * stamp.sizeFactor).clamp(0.65, 1.2);
     final bool isTopHappy = !stamp.isSad && stamp.minCount >= 100;
     final bool isTopSad = stamp.isSad && stamp.minCount >= 100;
+    // 25+のハッピークラスター（花2輪・茎あり）
+    final bool isMidHappy =
+        !stamp.isSad && stamp.minCount >= 25 && stamp.minCount < 100;
+
+    // 25+ハッピー: 花2輪（チューリップ）デザイン - 完全作り直し
+    if (isMidHappy) {
+      final stampSize = 95.0 * scale;
+      final haloSize = stampSize * 1.15;
+      final baseColor = stamp.color;
+
+      return Marker(
+        point: center,
+        width: haloSize * 1.3,
+        height: haloSize,
+        alignment: Alignment.center,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _showClusterDetails(cluster),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: stampSize,
+                height: stampSize,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  border: Border.all(
+                    color: baseColor,
+                    width: 4 * scale,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: baseColor.withValues(alpha: 0.3),
+                      blurRadius: 10 * scale,
+                      offset: Offset(0, 4 * scale),
+                    ),
+                  ],
+                ),
+                child: CustomPaint(
+                  painter: _WatercolorTulipPainter(scale: scale),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     // 通常スタンプロジック（ガラスバブル表示）
     if (!isTopHappy && !isTopSad) {
@@ -1537,37 +1567,24 @@ class _EmotionMapState extends State<EmotionMap> {
                   ],
                 ),
                 child: Center(
-                  child: Text(
-                    stamp.emoji,
-                    style: TextStyle(fontSize: 55 * scale, shadows: [
-                      Shadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 4,
-                        offset: const Offset(1, 1),
-                      ),
-                    ]),
+                  child: _ClusterStampIcon(
+                    emoji: stamp.emoji,
+                    size: 55 * scale,
+                    scale: scale,
+                    outlined: false,
+                    textStyle: TextStyle(
+                      fontSize: 55 * scale,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          offset: const Offset(1, 1),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-              // 光沢ハイライト
-              Positioned(
-                top: stampSize * 0.1,
-                left: stampSize * 0.2,
-                child: Container(
-                  width: stampSize * 0.35,
-                  height: stampSize * 0.18,
-                  decoration: BoxDecoration(
-                      borderRadius: BorderRadius.all(
-                          Radius.elliptical(stampSize, stampSize * 0.5)),
-                      gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white.withValues(alpha: 0.8),
-                            Colors.white.withValues(alpha: 0.1),
-                          ])),
-                ),
-              )
             ],
           ),
         ),
@@ -1685,14 +1702,16 @@ class _EmotionMapState extends State<EmotionMap> {
 
   _ClusterStamp _resolveClusterStamp(_ClusterBucket bucket) {
     // 合計人数でティアを決定し、優勢な感情でスタンプセットを選択。
-    // Happyを前面に出すため、Sadが2倍以上の場合のみSadを表示
+    // 悲しいクラスタースタンプが空の場合はハッピースタンプにフォールバック
     final total = bucket.count;
     final sad = bucket.sadCount;
     final happy = bucket.happyCount;
     final isSadDominant = sad >= happy;
 
-    List<_ClusterStamp> stamps =
-        isSadDominant ? _sadClusterStamps : _happyClusterStamps;
+    // 悲しいスタンプリストが空の場合はハッピーにフォールバック
+    List<_ClusterStamp> stamps = (isSadDominant && _sadClusterStamps.isNotEmpty)
+        ? _sadClusterStamps
+        : _happyClusterStamps;
     // 50/25/10 の閾値に総数でマッピング
     for (final stamp in stamps) {
       if (total >= stamp.minCount) return stamp;
@@ -2540,27 +2559,25 @@ class _GeminiStyleMarkerState extends State<_GeminiStyleMarker>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4000), // 少しゆっくりに
+      duration: const Duration(seconds: 10), // ゆったりと
     )..repeat();
 
-    // Initial stars configuration
+    // 桜の花びら設定
     const particleColors = [
-      Color(0xFFD946EF), // Fuchsia
-      Color(0xFF8B5CF6), // Violet
-      Color(0xFF0EA5E9), // Sky Blue
-      Color(0xFFFFD700), // Gold
+      Color(0xFFFFB7C5), // 桜色
+      Color(0xFFFFC0CB), // ピンク
+      Color(0xFFF8BBD0), // 薄いピンク
       Colors.white,
     ];
 
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < 20; i++) {
       _particles.add(_GeminiParticle(
-        angle: _random.nextDouble() * 2 * pi,
-        distance: 0.5 + _random.nextDouble() * 0.25, // radius multiplier
-        speed:
-            (0.2 + _random.nextDouble() * 0.4) * (_random.nextBool() ? 1 : -1),
-        size: 3 + _random.nextDouble() * 5,
+        angle: _random.nextDouble() * 2 * pi, // 初期位置用（横方向）
+        distance: _random.nextDouble(), // 初期位置用（縦方向）
+        speed: 0.2 + _random.nextDouble() * 0.3, // 落下速度
+        size: 8 + _random.nextDouble() * 6,
         color: particleColors[_random.nextInt(particleColors.length)],
-        initialOpacity: 0.3 + _random.nextDouble() * 0.7,
+        initialOpacity: 0.6 + _random.nextDouble() * 0.4,
       ));
     }
   }
@@ -2573,23 +2590,22 @@ class _GeminiStyleMarkerState extends State<_GeminiStyleMarker>
 
   @override
   Widget build(BuildContext context) {
-    // Gemini Color Palette: Aurora Effect
-    const auroraColors = [
-      Color(0xFFD946EF), // Fuchsia
-      Color(0xFF8B5CF6), // Violet
-      Color(0xFF0EA5E9), // Sky Blue
-      Color(0xFFEC4899), // Pink
+    // 桜のゴージャスなオーラ
+    final auroraColors = [
+      const Color(0xFFFFB7C5),
+      const Color(0xFFF06292),
+      const Color(0xFFE91E63),
+      Colors.white.withValues(alpha: 0.0),
     ];
 
     final size = 130 * widget.scale;
-    final outerSize = size * 1.5; // パーティクルエリア用に少し拡大
+    final outerSize = size * 2.0;
 
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        // Pulse mapping: 0.0->0.5 (expand), 0.5->1.0 (shrink) handled by manual sin wave
         final t = _controller.value;
-        final pulseVal = 0.95 + 0.1 * sin(t * 2 * pi).abs();
+        final pulseVal = 1.0 + 0.05 * sin(t * 2 * pi * 0.5); // ゆっくり呼吸
 
         return SizedBox(
           width: outerSize,
@@ -2598,55 +2614,75 @@ class _GeminiStyleMarkerState extends State<_GeminiStyleMarker>
             alignment: Alignment.center,
             clipBehavior: Clip.none,
             children: [
-              // Outer Glow (Pulsing)
+              // 背景のオーラ
               Transform.scale(
                 scale: pulseVal,
                 child: Container(
-                  width: size * 1.35,
-                  height: size * 1.35,
+                  width: size * 1.4,
+                  height: size * 1.4,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        auroraColors[1].withValues(alpha: 0.4),
-                        auroraColors[2].withValues(alpha: 0.2),
+                        auroraColors[0].withValues(alpha: 0.3),
+                        auroraColors[1].withValues(alpha: 0.15),
                         Colors.transparent,
                       ],
-                      stops: const [0.4, 0.7, 1.0],
+                      stops: const [0.3, 0.6, 1.0],
                     ),
                   ),
                 ),
               ),
 
-              // Orbiting Particles
+              // 舞い散る花びら
               ..._particles.map((p) {
-                final currentAngle = p.angle + t * 2 * pi * p.speed;
-                final r = size * p.distance * 1.2; // 距離調整
-                final dx = r * cos(currentAngle);
-                final dy = r * sin(currentAngle);
-                // Twinkle effect
-                final flicker = (sin(t * 20 * p.speed + p.angle) + 1) / 2;
-                final opacity =
-                    (p.initialOpacity * 0.5 + flicker * 0.5).clamp(0.0, 1.0);
+                // ループアニメーション: (初期位置 + 時間 * 速度) % 1.0
+                final progress = (p.distance + t * p.speed * 4) % 1.0;
 
-                return Transform.translate(
-                  offset: Offset(dx, dy),
-                  child: Opacity(
-                    opacity: opacity,
-                    child: Icon(Icons.star,
-                        color: p.color, size: p.size * widget.scale),
+                // 落下軌道 (上から下へ、少し揺らぎながら)
+                // y: -0.5 (上) -> 0.5 (下)
+                final y = (progress - 0.5) * outerSize;
+
+                // x: サイン波で揺らす
+                final sway = sin(progress * 10 + p.angle) * (size * 0.3);
+                final x = cos(p.angle) * (size * 0.4) + sway;
+
+                // 回転
+                final rotation = progress * 10 + p.angle;
+
+                // フェードイン・アウト
+                final opacity =
+                    (p.initialOpacity * (1.0 - (2 * (progress - 0.5)).abs()))
+                        .clamp(0.0, 1.0);
+
+                return Positioned(
+                  left: outerSize / 2 + x,
+                  top: outerSize / 2 + y,
+                  child: Transform.rotate(
+                    angle: rotation,
+                    child: Opacity(
+                      opacity: opacity,
+                      // 花びらっぽい形（ハートを代用）
+                      child: Icon(Icons.favorite,
+                          color: p.color, size: p.size * widget.scale),
+                    ),
                   ),
                 );
               }),
 
-              // Middle Magic Ring (colored border)
+              // 中央のリング
               Container(
                 width: size * 1.08,
                 height: size * 1.08,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const SweepGradient(
-                    colors: auroraColors,
+                  gradient: SweepGradient(
+                    colors: [
+                      const Color(0xFFFFB7C5),
+                      const Color(0xFFF48FB1),
+                      const Color(0xFFFFB7C5),
+                    ],
+                    transform: GradientRotation(t * 2 * pi),
                   ),
                 ),
               ),
@@ -2670,12 +2706,14 @@ class _GeminiStyleMarkerState extends State<_GeminiStyleMarker>
                   alignment: Alignment.center,
                   children: [
                     // Main Emoji
-                    Text(
-                      widget.emoji,
-                      style: TextStyle(
+                    _ClusterStampIcon(
+                      emoji: widget.emoji,
+                      size: 80 * widget.scale,
+                      scale: widget.scale,
+                      outlined: true,
+                      textStyle: TextStyle(
                         fontSize: 80 * widget.scale,
                         shadows: [
-                          // 白い縁取り効果
                           const Shadow(
                             color: Colors.white,
                             blurRadius: 0,
@@ -2696,7 +2734,6 @@ class _GeminiStyleMarkerState extends State<_GeminiStyleMarker>
                             blurRadius: 0,
                             offset: Offset(0, -1),
                           ),
-                          // ドロップシャドウ
                           Shadow(
                             color: Colors.black.withValues(alpha: 0.3),
                             blurRadius: 8,
@@ -2733,4 +2770,400 @@ class _GeminiParticle {
     required this.color,
     required this.initialOpacity,
   });
+}
+
+class _ClusterStampIcon extends StatelessWidget {
+  const _ClusterStampIcon({
+    required this.emoji,
+    required this.size,
+    required this.scale,
+    required this.outlined,
+    required this.textStyle,
+  });
+
+  final String emoji;
+  final double size;
+  final double scale;
+  final bool outlined;
+  final TextStyle textStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return buildEmojiGlyph(emoji: emoji, size: size, style: textStyle);
+  }
+}
+
+class _WatercolorTulipPainter extends CustomPainter {
+  const _WatercolorTulipPainter({required this.scale});
+
+  final double scale;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final side = min(size.width, size.height);
+    final dx = (size.width - side) / 2;
+    final dy = (size.height - side) / 2;
+    final rect = Rect.fromLTWH(0, 0, side, side);
+
+    canvas.save();
+    canvas.translate(dx, dy);
+
+    _drawLeaf(canvas, rect, isLeft: true);
+    _drawLeaf(canvas, rect, isLeft: false);
+    _drawStems(canvas, rect);
+    _drawRedTulip(canvas, rect);
+    _drawYellowTulip(canvas, rect);
+
+    canvas.restore();
+  }
+
+  void _drawLeaf(Canvas canvas, Rect rect, {required bool isLeft}) {
+    final side = rect.width;
+    final path = isLeft ? _leftLeafPath(side) : _rightLeafPath(side);
+
+    final baseGradient = LinearGradient(
+      begin: isLeft ? Alignment.topLeft : Alignment.topRight,
+      end: isLeft ? Alignment.bottomRight : Alignment.bottomLeft,
+      colors: [
+        const Color(0xFFA8E6CF).withValues(alpha: 0.95),
+        const Color(0xFF81C784).withValues(alpha: 0.95),
+        const Color(0xFF2E7D32).withValues(alpha: 0.95),
+      ],
+    ).createShader(rect);
+
+    final washPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = const Color(0xFF4CAF50).withValues(alpha: 0.18)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2.2 * scale);
+    canvas.drawPath(path.shift(Offset(-1.4 * scale, 1.0 * scale)), washPaint);
+    canvas.drawPath(path.shift(Offset(1.0 * scale, 0.2 * scale)), washPaint);
+
+    final mainPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..shader = baseGradient;
+    canvas.drawPath(path, mainPaint);
+
+    final veinPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4 * scale
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFF1B5E20).withValues(alpha: 0.18)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 0.8 * scale);
+
+    final base = Offset(side * (isLeft ? 0.50 : 0.54), side * 0.92);
+    final tip = Offset(side * (isLeft ? 0.14 : 0.86), side * 0.50);
+    final vein = Path()
+      ..moveTo(base.dx, base.dy)
+      ..cubicTo(
+        side * 0.50,
+        side * 0.78,
+        side * (isLeft ? 0.34 : 0.70),
+        side * 0.64,
+        tip.dx,
+        tip.dy,
+      );
+    canvas.drawPath(vein, veinPaint);
+
+    final highlightPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0 * scale
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: 0.18)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 0.9 * scale);
+    canvas.drawPath(
+        vein.shift(Offset(0.6 * scale, -0.4 * scale)), highlightPaint);
+  }
+
+  Path _leftLeafPath(double side) {
+    return Path()
+      ..moveTo(side * 0.50, side * 0.92)
+      ..cubicTo(
+        side * 0.34,
+        side * 0.86,
+        side * 0.14,
+        side * 0.72,
+        side * 0.14,
+        side * 0.50,
+      )
+      ..cubicTo(
+        side * 0.14,
+        side * 0.40,
+        side * 0.26,
+        side * 0.34,
+        side * 0.36,
+        side * 0.36,
+      )
+      ..cubicTo(
+        side * 0.47,
+        side * 0.40,
+        side * 0.50,
+        side * 0.62,
+        side * 0.50,
+        side * 0.92,
+      )
+      ..close();
+  }
+
+  Path _rightLeafPath(double side) {
+    return Path()
+      ..moveTo(side * 0.54, side * 0.92)
+      ..cubicTo(
+        side * 0.66,
+        side * 0.86,
+        side * 0.86,
+        side * 0.72,
+        side * 0.86,
+        side * 0.52,
+      )
+      ..cubicTo(
+        side * 0.86,
+        side * 0.40,
+        side * 0.76,
+        side * 0.34,
+        side * 0.66,
+        side * 0.35,
+      )
+      ..cubicTo(
+        side * 0.56,
+        side * 0.38,
+        side * 0.52,
+        side * 0.62,
+        side * 0.54,
+        side * 0.92,
+      )
+      ..close();
+  }
+
+  void _drawStems(Canvas canvas, Rect rect) {
+    final side = rect.width;
+    final stemPathLeft = Path()
+      ..moveTo(side * 0.51, side * 0.92)
+      ..cubicTo(
+        side * 0.48,
+        side * 0.74,
+        side * 0.44,
+        side * 0.62,
+        side * 0.38,
+        side * 0.46,
+      );
+    final stemPathRight = Path()
+      ..moveTo(side * 0.53, side * 0.92)
+      ..cubicTo(
+        side * 0.56,
+        side * 0.76,
+        side * 0.60,
+        side * 0.64,
+        side * 0.64,
+        side * 0.54,
+      );
+
+    final stemWash = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 4.0 * scale
+      ..color = const Color(0xFF66BB6A).withValues(alpha: 0.22)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 1.6 * scale);
+    canvas.drawPath(stemPathLeft, stemWash);
+    canvas.drawPath(stemPathRight, stemWash);
+
+    final stemPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 2.6 * scale
+      ..color = const Color(0xFF43A047).withValues(alpha: 0.85)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 0.8 * scale);
+    canvas.drawPath(stemPathLeft, stemPaint);
+    canvas.drawPath(stemPathRight, stemPaint);
+  }
+
+  void _drawRedTulip(Canvas canvas, Rect rect) {
+    final side = rect.width;
+    final center = Offset(side * 0.38, side * 0.30);
+    final petalW = side * 0.17;
+    final petalH = side * 0.25;
+
+    final colors = [
+      const Color(0xFFFFE3E8),
+      const Color(0xFFFF5A6C),
+      const Color(0xFFD32F2F),
+    ];
+
+    _drawPetal(
+      canvas,
+      center: center + Offset(side * 0.075, side * 0.03),
+      width: petalW,
+      height: petalH,
+      angle: 0.18,
+      colors: colors,
+    );
+    _drawPetal(
+      canvas,
+      center: center + Offset(-side * 0.075, side * 0.03),
+      width: petalW,
+      height: petalH,
+      angle: -0.16,
+      colors: colors,
+    );
+    _drawPetal(
+      canvas,
+      center: center + Offset(0, side * 0.05),
+      width: petalW * 0.95,
+      height: petalH * 1.08,
+      angle: 0.02,
+      colors: [
+        const Color(0xFFFFF1F4),
+        const Color(0xFFFF6B7D),
+        const Color(0xFFE53935),
+      ],
+    );
+
+    final seamPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2 * scale
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFFB71C1C).withValues(alpha: 0.18)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 0.8 * scale);
+    final seam = Path()
+      ..moveTo(center.dx, center.dy + petalH * 0.55)
+      ..quadraticBezierTo(
+        center.dx - side * 0.01,
+        center.dy + petalH * 0.05,
+        center.dx + side * 0.005,
+        center.dy - petalH * 0.48,
+      );
+    canvas.drawPath(seam, seamPaint);
+  }
+
+  void _drawYellowTulip(Canvas canvas, Rect rect) {
+    final side = rect.width;
+    final center = Offset(side * 0.66, side * 0.42);
+    final petalW = side * 0.145;
+    final petalH = side * 0.22;
+
+    final colors = [
+      const Color(0xFFFFF9C4),
+      const Color(0xFFFFEB3B),
+      const Color(0xFFFF9800),
+    ];
+
+    _drawPetal(
+      canvas,
+      center: center + Offset(side * 0.06, side * 0.02),
+      width: petalW,
+      height: petalH,
+      angle: 0.22,
+      colors: colors,
+    );
+    _drawPetal(
+      canvas,
+      center: center + Offset(-side * 0.06, side * 0.02),
+      width: petalW,
+      height: petalH,
+      angle: -0.12,
+      colors: colors,
+    );
+    _drawPetal(
+      canvas,
+      center: center + Offset(0, side * 0.04),
+      width: petalW * 0.92,
+      height: petalH * 1.05,
+      angle: 0.04,
+      colors: [
+        const Color(0xFFFFFFFF),
+        const Color(0xFFFFF176),
+        const Color(0xFFFFC107),
+      ],
+    );
+
+    final seamPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.1 * scale
+      ..strokeCap = StrokeCap.round
+      ..color = const Color(0xFFEF6C00).withValues(alpha: 0.16)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 0.8 * scale);
+    final seam = Path()
+      ..moveTo(center.dx, center.dy + petalH * 0.55)
+      ..quadraticBezierTo(
+        center.dx - side * 0.008,
+        center.dy + petalH * 0.05,
+        center.dx + side * 0.005,
+        center.dy - petalH * 0.45,
+      );
+    canvas.drawPath(seam, seamPaint);
+  }
+
+  void _drawPetal(
+    Canvas canvas, {
+    required Offset center,
+    required double width,
+    required double height,
+    required double angle,
+    required List<Color> colors,
+  }) {
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(angle);
+
+    final path = Path()
+      ..moveTo(0, height * 0.48)
+      ..cubicTo(
+        -width * 0.72,
+        height * 0.14,
+        -width * 0.58,
+        -height * 0.24,
+        -width * 0.18,
+        -height * 0.52,
+      )
+      ..quadraticBezierTo(0, -height * 0.60, width * 0.18, -height * 0.52)
+      ..cubicTo(
+        width * 0.58,
+        -height * 0.24,
+        width * 0.72,
+        height * 0.14,
+        0,
+        height * 0.48,
+      )
+      ..close();
+
+    final shaderRect = Rect.fromLTWH(-width, -height, width * 2, height * 2);
+
+    final washPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = colors[1].withValues(alpha: 0.20)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 1.8 * scale);
+    canvas.drawPath(path.shift(Offset(0.9 * scale, 1.1 * scale)), washPaint);
+    canvas.drawPath(path.shift(Offset(-0.7 * scale, 0.7 * scale)), washPaint);
+
+    final mainPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          colors[0].withValues(alpha: 0.95),
+          colors[1].withValues(alpha: 0.95),
+          colors[2].withValues(alpha: 0.95),
+        ],
+      ).createShader(shaderRect);
+    canvas.drawPath(path, mainPaint);
+
+    final highlightPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..shader = RadialGradient(
+        center: Alignment.topCenter,
+        radius: 1.25,
+        colors: [
+          Colors.white.withValues(alpha: 0.50),
+          Colors.white.withValues(alpha: 0.0),
+        ],
+        stops: const [0.0, 0.8],
+      ).createShader(Rect.fromLTWH(-width, -height, width * 2, height * 1.4));
+    canvas.drawPath(path, highlightPaint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _WatercolorTulipPainter oldDelegate) =>
+      oldDelegate.scale != scale;
 }
