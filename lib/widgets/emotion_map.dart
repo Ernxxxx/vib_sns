@@ -17,6 +17,7 @@ import 'emoji_glyph.dart' if (dart.library.html) 'emoji_glyph_web.dart';
 import 'profile_avatar.dart';
 import '../services/profile_interaction_service.dart';
 import '../models/profile.dart';
+import '../utils/app_text_styles.dart';
 
 class EmotionMap extends StatefulWidget {
   const EmotionMap({super.key});
@@ -894,14 +895,7 @@ class _EmotionMapState extends State<EmotionMap> {
                           color: Colors.white.withValues(alpha: 0.5),
                           width: 1.5,
                         ),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white.withValues(alpha: 0.7),
-                            Colors.white.withValues(alpha: 0.3),
-                          ],
-                        ),
+                        color: Colors.white,
                       ),
                       child: Material(
                         color: Colors.transparent,
@@ -933,14 +927,9 @@ class _EmotionMapState extends State<EmotionMap> {
                                     size: 20,
                                   ),
                                 const SizedBox(width: 10),
-                                const Text(
+                                Text(
                                   '今の瞬間をシェア',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.5,
-                                  ),
+                                  style: AppTextStyles.mapShareButtonTitle,
                                 ),
                               ],
                             ),
@@ -2364,7 +2353,8 @@ class _EmotionPostDetailSheet extends StatelessWidget {
                         future: profileFuture,
                         builder: (context, snapshot) {
                           if (snapshot.hasData && snapshot.data != null) {
-                            return ProfileAvatar(profile: snapshot.data!, radius: 20);
+                            return ProfileAvatar(
+                                profile: snapshot.data!, radius: 20);
                           }
                           // プロフィール読み込み中または失敗時は絵文字を表示
                           return Container(

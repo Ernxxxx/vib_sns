@@ -28,6 +28,7 @@ import '../utils/color_extensions.dart';
 import '../models/timeline_post.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/profile_avatar.dart';
+import '../utils/app_text_styles.dart';
 import '../widgets/profile_info_tile.dart';
 import '../widgets/profile_stats_row.dart';
 import 'profile_follow_list_sheet.dart';
@@ -684,30 +685,36 @@ class _TimelineComposerState extends State<_TimelineComposer> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF2B705).withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFFF2B705).withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.auto_awesome,
+                            color: Color(0xFFF2B705),
+                            size: 20,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.auto_awesome,
-                          color: Color(0xFFF2B705),
-                          size: 20,
+                        const SizedBox(width: 12),
+                        Text(
+                          '今の瞬間をシェア',
+                          style: AppTextStyles.shareButtonTitle,
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        '今の瞬間をシェア',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 20),
                   TextField(
