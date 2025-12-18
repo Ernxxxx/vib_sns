@@ -579,15 +579,16 @@ class EncounterManager extends ChangeNotifier {
 
   bool _hasSharedHashtag(String remoteId, Profile remoteProfile) {
     // 1. プロフィールのハッシュタグを取得
-    final localProfileTags = _normalizedHashtagSet(_localProfile.favoriteGames);
-    var remoteProfileTags = _remoteHashtagCache[remoteId];
-    if (remoteProfileTags == null) {
-      remoteProfileTags = _normalizedHashtagSet(remoteProfile.favoriteGames);
-      _remoteHashtagCache[remoteId] = remoteProfileTags;
-      if (remoteProfileTags.isEmpty) {
-        unawaited(_prefetchRemoteHashtags(remoteId));
-      }
-    }
+    // 【一時無効化】プロフィール#は振動対象から除外
+    // final localProfileTags = _normalizedHashtagSet(_localProfile.favoriteGames);
+    // var remoteProfileTags = _remoteHashtagCache[remoteId];
+    // if (remoteProfileTags == null) {
+    //   remoteProfileTags = _normalizedHashtagSet(remoteProfile.favoriteGames);
+    //   _remoteHashtagCache[remoteId] = remoteProfileTags;
+    //   if (remoteProfileTags.isEmpty) {
+    //     unawaited(_prefetchRemoteHashtags(remoteId));
+    //   }
+    // }
 
     // 2. 投稿のハッシュタグを取得（TimelineManagerがあれば）
     final timelineManager = _timelineManager;
@@ -598,9 +599,12 @@ class EncounterManager extends ChangeNotifier {
       remotePostTags = timelineManager.getPostHashtagsForUser(remoteId);
     }
 
-    // 3. すべてのローカルタグとリモートタグを統合
-    final allLocalTags = {...localProfileTags, ...localPostTags};
-    final allRemoteTags = {...remoteProfileTags, ...remotePostTags};
+    // 3. 投稿タグのみで比較（プロフィール#は除外）
+    // 【復活時】下記2行を有効化:
+    // final allLocalTags = {...localProfileTags, ...localPostTags};
+    // final allRemoteTags = {...remoteProfileTags, ...remotePostTags};
+    final allLocalTags = localPostTags;
+    final allRemoteTags = remotePostTags;
 
     if (allLocalTags.isEmpty || allRemoteTags.isEmpty) {
       return false;
