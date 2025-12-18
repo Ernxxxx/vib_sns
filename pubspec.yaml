@@ -42,3 +42,6 @@ flutter:
   assets:
     - assets/app_logo.png
     - assets/emoji/noto/
+    - assets/stamp_sakura.png
+    - assets/stamp_roses.png
+    - assets/stamp_sprout.png

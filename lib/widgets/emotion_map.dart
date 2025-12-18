@@ -571,17 +571,19 @@ const double _clusterJitterFraction = 0.0; // ジッターなしで海側への�
 
 const List<_ClusterStamp> _happyClusterStamps = [
   _ClusterStamp(
-    minCount: 100, // 満開の桜（花びらが零れ落ちる）
+    minCount: 100, // 満開の桜
     label: '桜が満開',
     emoji: '🌸',
+    imagePath: 'assets/stamp_sakura.png',
     color: Color(0xFFFFB7C5), // 桜色
     sizeFactor: 1.35, // 大きめで華やか
     isSad: false,
   ),
   _ClusterStamp(
-    minCount: 25, // 花2輪、茎あり（チューリップ）
+    minCount: 25, // 花3輪（3色のバラ）
     label: '花が咲いてる',
-    emoji: '🌷',
+    emoji: '🌹',
+    imagePath: 'assets/stamp_roses.png',
     color: Color(0xFFFF9800), // オレンジに変更して100+（ピンク）と区別
     sizeFactor: 1.1,
     isSad: false,
@@ -590,6 +592,7 @@ const List<_ClusterStamp> _happyClusterStamps = [
     minCount: 10,
     label: '花の芽',
     emoji: '🌱',
+    imagePath: 'assets/stamp_sprout.png',
     color: Color(0xFF4CAF50),
     sizeFactor: 0.95,
     isSad: false,
@@ -1485,7 +1488,7 @@ class _EmotionMapState extends State<EmotionMap> {
     final bool isMidHappy =
         !stamp.isSad && stamp.minCount >= 25 && stamp.minCount < 100;
 
-    // 25+ハッピー: 花2輪（チューリップ）デザイン - 完全作り直し
+    // 25+ハッピー: 3色バラデザイン - 画像を使用
     if (isMidHappy) {
       final stampSize = 95.0 * scale;
       final haloSize = stampSize * 1.15;
@@ -1521,8 +1524,17 @@ class _EmotionMapState extends State<EmotionMap> {
                     ),
                   ],
                 ),
-                child: CustomPaint(
-                  painter: _WatercolorTulipPainter(scale: scale),
+                child: Center(
+                  child: stamp.imagePath != null
+                      ? Image.asset(
+                          stamp.imagePath!,
+                          width: 65 * scale,
+                          height: 65 * scale,
+                          fit: BoxFit.contain,
+                        )
+                      : CustomPaint(
+                          painter: _WatercolorTulipPainter(scale: scale),
+                        ),
                 ),
               ),
             ],
@@ -1531,7 +1543,7 @@ class _EmotionMapState extends State<EmotionMap> {
       );
     }
 
-    // 通常スタンプロジック（ガラスバブル表示）
+    // 通常スタンプロジック（ガラスバブル表示）- 画像を使用
     if (!isTopHappy && !isTopSad) {
       final stampSize = 90.0 * scale;
       final haloSize = stampSize * 1.05;
@@ -1567,22 +1579,31 @@ class _EmotionMapState extends State<EmotionMap> {
                   ],
                 ),
                 child: Center(
-                  child: _ClusterStampIcon(
-                    emoji: stamp.emoji,
-                    size: 55 * scale,
-                    scale: scale,
-                    outlined: false,
-                    textStyle: TextStyle(
-                      fontSize: 55 * scale,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 4,
-                          offset: const Offset(1, 1),
+                  child: stamp.imagePath != null
+                      ? ClipOval(
+                          child: Image.asset(
+                            stamp.imagePath!,
+                            width: 60 * scale,
+                            height: 60 * scale,
+                            fit: BoxFit.contain,
+                          ),
+                        )
+                      : _ClusterStampIcon(
+                          emoji: stamp.emoji,
+                          size: 55 * scale,
+                          scale: scale,
+                          outlined: false,
+                          textStyle: TextStyle(
+                            fontSize: 55 * scale,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 4,
+                                offset: const Offset(1, 1),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                  ),
                 ),
               ),
             ],
@@ -1674,19 +1695,73 @@ class _EmotionMapState extends State<EmotionMap> {
       );
     }
 
-    // Gemini流: Happy 50+デザイン "Cosmic Bloom"
-    // Statefulな専用ウィジェットを使用してアニメーションを実現
+    // 100+ハッピー: 満開の桜デザイン - 画像を使用
+    final stampSize = 120.0 * scale;
+    final haloSize = stampSize * 1.25;
+    final baseColor = stamp.color;
+
     return Marker(
       point: center,
-      width: 160 * scale, // 広めのエリア確保
-      height: 160 * scale,
+      width: haloSize,
+      height: haloSize,
       alignment: Alignment.center,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _showClusterDetails(cluster),
-        child: _GeminiStyleMarker(
-          scale: scale,
-          emoji: stamp.emoji,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // 華やかなハロー
+            Container(
+              width: haloSize,
+              height: haloSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    baseColor.withValues(alpha: 0.5),
+                    baseColor.withValues(alpha: 0.2),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.3, 0.6, 1.0],
+                ),
+              ),
+            ),
+            // メインコンテナ
+            Container(
+              width: stampSize,
+              height: stampSize,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                border: Border.all(
+                  color: baseColor,
+                  width: 5 * scale,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: baseColor.withValues(alpha: 0.4),
+                    blurRadius: 15 * scale,
+                    offset: Offset(0, 6 * scale),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: stamp.imagePath != null
+                    ? Image.asset(
+                        stamp.imagePath!,
+                        width: 85 * scale,
+                        height: 85 * scale,
+                        fit: BoxFit.contain,
+                      )
+                    : _GeminiStyleMarker(
+                        scale: scale,
+                        emoji: stamp.emoji,
+                      ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1949,6 +2024,7 @@ class _ClusterStamp {
     required this.minCount,
     required this.label,
     required this.emoji,
+    this.imagePath,
     required this.color,
     required this.sizeFactor,
     required this.isSad,
@@ -1957,6 +2033,7 @@ class _ClusterStamp {
   final int minCount;
   final String label;
   final String emoji;
+  final String? imagePath;
   final Color color;
   final double sizeFactor;
   final bool isSad;
