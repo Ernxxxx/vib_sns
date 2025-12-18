@@ -14,6 +14,9 @@ import '../state/emotion_map_manager.dart';
 import '../state/profile_controller.dart';
 import '../utils/color_extensions.dart';
 import 'emoji_glyph.dart' if (dart.library.html) 'emoji_glyph_web.dart';
+import 'profile_avatar.dart';
+import '../services/profile_interaction_service.dart';
+import '../models/profile.dart';
 
 class EmotionMap extends StatefulWidget {
   const EmotionMap({super.key});
@@ -2318,6 +2321,11 @@ class _EmotionPostDetailSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final emotion = post.emotion;
     final formattedTime = _formatTimestamp(post.createdAt);
+    // プロフィール情報を取得するためのサービスとFutureを準備
+    final profileService = context.read<ProfileInteractionService>();
+    final profileFuture = post.profileId != null && post.profileId!.isNotEmpty
+        ? profileService.loadProfile(post.profileId!)
+        : Future<Profile?>.value(null);
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       child: BackdropFilter(
@@ -2351,16 +2359,26 @@ class _EmotionPostDetailSheet extends StatelessWidget {
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: emotion.color.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          emotion.emoji,
-                          style: const TextStyle(fontSize: 28),
-                        ),
+                      // プロフィール情報を読み込んでアバターを表示、失敗時は絵文字を表示
+                      FutureBuilder<Profile?>(
+                        future: profileFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData && snapshot.data != null) {
+                            return ProfileAvatar(profile: snapshot.data!, radius: 20);
+                          }
+                          // プロフィール読み込み中または失敗時は絵文字を表示
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: emotion.color.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            padding: const EdgeInsets.all(12),
+                            child: Text(
+                              emotion.emoji,
+                              style: const TextStyle(fontSize: 28),
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(width: 16),
                       Column(
