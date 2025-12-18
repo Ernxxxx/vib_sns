@@ -138,7 +138,10 @@ class _HomeShellState extends State<HomeShell> {
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 640),
-                  child: _TimelineComposer(timelineManager: timelineManager),
+                  child: _TimelineComposer(
+                    timelineManager: timelineManager,
+                    onPostSuccess: () => Navigator.of(sheetContext).pop(),
+                  ),
                 ),
               ),
             ),
@@ -532,9 +535,13 @@ class _HighlightMetric extends StatelessWidget {
 }
 
 class _TimelineComposer extends StatefulWidget {
-  const _TimelineComposer({required this.timelineManager});
+  const _TimelineComposer({
+    required this.timelineManager,
+    this.onPostSuccess,
+  });
 
   final TimelineManager timelineManager;
+  final VoidCallback? onPostSuccess;
 
   @override
   State<_TimelineComposer> createState() => _TimelineComposerState();
@@ -601,11 +608,11 @@ class _TimelineComposerState extends State<_TimelineComposer> {
         _selectedHashtags.clear();
       });
       FocusScope.of(context).unfocus();
-      _showSnack('\u6295\u7a3f\u3057\u307e\u3057\u305f\u3002');
+      _showSnack('投稿しました。');
+      widget.onPostSuccess?.call();
     } catch (_) {
       if (!mounted) return;
-      _showSnack(
-          '\u6295\u7a3f\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002');
+      _showSnack('投稿に失敗しました。');
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -696,7 +703,7 @@ class _TimelineComposerState extends State<_TimelineComposer> {
                         '今の瞬間をシェア',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: Colors.black,
                           letterSpacing: 0.5,
                         ),
                       ),

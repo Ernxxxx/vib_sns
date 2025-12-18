@@ -933,7 +933,7 @@ class _EmotionMapState extends State<EmotionMap> {
                                 const Text(
                                   '今の瞬間をシェア',
                                   style: TextStyle(
-                                    color: Colors.black87,
+                                    color: Colors.black,
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 0.5,
@@ -1528,8 +1528,8 @@ class _EmotionMapState extends State<EmotionMap> {
                   child: stamp.imagePath != null
                       ? Image.asset(
                           stamp.imagePath!,
-                          width: 65 * scale,
-                          height: 65 * scale,
+                          width: 80 * scale,
+                          height: 80 * scale,
                           fit: BoxFit.contain,
                         )
                       : CustomPaint(
@@ -1583,8 +1583,8 @@ class _EmotionMapState extends State<EmotionMap> {
                       ? ClipOval(
                           child: Image.asset(
                             stamp.imagePath!,
-                            width: 60 * scale,
-                            height: 60 * scale,
+                            width: 75 * scale,
+                            height: 75 * scale,
                             fit: BoxFit.contain,
                           ),
                         )
@@ -1751,8 +1751,8 @@ class _EmotionMapState extends State<EmotionMap> {
                 child: stamp.imagePath != null
                     ? Image.asset(
                         stamp.imagePath!,
-                        width: 85 * scale,
-                        height: 85 * scale,
+                        width: 100 * scale,
+                        height: 100 * scale,
                         fit: BoxFit.contain,
                       )
                     : _GeminiStyleMarker(
