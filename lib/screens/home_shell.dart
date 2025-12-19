@@ -45,6 +45,7 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
   bool _autoStartAttempted = false;
+  final GlobalKey<_TimelineScreenState> _timelineKey = GlobalKey<_TimelineScreenState>();
 
   @override
   void initState() {
@@ -54,11 +55,11 @@ class _HomeShellState extends State<HomeShell> {
     });
   }
 
-  final List<Widget> _pages = const [
-    _TimelineScreen(),
-    SizedBox.shrink(),
-    NotificationsScreen(),
-    _ProfileScreen(),
+  List<Widget> get _pages => [
+    _TimelineScreen(key: _timelineKey),
+    const SizedBox.shrink(),
+    const NotificationsScreen(),
+    const _ProfileScreen(),
   ];
 
   @override
@@ -118,6 +119,11 @@ class _HomeShellState extends State<HomeShell> {
   void _handleDestinationSelected(int index) {
     if (index == 1) {
       _openShareComposer();
+      return;
+    }
+    // 如果点击HOME按钮且当前已在HOME页面，则滚动到顶部
+    if (index == 0 && _currentIndex == 0) {
+      _timelineKey.currentState?.scrollToTop();
       return;
     }
     setState(() => _currentIndex = index);
@@ -180,8 +186,31 @@ class _HomeShellState extends State<HomeShell> {
   }
 }
 
-class _TimelineScreen extends StatelessWidget {
-  const _TimelineScreen();
+class _TimelineScreen extends StatefulWidget {
+  const _TimelineScreen({super.key});
+
+  @override
+  State<_TimelineScreen> createState() => _TimelineScreenState();
+}
+
+class _TimelineScreenState extends State<_TimelineScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -214,6 +243,7 @@ class _TimelineScreen extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: ListView(
+              controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               children: [
                 _HighlightsSection(
