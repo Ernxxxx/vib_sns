@@ -107,6 +107,7 @@ class TimelineManager extends ChangeNotifier {
           ? '\u3042\u306a\u305f'
           : profile.displayName,
       'authorColorValue': profile.avatarColor.toARGB32(),
+      'authorAvatarImageBase64': profile.avatarImageBase64,
       'caption': caption.trim(),
       'createdAt': DateTime.now().toIso8601String(),
       'imageBase64': encodedImage,

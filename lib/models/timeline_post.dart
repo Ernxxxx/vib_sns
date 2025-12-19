@@ -14,6 +14,7 @@ class TimelinePost {
     required this.createdAt,
     this.imageBase64,
     this.imageUrl,
+    this.authorAvatarImageBase64,
     this.likeCount = 0,
     this.isLiked = false,
     List<String>? likedBy,
@@ -29,6 +30,7 @@ class TimelinePost {
   final DateTime createdAt;
   final String? imageBase64;
   final String? imageUrl;
+  final String? authorAvatarImageBase64;
   int likeCount;
   bool isLiked;
   final List<String> hashtags;
@@ -66,6 +68,7 @@ class TimelinePost {
         'createdAt': createdAt.toIso8601String(),
         'imageBase64': imageBase64,
         'imageUrl': imageUrl,
+        'authorAvatarImageBase64': authorAvatarImageBase64,
         'likeCount': likeCount,
         'likedBy': likedBy,
         'hashtags': hashtags,
@@ -101,6 +104,7 @@ class TimelinePost {
           (map['likeCount'] as num?)?.toInt() ?? likedBy.length;
       final isLiked = viewerId != null && likedBy.contains(viewerId);
       final imageBase64 = map['imageBase64'] as String?;
+      final authorAvatarImageBase64 = map['authorAvatarImageBase64'] as String?;
       final hashtagsRaw = map['hashtags'];
       final hashtags = hashtagsRaw is Iterable
           ? hashtagsRaw.map((tag) => tag.toString()).toList()
@@ -114,6 +118,7 @@ class TimelinePost {
         createdAt: createdAt,
         imageBase64: imageBase64,
         imageUrl: map['imageUrl'] as String?,
+        authorAvatarImageBase64: authorAvatarImageBase64,
         likeCount: likeCount,
         isLiked: isLiked,
         likedBy: likedBy,

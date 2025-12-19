@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui';
 
@@ -957,6 +958,7 @@ class _UserPostCard extends StatelessWidget {
             title: post.authorName,
             subtitle: _relativeTime(post.createdAt),
             color: post.authorColor,
+            avatarImageBase64: post.authorAvatarImageBase64,
             trailing: canDelete
                 ? PopupMenuButton<String>(
                     onSelected: (value) {
@@ -1069,12 +1071,14 @@ class _TimelineCardHeader extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.color,
+    this.avatarImageBase64,
     this.trailing,
   });
 
   final String title;
   final String subtitle;
   final Color color;
+  final String? avatarImageBase64;
   final Widget? trailing;
 
   @override
@@ -1082,18 +1086,35 @@ class _TimelineCardHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final trimmedTitle = title.trim().isEmpty ? '\u533f\u540d' : title.trim();
     final initial = trimmedTitle.characters.first.toUpperCase();
+    
+    // 如果有头像，解码并显示
+    MemoryImage? avatarImage;
+    if (avatarImageBase64 != null && avatarImageBase64!.trim().isNotEmpty) {
+      try {
+        final bytes = base64Decode(avatarImageBase64!.trim());
+        if (bytes.isNotEmpty) {
+          avatarImage = MemoryImage(bytes);
+        }
+      } catch (_) {
+        // 解码失败，使用默认显示
+      }
+    }
+    
     return ListTile(
       leading: CircleAvatar(
         radius: 24,
         backgroundColor: color,
-        child: Text(
-          initial,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
+        foregroundImage: avatarImage,
+        child: avatarImage == null
+            ? Text(
+                initial,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              )
+            : null,
       ),
       title: Text(
         trimmedTitle,
