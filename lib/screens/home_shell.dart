@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui';
 
@@ -45,6 +46,7 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
   bool _autoStartAttempted = false;
+  final GlobalKey<_TimelineScreenState> _timelineKey = GlobalKey<_TimelineScreenState>();
 
   @override
   void initState() {
@@ -54,11 +56,11 @@ class _HomeShellState extends State<HomeShell> {
     });
   }
 
-  final List<Widget> _pages = const [
-    _TimelineScreen(),
-    SizedBox.shrink(),
-    NotificationsScreen(),
-    _ProfileScreen(),
+  List<Widget> get _pages => [
+    _TimelineScreen(key: _timelineKey),
+    const SizedBox.shrink(),
+    const NotificationsScreen(),
+    const _ProfileScreen(),
   ];
 
   @override
@@ -118,6 +120,11 @@ class _HomeShellState extends State<HomeShell> {
   void _handleDestinationSelected(int index) {
     if (index == 1) {
       _openShareComposer();
+      return;
+    }
+    // 如果点击HOME按钮且当前已在HOME页面，则滚动到顶部
+    if (index == 0 && _currentIndex == 0) {
+      _timelineKey.currentState?.scrollToTop();
       return;
     }
     setState(() => _currentIndex = index);
@@ -180,8 +187,31 @@ class _HomeShellState extends State<HomeShell> {
   }
 }
 
-class _TimelineScreen extends StatelessWidget {
-  const _TimelineScreen();
+class _TimelineScreen extends StatefulWidget {
+  const _TimelineScreen({super.key});
+
+  @override
+  State<_TimelineScreen> createState() => _TimelineScreenState();
+}
+
+class _TimelineScreenState extends State<_TimelineScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -214,6 +244,7 @@ class _TimelineScreen extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: ListView(
+              controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               children: [
                 _HighlightsSection(
@@ -927,6 +958,7 @@ class _UserPostCard extends StatelessWidget {
             title: post.authorName,
             subtitle: _relativeTime(post.createdAt),
             color: post.authorColor,
+            avatarImageBase64: post.authorAvatarImageBase64,
             trailing: canDelete
                 ? PopupMenuButton<String>(
                     onSelected: (value) {
@@ -1039,12 +1071,14 @@ class _TimelineCardHeader extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.color,
+    this.avatarImageBase64,
     this.trailing,
   });
 
   final String title;
   final String subtitle;
   final Color color;
+  final String? avatarImageBase64;
   final Widget? trailing;
 
   @override
@@ -1052,18 +1086,35 @@ class _TimelineCardHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final trimmedTitle = title.trim().isEmpty ? '\u533f\u540d' : title.trim();
     final initial = trimmedTitle.characters.first.toUpperCase();
+    
+    // 如果有头像，解码并显示
+    MemoryImage? avatarImage;
+    if (avatarImageBase64 != null && avatarImageBase64!.trim().isNotEmpty) {
+      try {
+        final bytes = base64Decode(avatarImageBase64!.trim());
+        if (bytes.isNotEmpty) {
+          avatarImage = MemoryImage(bytes);
+        }
+      } catch (_) {
+        // 解码失败，使用默认显示
+      }
+    }
+    
     return ListTile(
       leading: CircleAvatar(
         radius: 24,
         backgroundColor: color,
-        child: Text(
-          initial,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
+        foregroundImage: avatarImage,
+        child: avatarImage == null
+            ? Text(
+                initial,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              )
+            : null,
       ),
       title: Text(
         trimmedTitle,
