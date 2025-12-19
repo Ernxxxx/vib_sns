@@ -1687,9 +1687,9 @@ class _EmotionMapState extends State<EmotionMap> {
       );
     }
 
-    // 100+ハッピー: 満開の桜デザイン - 画像を使用
-    final stampSize = 120.0 * scale;
-    final haloSize = stampSize * 1.25;
+    // 100+ハッピー: 満開の桜デザイン - 画像を使用 + 桜の花びらエフェクト
+    final stampSize = 160.0 * scale; // 130から160に拡大
+    final haloSize = stampSize * 2.2; // 散る範囲をさらに広げるために2.2倍に拡大
     final baseColor = stamp.color;
 
     return Marker(
@@ -1700,60 +1700,12 @@ class _EmotionMapState extends State<EmotionMap> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _showClusterDetails(cluster),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // 華やかなハロー
-            Container(
-              width: haloSize,
-              height: haloSize,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    baseColor.withValues(alpha: 0.5),
-                    baseColor.withValues(alpha: 0.2),
-                    Colors.transparent,
-                  ],
-                  stops: const [0.3, 0.6, 1.0],
-                ),
-              ),
-            ),
-            // メインコンテナ
-            Container(
-              width: stampSize,
-              height: stampSize,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                border: Border.all(
-                  color: baseColor,
-                  width: 5 * scale,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: baseColor.withValues(alpha: 0.4),
-                    blurRadius: 15 * scale,
-                    offset: Offset(0, 6 * scale),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: stamp.imagePath != null
-                    ? Image.asset(
-                        stamp.imagePath!,
-                        width: 100 * scale,
-                        height: 100 * scale,
-                        fit: BoxFit.contain,
-                      )
-                    : _GeminiStyleMarker(
-                        scale: scale,
-                        emoji: stamp.emoji,
-                      ),
-              ),
-            ),
-          ],
+        child: _SakuraStampWithPetals(
+          stampSize: stampSize,
+          haloSize: haloSize,
+          baseColor: baseColor,
+          scale: scale,
+          imagePath: stamp.imagePath,
         ),
       ),
     );
@@ -2618,6 +2570,199 @@ class _ClusterDetailSheet extends StatelessWidget {
       return '${local.month}/${local.day}';
     }
   }
+}
+
+/// 100+桜スタンプ用のウィジェット（画像 + 舞い散る花びらエフェクト）
+class _SakuraStampWithPetals extends StatefulWidget {
+  const _SakuraStampWithPetals({
+    required this.stampSize,
+    required this.haloSize,
+    required this.baseColor,
+    required this.scale,
+    this.imagePath,
+  });
+
+  final double stampSize;
+  final double haloSize;
+  final Color baseColor;
+  final double scale;
+  final String? imagePath;
+
+  @override
+  State<_SakuraStampWithPetals> createState() => _SakuraStampWithPetalsState();
+}
+
+class _SakuraStampWithPetalsState extends State<_SakuraStampWithPetals>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  final List<_SakuraPetal> _petals = [];
+  final Random _random = Random();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    )..repeat();
+
+    // 桜の花びら設定
+    const petalColors = [
+      Color(0xFFFFB7C5), // 桜色
+      Color(0xFFFFC0CB), // ピンク
+      Color(0xFFF8BBD0), // 薄いピンク
+      Color(0xFFFFE4E9), // 淡いピンク
+    ];
+
+    for (int i = 0; i < 15; i++) {
+      _petals.add(_SakuraPetal(
+        angle: _random.nextDouble() * 2 * pi,
+        distance: _random.nextDouble(),
+        speed: 0.15 + _random.nextDouble() * 0.25,
+        size: 6 + _random.nextDouble() * 5,
+        color: petalColors[_random.nextInt(petalColors.length)],
+        rotationSpeed: 0.5 + _random.nextDouble() * 1.5,
+      ));
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final t = _controller.value;
+        final pulseVal = 1.0 + 0.03 * sin(t * 2 * pi * 0.5);
+
+        return SizedBox(
+          width: widget.haloSize,
+          height: widget.haloSize,
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              // 華やかなハロー（脈動付き）
+              Transform.scale(
+                scale: pulseVal,
+                child: Container(
+                  width: widget.stampSize * 1.25,
+                  height: widget.stampSize * 1.25,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        widget.baseColor.withValues(alpha: 0.5),
+                        widget.baseColor.withValues(alpha: 0.2),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.3, 0.6, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+
+              // メインスタンプコンテナ
+              Container(
+                width: widget.stampSize,
+                height: widget.stampSize,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  border: Border.all(
+                    color: widget.baseColor,
+                    width: 5 * widget.scale,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.baseColor.withValues(alpha: 0.4),
+                      blurRadius: 15 * widget.scale,
+                      offset: Offset(0, 6 * widget.scale),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: widget.imagePath != null
+                      ? Image.asset(
+                          widget.imagePath!,
+                          width: widget.stampSize, // スタンプ枠いっぱいに広げる
+                          height: widget.stampSize,
+                          fit: BoxFit.cover, // 余白が出ないようにカバー
+                        )
+                      : Text(
+                          '🌸',
+                          style: TextStyle(fontSize: 60 * widget.scale),
+                        ),
+                ),
+              ),
+
+              // 舞い散る花びら (前面に移動して視認性を向上)
+              ..._petals.map((p) {
+                // ループアニメーション: (初期位置 + 時間 * 速度) % 1.0
+                final progress = (p.distance + t * p.speed * 3) % 1.0;
+
+                // 落下軌道 (上から下へ、少し揺らぎながら)
+                final y = (progress - 0.5) * widget.haloSize * 0.95;
+
+                // x: サイン波で揺らす。スタンプの外側まで広がるように調整
+                final sway =
+                    sin(progress * 8 + p.angle) * (widget.stampSize * 0.4);
+                final x = cos(p.angle) * (widget.stampSize * 0.6) + sway;
+
+                // 回転
+                final rotation = t * p.rotationSpeed * 2 * pi + p.angle;
+
+                // フェードイン・アウト
+                final opacity = (0.9 * (1.0 - (2 * (progress - 0.5)).abs()))
+                    .clamp(0.0, 1.0);
+
+                return Positioned(
+                  left: widget.haloSize / 2 + x - p.size / 2,
+                  top: widget.haloSize / 2 + y - p.size / 2,
+                  child: Transform.rotate(
+                    angle: rotation,
+                    child: Opacity(
+                      opacity: opacity,
+                      // ハートを花びらとして使用
+                      child: Icon(
+                        Icons.favorite,
+                        color: p.color,
+                        size: p.size * widget.scale,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SakuraPetal {
+  _SakuraPetal({
+    required this.angle,
+    required this.distance,
+    required this.speed,
+    required this.size,
+    required this.color,
+    required this.rotationSpeed,
+  });
+
+  final double angle;
+  final double distance;
+  final double speed;
+  final double size;
+  final Color color;
+  final double rotationSpeed;
 }
 
 class _GeminiStyleMarker extends StatefulWidget {
