@@ -26,7 +26,7 @@ import 'profile_edit_screen.dart';
 import '../models/profile.dart';
 import '../models/encounter.dart';
 import '../utils/color_extensions.dart';
-import '../models/timeline_post.dart';
+import 'package:vib_sns/models/timeline_post.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/profile_avatar.dart';
 import '../utils/app_text_styles.dart';
@@ -46,22 +46,24 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
   bool _autoStartAttempted = false;
-  final GlobalKey<_TimelineScreenState> _timelineKey = GlobalKey<_TimelineScreenState>();
+  final GlobalKey<_TimelineScreenState> _timelineKey =
+      GlobalKey<_TimelineScreenState>();
+
+  late List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
+    _pages = [
+      _TimelineScreen(key: _timelineKey),
+      const SizedBox.shrink(),
+      const NotificationsScreen(),
+      const _ProfileScreen(),
+    ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _autoStartStreetPass();
     });
   }
-
-  List<Widget> get _pages => [
-    _TimelineScreen(key: _timelineKey),
-    const SizedBox.shrink(),
-    const NotificationsScreen(),
-    const _ProfileScreen(),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -122,8 +124,10 @@ class _HomeShellState extends State<HomeShell> {
       _openShareComposer();
       return;
     }
-    // 如果点击HOME按钮且当前已在HOME页面，则滚动到顶部
+    // ホームボタンが押され、かつ現在ホーム画面にいる場合はトップへスクロール
     if (index == 0 && _currentIndex == 0) {
+      debugPrint(
+          'HomeShell: Home button tapped on Home tab, scrolling to top.');
       _timelineKey.currentState?.scrollToTop();
       return;
     }
@@ -1086,8 +1090,8 @@ class _TimelineCardHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final trimmedTitle = title.trim().isEmpty ? '\u533f\u540d' : title.trim();
     final initial = trimmedTitle.characters.first.toUpperCase();
-    
-    // 如果有头像，解码并显示
+
+    // アバター画像がある場合はデコードして表示
     MemoryImage? avatarImage;
     if (avatarImageBase64 != null && avatarImageBase64!.trim().isNotEmpty) {
       try {
@@ -1096,10 +1100,10 @@ class _TimelineCardHeader extends StatelessWidget {
           avatarImage = MemoryImage(bytes);
         }
       } catch (_) {
-        // 解码失败，使用默认显示
+        // デコード失敗時はデフォルト表示へ
       }
     }
-    
+
     return ListTile(
       leading: CircleAvatar(
         radius: 24,
