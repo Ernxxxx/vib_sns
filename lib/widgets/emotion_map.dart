@@ -2677,7 +2677,7 @@ class _SakuraStampWithPetalsState extends State<_SakuraStampWithPetals>
                   color: Colors.white,
                   border: Border.all(
                     color: widget.baseColor,
-                    width: 5 * widget.scale,
+                    width: 2 * widget.scale,
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -2691,16 +2691,17 @@ class _SakuraStampWithPetalsState extends State<_SakuraStampWithPetals>
                   child: widget.imagePath != null
                       ? Image.asset(
                           widget.imagePath!,
-                          width: widget.stampSize, // スタンプ枠いっぱいに広げる
-                          height: widget.stampSize,
-                          fit: BoxFit.cover, // 余白が出ないようにカバー
+                          width: widget.stampSize * 1.4, // ズームアップ
+                          height: widget.stampSize * 1.4,
+                          fit: BoxFit.cover,
                         )
                       : Text(
                           '🌸',
-                          style: TextStyle(fontSize: 60 * widget.scale),
+                          style: TextStyle(fontSize: 80 * widget.scale),
                         ),
                 ),
               ),
+              // 外枠のボーダーを細くして画像を目立たせる（上書き的な実装を避けるためコンテナ自体のborderを調整）
 
               // 舞い散る花びら (前面に移動して視認性を向上)
               ..._petals.map((p) {
