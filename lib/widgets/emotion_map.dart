@@ -1151,6 +1151,8 @@ class _EmotionMapState extends State<EmotionMap> {
     final result = await showModalBottomSheet<_EmotionFormResult>(
       context: context,
       isScrollControlled: true,
+      isDismissible: true, // 允许点击外部关闭
+      enableDrag: true, // 允许拖拽关闭（移动端）
       backgroundColor: Colors.transparent, // グラスモーフィズム用に透明
       builder: (_) => const _EmotionPostSheet(),
     );
@@ -2129,13 +2131,20 @@ class _EmotionPostSheetState extends State<_EmotionPostSheet> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Center(
+                          // 顶部可点击区域，点击即可关闭
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).pop(),
+                            behavior: HitTestBehavior.opaque, // 确保整个区域可点击
                             child: Container(
-                              width: 40,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.withValues(alpha: 0.3),
-                                borderRadius: BorderRadius.circular(2),
+                              height: 60,
+                              alignment: Alignment.center,
+                              child: Container(
+                                width: 40,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withValues(alpha: 0.3),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
                               ),
                             ),
                           ),
