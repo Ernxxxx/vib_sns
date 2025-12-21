@@ -1151,6 +1151,8 @@ class _EmotionMapState extends State<EmotionMap> {
     final result = await showModalBottomSheet<_EmotionFormResult>(
       context: context,
       isScrollControlled: true,
+      isDismissible: true, // 外部タップで閉じる
+      enableDrag: true, // ドラッグで閉じる（モバイル）
       backgroundColor: Colors.transparent, // グラスモーフィズム用に透明
       builder: (_) => const _EmotionPostSheet(),
     );
@@ -2129,13 +2131,20 @@ class _EmotionPostSheetState extends State<_EmotionPostSheet> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Center(
+                          // 上部のタップ可能な空白領域、タップで閉じる
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).pop(),
+                            behavior: HitTestBehavior.opaque, // 領域全体をタップ可能にする
                             child: Container(
-                              width: 40,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.withValues(alpha: 0.3),
-                                borderRadius: BorderRadius.circular(2),
+                              height: 60, // 高さを増やして十分な空白領域を確保
+                              alignment: Alignment.center,
+                              child: Container(
+                                width: 40,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withValues(alpha: 0.3),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
                               ),
                             ),
                           ),
