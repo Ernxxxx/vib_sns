@@ -1,14 +1,18 @@
 import 'dart:async';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
 import '../models/profile.dart';
 import '../models/timeline_post.dart';
 import '../services/profile_interaction_service.dart';
+import '../state/encounter_manager.dart';
 import '../state/profile_controller.dart';
 import '../state/timeline_manager.dart';
+import '../utils/auth_helpers.dart';
 import '../widgets/like_button.dart';
 import '../widgets/profile_avatar.dart';
 import '../widgets/profile_info_tile.dart';
@@ -19,18 +23,19 @@ class ProfileViewScreen extends StatefulWidget {
   const ProfileViewScreen({
     super.key,
     required this.profileId,
-    required this.initialProfile,
+    this.initialProfile,
   });
 
   final String profileId;
-  final Profile initialProfile;
+  final Profile? initialProfile;
 
   @override
   State<ProfileViewScreen> createState() => _ProfileViewScreenState();
 }
 
 class _ProfileViewScreenState extends State<ProfileViewScreen> {
-  late Profile _profile = widget.initialProfile;
+  late Profile _profile =
+      widget.initialProfile ?? _placeholderProfile(widget.profileId);
   late String _viewerId;
   ProfileInteractionSnapshot? _latestSnapshot;
   StreamSubscription<ProfileInteractionSnapshot>? _subscription;
@@ -45,7 +50,11 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
   void initState() {
     super.initState();
     _viewerId = context.read<ProfileController>().profile.id;
-    _profile = widget.initialProfile;
+    _profile = widget.initialProfile ?? _placeholderProfile(widget.profileId);
+    final encounter = context
+        .read<EncounterManager>()
+        .findById('encounter_${widget.profileId}');
+    _isLikedByViewer = encounter?.liked ?? false;
     _subscribeToStats();
     _loadDetails();
   }
@@ -63,7 +72,9 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
       final fresh = await service.loadProfile(widget.profileId);
       if (!mounted) return;
       if (fresh != null) {
-        _profile = _mergeProfileDetails(fresh);
+        setState(() {
+          _profile = _mergeProfileDetails(fresh);
+        });
       }
     } finally {
       if (mounted) {
@@ -127,10 +138,16 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
     final shouldHoldFollow = _pendingFollowTarget != null &&
         snapshotFollow != null &&
         snapshotFollow != _pendingFollowTarget;
+    final resolvedReceivedLikes = snapshot?.receivedLikes ??
+        max(_profile.receivedLikes, fresh.receivedLikes);
+    final resolvedFollowers =
+        snapshot?.followersCount ?? max(_profile.followersCount, fresh.followersCount);
+    final resolvedFollowing =
+        snapshot?.followingCount ?? max(_profile.followingCount, fresh.followingCount);
     return fresh.copyWith(
-      followersCount: snapshot?.followersCount ?? fresh.followersCount,
-      followingCount: snapshot?.followingCount ?? fresh.followingCount,
-      receivedLikes: snapshot?.receivedLikes ?? fresh.receivedLikes,
+      followersCount: resolvedFollowers,
+      followingCount: resolvedFollowing,
+      receivedLikes: resolvedReceivedLikes,
       following: shouldHoldFollow
           ? _profile.following
           : (snapshotFollow ?? _profile.following),
@@ -185,6 +202,16 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
     if (_isProcessingLike || widget.profileId == _viewerId) return;
     final service = context.read<ProfileInteractionService>();
     final viewerProfile = context.read<ProfileController>().profile;
+    if (FirebaseAuth.instance.currentUser == null) {
+      await ensureAnonymousAuth();
+    }
+    if (FirebaseAuth.instance.currentUser == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('認証に失敗したため、いいねできませんでした。')),
+      );
+      return;
+    }
     final shouldLike = !_isLikedByViewer;
     setState(() {
       _isProcessingLike = true;
@@ -413,6 +440,18 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
       ),
     );
   }
+}
+
+Profile _placeholderProfile(String profileId) {
+  return Profile(
+    id: profileId,
+    beaconId: profileId,
+    displayName: '読み込み中...',
+    bio: '読み込み中...',
+    homeTown: '',
+    favoriteGames: const [],
+    avatarColor: Colors.blueGrey,
+  );
 }
 
 String _formatTimelineTimestamp(DateTime time) {

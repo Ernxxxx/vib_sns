@@ -199,6 +199,13 @@ class FirestoreProfileInteractionService implements ProfileInteractionService {
     final likeRef = targetRef.collection('likes').doc(authUid);
 
     // First, perform the minimal write that must succeed (like document).
+    final likeSnapshot = await likeRef.get();
+    if (like && likeSnapshot.exists) {
+      return;
+    }
+    if (!like && !likeSnapshot.exists) {
+      return;
+    }
     final likeBatch = _firestore.batch();
     if (like) {
       likeBatch.set(likeRef, {
@@ -435,11 +442,16 @@ class FirestoreProfileInteractionService implements ProfileInteractionService {
       return;
     }
     try {
+      final authUid = targetSnap.data()?['authUid'];
+      final payload = <String, dynamic>{
+        'receivedLikes': FieldValue.increment(like ? 1 : -1),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      if (authUid != null) {
+        payload['authUid'] = authUid;
+      }
       await targetRef.set(
-        {
-          'receivedLikes': FieldValue.increment(like ? 1 : -1),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
+        payload,
         SetOptions(merge: true),
       );
     } on FirebaseException catch (error, stackTrace) {
@@ -523,6 +535,8 @@ class _ProfileWatcher {
   bool _hasSubcollectionCounts = false;
 
   int _receivedLikes = 0;
+  int _receivedLikesFromDoc = 0;
+  int _receivedLikesFromSubcollection = 0;
   int _followersCount = 0;
   int _followingCount = 0;
   bool _likedByViewer = false;
@@ -565,10 +579,16 @@ class _ProfileWatcher {
       (snapshot) {
         final data = snapshot.data();
         if (!_hasSubcollectionCounts) {
-          _receivedLikes = (data?['receivedLikes'] as num?)?.toInt() ?? 0;
+          _receivedLikesFromDoc =
+              (data?['receivedLikes'] as num?)?.toInt() ?? 0;
           _followersCount = (data?['followersCount'] as num?)?.toInt() ?? 0;
           _followingCount = (data?['followingCount'] as num?)?.toInt() ?? 0;
+        } else {
+          _receivedLikesFromDoc =
+              (data?['receivedLikes'] as num?)?.toInt() ?? 0;
         }
+        _receivedLikes =
+            max(_receivedLikesFromDoc, _receivedLikesFromSubcollection);
         _emitSnapshot();
       },
       onError: (error, stackTrace) {
@@ -583,7 +603,9 @@ class _ProfileWatcher {
     _likeCountSub =
         docRef.collection('likes').snapshots().listen((snapshot) {
       _hasSubcollectionCounts = true;
-      _receivedLikes = snapshot.size;
+      _receivedLikesFromSubcollection = snapshot.size;
+      _receivedLikes =
+          max(_receivedLikesFromDoc, _receivedLikesFromSubcollection);
       _emitSnapshot();
     });
     _followersCountSub =

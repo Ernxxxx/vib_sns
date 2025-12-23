@@ -254,6 +254,13 @@ class EncounterManager extends ChangeNotifier {
     final existing = _encountersByRemoteId[data.remoteId];
     final isRepeatCandidate = existing != null;
     if (existing != null) {
+      final hasLiveStats =
+          _interactionSubscriptions.containsKey(data.remoteId);
+      final keepReceivedLikes =
+          hasLiveStats || _pendingLikeStates.containsKey(data.remoteId);
+      final nextReceivedLikes = keepReceivedLikes
+          ? existing.profile.receivedLikes
+          : data.profile.receivedLikes;
       existing.encounteredAt = data.encounteredAt;
       existing.gpsDistanceMeters = data.gpsDistanceMeters;
       existing.message = data.message ?? existing.message;
@@ -262,7 +269,7 @@ class EncounterManager extends ChangeNotifier {
       final previousLiked = existing.liked;
       existing.profile = data.profile.copyWith(
         following: previousProfile.following,
-        receivedLikes: data.profile.receivedLikes,
+        receivedLikes: nextReceivedLikes,
         followersCount: data.profile.followersCount,
         followingCount: data.profile.followingCount,
       );
@@ -453,7 +460,7 @@ class EncounterManager extends ChangeNotifier {
     final smoothedDistance =
         _recordBleDistance(hit.beaconId, hit.distanceMeters);
     matched.bleDistanceMeters = smoothedDistance;
-    matched.encounteredAt = DateTime.now();
+    // encounteredAt は最初の検知時刻を保持し、毎回リセットしない
     matched.unread = true;
     debugPrint('[VIBE] ble tags=${matched.profile.favoriteGames}');
     final hasSharedHashtag =
@@ -844,6 +851,10 @@ class EncounterManager extends ChangeNotifier {
       }
     }
     return null;
+  }
+
+  Encounter? findByRemoteId(String remoteId) {
+    return _encountersByRemoteId[remoteId];
   }
 
   void markSeen(String encounterId) {

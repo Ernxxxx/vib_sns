@@ -223,6 +223,46 @@ class TimelineManager extends ChangeNotifier {
             ? FieldValue.arrayUnion([viewerId])
             : FieldValue.arrayRemove([viewerId]),
       });
+
+      // 投稿者のプロフィールのreceivedLikesも更新
+      // ProfileViewScreenはlikesサブコレクションのサイズを使用するため、
+      // サブコレクションにもドキュメントを追加/削除する
+      final authorId = post.authorId;
+      final authUid = FirebaseAuth.instance.currentUser?.uid;
+      if (authorId.isNotEmpty && authorId != viewerId && authUid != null) {
+        debugPrint('[LIKE] Updating likes for author $authorId by $delta');
+        final profileRef =
+            FirebaseFirestore.instance.collection('profiles').doc(authorId);
+        final likeDocRef = profileRef.collection('likes').doc(authUid);
+
+        try {
+          if (nextLiked) {
+            // いいねを追加
+            await likeDocRef.set({
+              'createdAt': FieldValue.serverTimestamp(),
+              'viewerProfileId': viewerId,
+              'profile': {
+                'id': viewerId,
+                'displayName': viewer.displayName,
+                'avatarColor': viewer.avatarColor.value,
+                'avatarImageBase64': viewer.avatarImageBase64,
+              },
+            });
+          } else {
+            // いいねを削除
+            await likeDocRef.delete();
+          }
+          debugPrint(
+              '[LIKE] Successfully updated likes subcollection for $authorId');
+
+          // receivedLikesフィールドも更新（バックアップ用）
+          await profileRef.update({
+            'receivedLikes': FieldValue.increment(delta),
+          });
+        } catch (profileError) {
+          debugPrint('[LIKE] Failed to update profile likes: $profileError');
+        }
+      }
       // Let the Firestore snapshot listener clear the pending state when server catches up.
     } catch (error, stackTrace) {
       debugPrint('Failed to update timeline like: $error');
@@ -301,6 +341,9 @@ class TimelineManager extends ChangeNotifier {
           } else {
             // Keep the optimistic state until server catches up.
             post.isLiked = pendingLike;
+            post.likeCount = _posts
+                .firstWhere((p) => p.id == post.id, orElse: () => post)
+                .likeCount;
             if (pendingLike && !post.likedBy.contains(viewerId)) {
               post.likedBy.add(viewerId);
             } else if (!pendingLike) {
@@ -309,6 +352,8 @@ class TimelineManager extends ChangeNotifier {
           }
         }
       }
+
+      // Always replace the list - the pending states are already applied to nextPosts
       _posts
         ..clear()
         ..addAll(nextPosts);
