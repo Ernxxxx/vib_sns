@@ -60,6 +60,16 @@ class TimelineManager extends ChangeNotifier {
     return hashtags;
   }
 
+  Future<void> refresh() async {
+    if (_paused) return;
+    // 既存のサブスクリプションをリセットして再取得
+    await _subscription?.cancel();
+    _posts.clear();
+    _isLoaded = false;
+    notifyListeners();
+    _subscribeToPosts();
+  }
+
   Future<void> addPost({
     required String caption,
     Uint8List? imageBytes,

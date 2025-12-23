@@ -35,8 +35,7 @@ class NotificationManager extends ChangeNotifier {
 
   StreamSubscription<List<ProfileFollowSnapshot>>? _followersSub;
   StreamSubscription<List<ProfileLikeSnapshot>>? _likesSub;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
-      _timelineLikesSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _timelineLikesSub;
   bool _followersInitialized = false;
   bool _likesInitialized = false;
   bool _timelineLikesInitialized = false;
@@ -142,6 +141,11 @@ class NotificationManager extends ChangeNotifier {
       _startSubscriptions();
     }
     notifyListeners();
+  }
+
+  Future<void> refresh() async {
+    // 既存の監視をリスタートして最新状態と同期
+    _restartSubscriptions();
   }
 
   @override

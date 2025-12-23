@@ -247,48 +247,55 @@ class _TimelineScreenState extends State<_TimelineScreen> {
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
-            child: ListView(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              children: [
-                _HighlightsSection(
-                  palette: palette,
-                  metrics: metrics,
-                  onEncounterTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const EncounterListScreen.encounters(),
+            child: RefreshIndicator(
+              onRefresh: () => timelineManager.refresh(),
+              child: ListView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                children: [
+                  _HighlightsSection(
+                    palette: palette,
+                    metrics: metrics,
+                    onEncounterTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const EncounterListScreen.encounters(),
+                        ),
+                      );
+                    },
+                    onReunionTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const EncounterListScreen.reunions(),
+                        ),
+                      );
+                    },
+                    onResonanceTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const EncounterListScreen.resonances(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  if (feedPosts.isEmpty)
+                    const _EmptyTimelineMessage()
+                  else
+                    for (final post in feedPosts)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        child: _UserPostCard(
+                          post: post,
+                          timelineManager: timelineManager,
+                        ),
                       ),
-                    );
-                  },
-                  onReunionTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const EncounterListScreen.reunions(),
-                      ),
-                    );
-                  },
-                  onResonanceTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const EncounterListScreen.resonances(),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-                if (feedPosts.isEmpty)
-                  const _EmptyTimelineMessage()
-                else
-                  for (final post in feedPosts)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      child: _UserPostCard(
-                        post: post,
-                        timelineManager: timelineManager,
-                      ),
-                    ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -953,8 +960,10 @@ class _UserPostCard extends StatelessWidget {
         : '\u307e\u3060\u3044\u3044\u306d\u306f\u3042\u308a\u307e\u305b\u3093';
     return Card(
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 0,
+      color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -963,6 +972,26 @@ class _UserPostCard extends StatelessWidget {
             subtitle: _relativeTime(post.createdAt),
             color: post.authorColor,
             avatarImageBase64: post.authorAvatarImageBase64,
+            onTap: () {
+              // Navigate to profile view
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ProfileViewScreen(
+                    profileId: post.authorId,
+                    initialProfile: Profile(
+                      id: post.authorId,
+                      beaconId: post.authorId, // Fallback
+                      displayName: post.authorName,
+                      avatarColor: post.authorColor,
+                      avatarImageBase64: post.authorAvatarImageBase64,
+                      bio: '読み込み中...',
+                      homeTown: '',
+                      favoriteGames: [],
+                    ),
+                  ),
+                ),
+              );
+            },
             trailing: canDelete
                 ? PopupMenuButton<String>(
                     onSelected: (value) {
@@ -983,6 +1012,7 @@ class _UserPostCard extends StatelessWidget {
             _TimelineImage(
               bytes: imageBytes,
               imageUrl: hasImageUrl ? post.imageUrl : null,
+              borderRadius: BorderRadius.circular(16),
             ),
           if (post.caption.isNotEmpty)
             Padding(
@@ -1002,16 +1032,21 @@ class _UserPostCard extends StatelessWidget {
                   for (final tag in post.hashtags)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(12),
+                        color: theme.colorScheme.secondaryContainer
+                            .withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: theme.colorScheme.outline.withOpacity(0.2),
+                          width: 0.5,
+                        ),
                       ),
                       child: Text(
                         tag,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w600,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onSecondaryContainer,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -1077,6 +1112,7 @@ class _TimelineCardHeader extends StatelessWidget {
     required this.color,
     this.avatarImageBase64,
     this.trailing,
+    this.onTap,
   });
 
   final String title;
@@ -1084,6 +1120,7 @@ class _TimelineCardHeader extends StatelessWidget {
   final Color color;
   final String? avatarImageBase64;
   final Widget? trailing;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1105,6 +1142,8 @@ class _TimelineCardHeader extends StatelessWidget {
     }
 
     return ListTile(
+      onTap: onTap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       leading: CircleAvatar(
         radius: 24,
         backgroundColor: color,
@@ -1181,15 +1220,19 @@ class _TimelineActions extends StatelessWidget {
 }
 
 class _TimelineImage extends StatelessWidget {
-  const _TimelineImage({this.bytes, this.imageUrl})
-      : assert(bytes != null || imageUrl != null);
+  const _TimelineImage({
+    this.bytes,
+    this.imageUrl,
+    this.borderRadius,
+  });
 
   final Uint8List? bytes;
   final String? imageUrl;
+  final BorderRadius? borderRadius;
 
   @override
   Widget build(BuildContext context) {
-    final errorPlaceholder = Container(
+    final placeholder = Container(
       color: Colors.grey.shade200,
       alignment: Alignment.center,
       child: const Icon(
@@ -1205,33 +1248,33 @@ class _TimelineImage extends StatelessWidget {
           bytes!,
           fit: BoxFit.cover,
           gaplessPlayback: true,
-          filterQuality: FilterQuality.high,
-          errorBuilder: (context, error, stackTrace) => errorPlaceholder,
+          errorBuilder: (_, __, ___) => placeholder,
         );
       }
-      return Image.network(
-        imageUrl!,
-        fit: BoxFit.cover,
-        filterQuality: FilterQuality.high,
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return Center(
-            child: CircularProgressIndicator(
-              value: progress.expectedTotalBytes != null
-                  ? progress.cumulativeBytesLoaded /
-                      progress.expectedTotalBytes!
-                  : null,
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) => errorPlaceholder,
-      );
+      if (imageUrl != null && imageUrl!.isNotEmpty) {
+        return Image.network(
+          imageUrl!,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => placeholder,
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return Center(
+              child: CircularProgressIndicator(
+                value: progress.expectedTotalBytes != null
+                    ? progress.cumulativeBytesLoaded /
+                        progress.expectedTotalBytes!
+                    : null,
+              ),
+            );
+          },
+        );
+      }
+      return placeholder;
     }
 
-    return AspectRatio(
-      aspectRatio: 4 / 5,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(0),
         child: buildImage(),
       ),
     );
@@ -1580,96 +1623,115 @@ class _ProfileScreenState extends State<_ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Material(
-                            color: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(28),
-                            ),
-                            child: InkWell(
-                              onTap: _openProfileEdit,
-                              borderRadius: BorderRadius.circular(28),
-                              child: Padding(
-                                padding: const EdgeInsets.all(6),
-                                child: ProfileAvatar(
-                                  profile: profile,
-                                  radius: 32,
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    // プロフィールとタイムラインを更新
+                    // Note: ProfileController doesn't have a public refresh, assuming updateProfile triggers reload if needed.
+                    // For now, refreshing timeline is the most visible action.
+                    await context.read<TimelineManager>().refresh();
+                    // updateProfile call removed as it requires a non-null Profile object and lacks a reload mechanism.
+                    // Relying on TimelineManager refresh for now.
+                  },
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Material(
+                              color: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(28),
+                              ),
+                              child: InkWell(
+                                onTap: _openProfileEdit,
+                                borderRadius: BorderRadius.circular(28),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(6),
+                                  child: ProfileAvatar(
+                                    profile: profile,
+                                    radius: 32,
+                                  ),
                                 ),
                               ),
                             ),
+                            const SizedBox(width: 18),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  profile.displayName,
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '\u30b5\u30de\u30ea\u30fc\u3092\u7de8\u96c6\u3057\u3066\n\u3042\u306a\u305f\u3089\u3057\u3055\u3092\u5c4a\u3051\u307e\u3057\u3087\u3046\u3002',
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                              ],
+                            )
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        ProfileStatsRow(
+                          profile: profile,
+                          onFollowersTap: () => _openRelationsSheet(
+                            profile,
+                            ProfileFollowSheetMode.followers,
                           ),
-                          const SizedBox(width: 18),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                profile.displayName,
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                '\u30b5\u30de\u30ea\u30fc\u3092\u7de8\u96c6\u3057\u3066\n\u3042\u306a\u305f\u3089\u3057\u3055\u3092\u5c4a\u3051\u307e\u3057\u3087\u3046\u3002',
-                                style: theme.textTheme.bodyMedium,
-                              ),
-                            ],
-                          )
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      ProfileStatsRow(
-                        profile: profile,
-                        onFollowersTap: () => _openRelationsSheet(
-                          profile,
-                          ProfileFollowSheetMode.followers,
+                          onFollowingTap: () => _openRelationsSheet(
+                            profile,
+                            ProfileFollowSheetMode.following,
+                          ),
                         ),
-                        onFollowingTap: () => _openRelationsSheet(
-                          profile,
-                          ProfileFollowSheetMode.following,
+                        const SizedBox(height: 28),
+                        Text(
+                          '\u30b9\u30c6\u30fc\u30bf\u30b9',
+                          style: theme.textTheme.titleMedium,
                         ),
-                      ),
-                      const SizedBox(height: 28),
-                      Text(
-                        '\u30b9\u30c6\u30fc\u30bf\u30b9',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 10),
-                      ProfileInfoTile(
-                        icon: Icons.mood,
-                        title: '\u4e00\u8a00\u30b3\u30e1\u30f3\u30c8',
-                        value: bio,
-                      ),
-                      ProfileInfoTile(
-                        icon: Icons.place_outlined,
-                        title: '\u6d3b\u52d5\u30a8\u30ea\u30a2',
-                        value: homeTown,
-                      ),
-                      ProfileInfoTile(
-                        icon: Icons.tag,
-                        title: '\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0',
-                        value: hashtags,
-                      ),
-                    ],
+                        const SizedBox(height: 10),
+                        ProfileInfoTile(
+                          icon: Icons.mood,
+                          title: '\u4e00\u8a00\u30b3\u30e1\u30f3\u30c8',
+                          value: bio,
+                        ),
+                        ProfileInfoTile(
+                          icon: Icons.place_outlined,
+                          title: '\u6d3b\u52d5\u30a8\u30ea\u30a2',
+                          value: homeTown,
+                        ),
+                        ProfileInfoTile(
+                          icon: Icons.tag,
+                          title: '\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0',
+                          value: hashtags,
+                        ),
+                        const SizedBox(height: 28),
+                        Text(
+                          'タイムライン',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 10),
+                        _ProfileTimelineSection(
+                          profileId: profile.id,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               FilledButton.tonalIcon(
                 style: FilledButton.styleFrom(
-                  backgroundColor:
-                      theme.colorScheme.primary.withValues(alpha: 0.1),
+                  backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
                   foregroundColor: theme.colorScheme.primary,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   minimumSize: const Size.fromHeight(48),
                   side: BorderSide(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.4),
+                    color: theme.colorScheme.primary.withOpacity(0.4),
                   ),
                 ),
                 onPressed: _loggingOut ? null : _logout,
@@ -1703,4 +1765,54 @@ String _hashtagsOrPlaceholder(List<String> hashtags) {
     return '\u672a\u767b\u9332';
   }
   return hashtags.join(' ');
+}
+
+class _ProfileTimelineSection extends StatelessWidget {
+  const _ProfileTimelineSection({required this.profileId});
+
+  final String profileId;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final timelineManager = context.watch<TimelineManager>();
+    final posts = timelineManager.posts
+        .where((post) => post.authorId == profileId)
+        .toList();
+
+    if (posts.isEmpty) {
+      return Text(
+        'まだ投稿がありません。',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
+    // 最新5件
+    final visiblePosts = posts.take(5).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final post in visiblePosts)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _UserPostCard(
+              post: post,
+              timelineManager: timelineManager,
+            ),
+          ),
+        if (posts.length > visiblePosts.length)
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '最新${visiblePosts.length}件を表示しています',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }

@@ -44,7 +44,7 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
   }
 
   Future<void> _handleRefresh() async {
-    await _handleScanPressed();
+    await context.read<EncounterManager>().refresh();
   }
 
   Future<void> _ensureStreetPassStarted() async {

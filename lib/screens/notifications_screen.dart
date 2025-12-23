@@ -29,17 +29,30 @@ class NotificationsScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: notifications.isEmpty
-          ? const _EmptyNotificationsView()
-          : ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              itemCount: notifications.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final notification = notifications[index];
-                return _NotificationTile(notification: notification);
-              },
-            ),
+      body: RefreshIndicator(
+        onRefresh: () => context.read<NotificationManager>().refresh(),
+        child: notifications.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.3,
+                  ),
+                  const _EmptyNotificationsView(),
+                ],
+              )
+            : ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                itemCount: notifications.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final notification = notifications[index];
+                  return _NotificationTile(notification: notification);
+                },
+              ),
+      ),
     );
   }
 }

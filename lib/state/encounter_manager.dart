@@ -217,6 +217,21 @@ class EncounterManager extends ChangeNotifier {
     }
   }
 
+  Future<void> stop() async {
+    if (!_isRunning) return;
+    await _subscription?.cancel();
+    _subscription = null;
+    await _bleSubscription?.cancel();
+    _bleSubscription = null;
+    await _streetPassService.stop();
+    final bleScanner = _bleScanner;
+    if (bleScanner != null) {
+      await bleScanner.stop();
+    }
+    _isRunning = false;
+    notifyListeners();
+  }
+
   void _handleEncounter(StreetPassEncounterData data) {
     debugPrint('[VIBE] encounter tags=${data.profile.favoriteGames}');
     final now = DateTime.now();
@@ -459,6 +474,22 @@ class EncounterManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refresh() async {
+    // スキャン再開と、必要に応じてリストの強制更新
+    if (_isRunning) {
+      await stop();
+    }
+    // 少し待機してから再開
+    await Future.delayed(const Duration(milliseconds: 300));
+    try {
+      if (!_isRunning) {
+        await start();
+      }
+    } catch (e) {
+      debugPrint('Refresh scan failed: $e');
+    }
+  }
+
   void _markBeaconSeen(String beaconId) {
     final presence = _presenceByBeaconId.putIfAbsent(
       beaconId,
@@ -495,10 +526,11 @@ class EncounterManager extends ChangeNotifier {
     }
     final sharedHashtag =
         hasSharedHashtag ?? _hasSharedHashtag(remoteId, remoteProfile);
-    if (!sharedHashtag) {
-      debugPrint('[VIBE] skip (no shared hashtag) remote=$remoteId');
-      return false;
-    }
+    // 振動条件：共通のハッシュタグがあるか、または以前の仕様（全ての接近）に戻す場合はここを調整
+    // if (!sharedHashtag) {
+    //   debugPrint('[VIBE] skip (no shared hashtag) remote=$remoteId');
+    //   return false;
+    // }
     final distance = _resolveProximityDistance(
       gpsDistanceMeters: gpsDistanceMeters,
       bleDistanceMeters: bleDistanceMeters,
