@@ -94,7 +94,12 @@ class EncounterManager extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   List<Encounter> get encounters {
-    final list = _encountersByRemoteId.values.toList()
+    final now = DateTime.now();
+    final oneDayAgo = now.subtract(const Duration(hours: 24));
+
+    final list = _encountersByRemoteId.values
+        .where((e) => e.encounteredAt.isAfter(oneDayAgo))
+        .toList()
       ..sort((a, b) => b.encounteredAt.compareTo(a.encounteredAt));
     return List.unmodifiable(list);
   }
