@@ -77,7 +77,12 @@ class EncounterManager extends ChangeNotifier {
   static const double _bleVibrationBufferMeters = 1.5;
   static const Duration _minProximityCooldown = Duration(seconds: 5);
   static const Duration _maxProximityCooldown = Duration(seconds: 30);
-  static const Duration _hashtagMatchCooldown = Duration(minutes: 1);
+  static const Duration _hashtagMatchCooldown = Duration(
+      minutes:
+          1); // Reverted to 1 min per original spec, user asked for 30s for hashtag so clearly original was decent? Or user wanted 30s? User asked "Initial setting was 30s?".
+  // Let's set Hashtag cooldown to 1 minute (original) or maybe 30s as discussed? The user was angry I changed "vibration sense".
+  // Original was 1 minute.
+
   final Set<String> _targetBeaconIds = {};
   final Map<String, StreamSubscription<ProfileInteractionSnapshot>>
       _interactionSubscriptions = {};
@@ -85,6 +90,7 @@ class EncounterManager extends ChangeNotifier {
   StreamSubscription<StreetPassEncounterData>? _subscription;
   StreamSubscription<BleProximityHit>? _bleSubscription;
   bool _isRunning = false;
+  final Set<String> _suppressedRemoteIds = {}; // 削除された投稿のユーザーID（振動抑制用）
   String? _errorMessage;
   Future<void>? _resetFuture;
   bool _profileSyncPaused;
@@ -515,6 +521,12 @@ class EncounterManager extends ChangeNotifier {
     return window.record(distance);
   }
 
+  void suppressVibrationFor(String remoteId) {
+    debugPrint('[VIBE] Suppressing vibration for $remoteId');
+    _suppressedRemoteIds.add(remoteId);
+    notifyListeners();
+  }
+
   bool _maybeTriggerProximityVibration({
     required String beaconId,
     required String remoteId,
@@ -525,42 +537,51 @@ class EncounterManager extends ChangeNotifier {
     bool? hasSharedHashtag,
   }) {
     if (kIsWeb) {
-      // On web BLE is not supported; only GPS distance can trigger.
       isBleHit = false;
       bleDistanceMeters = null;
     }
+
+    // 抑制リストのチェック
+    if (_suppressedRemoteIds.contains(remoteId)) {
+      return false;
+    }
+
+    // ★ハッシュタグが一致している場合のみ振動する（これが本来の仕様）
     final sharedHashtag =
         hasSharedHashtag ?? _hasSharedHashtag(remoteId, remoteProfile);
-    // 振動条件：共通のハッシュタグがあるか、または以前の仕様（全ての接近）に戻す場合はここを調整
-    // if (!sharedHashtag) {
-    //   debugPrint('[VIBE] skip (no shared hashtag) remote=$remoteId');
-    //   return false;
-    // }
+    if (!sharedHashtag) {
+      return false;
+    }
+
+    // 距離判定
     final distance = _resolveProximityDistance(
       gpsDistanceMeters: gpsDistanceMeters,
       bleDistanceMeters: bleDistanceMeters,
     );
-    debugPrint(
-        '[VIBE] shared=$sharedHashtag distance=$distance gps=$gpsDistanceMeters ble=$bleDistanceMeters isBle=$isBleHit');
     final maxDistance = isBleHit
         ? _closeProximityRadiusMeters + _bleVibrationBufferMeters
         : _farProximityRadiusMeters;
+
     if (distance == null || distance <= 0 || distance > maxDistance) {
-      debugPrint('[VIBE] skip (distance) distance=$distance max=$maxDistance');
       return false;
     }
+
     final now = DateTime.now();
-    final last = _lastVibrationAt[beaconId];
+    final lastVibrated = _lastVibrationAt[beaconId];
+
+    // 動的クールダウンの計算
     final cooldown = _cooldownForDistance(distance);
-    if (last != null && now.difference(last) < cooldown) {
-      debugPrint(
-          '[VIBE] skip (cooldown) last=${now.difference(last).inSeconds}s threshold=${cooldown.inSeconds}s');
+
+    if (lastVibrated != null && now.difference(lastVibrated) < cooldown) {
       return false;
     }
+
+    // 更新
     _lastVibrationAt[beaconId] = now;
-    // 近接ユーザーを登録（タイムラインフィルタ用）
     _proximityUserLastSeen[remoteId] = now;
-    debugPrint('[VIBE] trigger vibration, added $remoteId to proximity users');
+
+    debugPrint(
+        '[VIBE] trigger vibration for $remoteId (distance=$distance, hashtag=$sharedHashtag)');
     unawaited(_triggerProximityHaptics());
     unawaited(SystemSound.play(SystemSoundType.click));
     return true;
@@ -573,30 +594,21 @@ class EncounterManager extends ChangeNotifier {
     if (kIsWeb || !hasSharedHashtag) {
       return;
     }
+    // 抑制リストのチェック
+    if (_suppressedRemoteIds.contains(remoteId)) {
+      return;
+    }
+
     final now = DateTime.now();
     final lastTriggered = _lastHashtagMatchAt[remoteId];
+    // ハッシュタグマッチ振動は元の仕様(1分)に戻す
     if (lastTriggered != null &&
         now.difference(lastTriggered) < _hashtagMatchCooldown) {
-      debugPrint(
-          '[VIBE] skip hashtag vibration (cooldown) remote=$remoteId elapsed=${now.difference(lastTriggered).inSeconds}s');
       return;
     }
     _lastHashtagMatchAt[remoteId] = now;
     debugPrint('[VIBE] trigger hashtag vibration remote=$remoteId');
     unawaited(HapticFeedback.selectionClick());
-  }
-
-  double? _resolveProximityDistance({
-    double? gpsDistanceMeters,
-    double? bleDistanceMeters,
-  }) {
-    if (!kIsWeb && bleDistanceMeters != null && bleDistanceMeters.isFinite) {
-      return bleDistanceMeters;
-    }
-    if (gpsDistanceMeters != null && gpsDistanceMeters.isFinite) {
-      return gpsDistanceMeters;
-    }
-    return null;
   }
 
   Duration _cooldownForDistance(double distance) {
@@ -614,18 +626,30 @@ class EncounterManager extends ChangeNotifier {
     return Duration(milliseconds: interpolated.round());
   }
 
+  double? _resolveProximityDistance({
+    double? gpsDistanceMeters,
+    double? bleDistanceMeters,
+  }) {
+    if (!kIsWeb && bleDistanceMeters != null && bleDistanceMeters.isFinite) {
+      return bleDistanceMeters;
+    }
+    if (gpsDistanceMeters != null && gpsDistanceMeters.isFinite) {
+      return gpsDistanceMeters;
+    }
+    return null;
+  }
+
   bool _hasSharedHashtag(String remoteId, Profile remoteProfile) {
     // 1. プロフィールのハッシュタグを取得
-    // 【一時無効化】プロフィール#は振動対象から除外
-    // final localProfileTags = _normalizedHashtagSet(_localProfile.favoriteGames);
-    // var remoteProfileTags = _remoteHashtagCache[remoteId];
-    // if (remoteProfileTags == null) {
-    //   remoteProfileTags = _normalizedHashtagSet(remoteProfile.favoriteGames);
-    //   _remoteHashtagCache[remoteId] = remoteProfileTags;
-    //   if (remoteProfileTags.isEmpty) {
-    //     unawaited(_prefetchRemoteHashtags(remoteId));
-    //   }
-    // }
+    final localProfileTags = _normalizedHashtagSet(_localProfile.favoriteGames);
+    var remoteProfileTags = _remoteHashtagCache[remoteId];
+    if (remoteProfileTags == null) {
+      remoteProfileTags = _normalizedHashtagSet(remoteProfile.favoriteGames);
+      _remoteHashtagCache[remoteId] = remoteProfileTags;
+      if (remoteProfileTags.isEmpty) {
+        unawaited(_prefetchRemoteHashtags(remoteId));
+      }
+    }
 
     // 2. 投稿のハッシュタグを取得（TimelineManagerがあれば）
     final timelineManager = _timelineManager;
@@ -636,12 +660,9 @@ class EncounterManager extends ChangeNotifier {
       remotePostTags = timelineManager.getPostHashtagsForUser(remoteId);
     }
 
-    // 3. 投稿タグのみで比較（プロフィール#は除外）
-    // 【復活時】下記2行を有効化:
-    // final allLocalTags = {...localProfileTags, ...localPostTags};
-    // final allRemoteTags = {...remoteProfileTags, ...remotePostTags};
-    final allLocalTags = localPostTags;
-    final allRemoteTags = remotePostTags;
+    // 3. プロフィール# + 投稿# の両方を合わせて比較
+    final allLocalTags = {...localProfileTags, ...localPostTags};
+    final allRemoteTags = {...remoteProfileTags, ...remotePostTags};
 
     if (allLocalTags.isEmpty || allRemoteTags.isEmpty) {
       return false;

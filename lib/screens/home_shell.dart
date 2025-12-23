@@ -958,109 +958,162 @@ class _UserPostCard extends StatelessWidget {
     final likeLabel = post.likeCount > 0
         ? '${post.likeCount}\u4ef6\u306e\u3044\u3044\u306d'
         : '\u307e\u3060\u3044\u3044\u306d\u306f\u3042\u308a\u307e\u305b\u3093';
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _TimelineCardHeader(
-            title: post.authorName,
-            subtitle: _relativeTime(post.createdAt),
-            color: post.authorColor,
-            avatarImageBase64: post.authorAvatarImageBase64,
-            onTap: () {
-              // Navigate to profile view
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => ProfileViewScreen(
-                    profileId: post.authorId,
-                    initialProfile: Profile(
-                      id: post.authorId,
-                      beaconId: post.authorId, // Fallback
-                      displayName: post.authorName,
-                      avatarColor: post.authorColor,
-                      avatarImageBase64: post.authorAvatarImageBase64,
-                      bio: '読み込み中...',
-                      homeTown: '',
-                      favoriteGames: [],
-                    ),
-                  ),
-                ),
-              );
-            },
-            trailing: canDelete
-                ? PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'delete') {
-                        _confirmDelete(context);
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Text('\u524a\u9664'),
-                      ),
-                    ],
-                  )
-                : null,
-          ),
-          if (imageBytes != null || hasImageUrl)
-            _TimelineImage(
-              bytes: imageBytes,
-              imageUrl: hasImageUrl ? post.imageUrl : null,
-              borderRadius: BorderRadius.circular(16),
-            ),
-          if (post.caption.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Text(
-                post.caption,
-                style: theme.textTheme.bodyLarge,
-              ),
-            ),
-          if (post.hashtags.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final tag in post.hashtags)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.secondaryContainer
-                            .withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: theme.colorScheme.outline.withOpacity(0.2),
-                          width: 0.5,
-                        ),
-                      ),
-                      child: Text(
-                        tag,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: theme.colorScheme.onSecondaryContainer,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          _TimelineActions(
-            isLiked: post.isLiked,
-            likeLabel: likeLabel,
-            onLike: () {
-              timelineManager.toggleLike(post.id);
-            },
+
+    // マットで洗練されたグラスモーフィズム
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        // 影は控えめに、色なしで
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 16,
+            spreadRadius: 2,
+            offset: const Offset(0, 4),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              // 背景は少し白/グレーを混ぜてマット感を出す
+              color: theme.colorScheme.surface.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: theme.colorScheme.onSurface.withOpacity(0.08),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color:
+                            theme.colorScheme.outlineVariant.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: _TimelineCardHeader(
+                    title: post.authorName,
+                    subtitle: _relativeTime(post.createdAt),
+                    color: post.authorColor,
+                    avatarImageBase64: post.authorAvatarImageBase64,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ProfileViewScreen(
+                            profileId: post.authorId,
+                            initialProfile: Profile(
+                              id: post.authorId,
+                              beaconId: post.authorId,
+                              displayName: post.authorName,
+                              avatarColor: post.authorColor,
+                              avatarImageBase64: post.authorAvatarImageBase64,
+                              bio: '読み込み中...',
+                              homeTown: '',
+                              favoriteGames: [],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    trailing: canDelete
+                        ? PopupMenuButton<String>(
+                            icon: Icon(Icons.more_horiz,
+                                color: theme.colorScheme.onSurfaceVariant),
+                            onSelected: (value) {
+                              if (value == 'delete') {
+                                _confirmDelete(context);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Text('\u524a\u9664'),
+                              ),
+                            ],
+                          )
+                        : null,
+                  ),
+                ),
+                if (imageBytes != null || hasImageUrl)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+                    child: _TimelineImage(
+                      bytes: imageBytes,
+                      imageUrl: hasImageUrl ? post.imageUrl : null,
+                      borderRadius: BorderRadius.circular(0), // 画像はエッジトゥエッジ気味に
+                    ),
+                  ),
+                if (post.caption.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    child: Text(
+                      post.caption,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontSize: 16,
+                        height: 1.5,
+                        fontWeight: FontWeight.w400,
+                        color: theme.colorScheme.onSurface.withOpacity(0.9),
+                      ),
+                    ),
+                  ),
+                if (post.hashtags.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final tag in post.hashtags)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.secondaryContainer
+                                  .withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color:
+                                    theme.colorScheme.outline.withOpacity(0.1),
+                              ),
+                            ),
+                            child: Text(
+                              tag,
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: _TimelineActions(
+                    isLiked: post.isLiked,
+                    likeLabel: likeLabel,
+                    onLike: () {
+                      timelineManager.toggleLike(post.id);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1090,6 +1143,10 @@ class _UserPostCard extends StatelessWidget {
     if (result != true) return;
     try {
       await timelineManager.deletePost(post);
+      // 投稿を削除した相手からの振動を抑制する
+      if (context.mounted) {
+        context.read<EncounterManager>().suppressVibrationFor(post.authorId);
+      }
       messenger.showSnackBar(
         const SnackBar(
             content: Text(
