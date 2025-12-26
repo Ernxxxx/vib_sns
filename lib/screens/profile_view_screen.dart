@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -139,8 +140,10 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
         snapshotFollow != _pendingFollowTarget;
     final resolvedReceivedLikes =
         snapshot?.receivedLikes ?? _profile.receivedLikes;
-    final resolvedFollowers = snapshot?.followersCount ?? _profile.followersCount;
-    final resolvedFollowing = snapshot?.followingCount ?? _profile.followingCount;
+    final resolvedFollowers =
+        snapshot?.followersCount ?? _profile.followersCount;
+    final resolvedFollowing =
+        snapshot?.followingCount ?? _profile.followingCount;
     return fresh.copyWith(
       followersCount: resolvedFollowers,
       followingCount: resolvedFollowing,
@@ -286,8 +289,7 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
     final postLikesTotal = timelineManager.getPostLikesForUser(_profile.id);
     final totalLikes =
         (_profile.receivedLikes + postLikesTotal).clamp(0, 999999);
-    final displayProfile =
-        _profile.copyWith(receivedLikes: totalLikes);
+    final displayProfile = _profile.copyWith(receivedLikes: totalLikes);
 
     return Scaffold(
       appBar: AppBar(
@@ -373,9 +375,8 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
                             style: theme.textTheme.titleMedium,
                           ),
                           const SizedBox(height: 10),
-                          _ProfileTimelineSection(
+                          _ProfileTimelineTabs(
                             posts: profilePosts,
-                            isSelf: isSelf,
                             timelineManager: timelineManager,
                           ),
                         ],
@@ -479,59 +480,186 @@ String _hashtagsOrPlaceholder(List<String> hashtags) {
   return hashtags.join(' ');
 }
 
-class _ProfileTimelineSection extends StatelessWidget {
-  const _ProfileTimelineSection({
+class _ProfileTimelineTabs extends StatefulWidget {
+  const _ProfileTimelineTabs({
     required this.posts,
-    required this.isSelf,
     required this.timelineManager,
   });
 
   final List<TimelinePost> posts;
-  final bool isSelf;
+  final TimelineManager timelineManager;
+
+  @override
+  State<_ProfileTimelineTabs> createState() => _ProfileTimelineTabsState();
+}
+
+class _ProfileTimelineTabsState extends State<_ProfileTimelineTabs>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mediaPosts = widget.posts
+        .where(
+            (p) => p.imageBase64 != null || (p.imageUrl?.isNotEmpty ?? false))
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TabBar(
+          controller: _tabController,
+          labelColor: theme.colorScheme.onSurface,
+          unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+          indicatorColor: theme.colorScheme.primary,
+          tabs: const [
+            Tab(text: '投稿'),
+            Tab(text: 'メディア'),
+          ],
+        ),
+        SizedBox(
+          height: 400,
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              // 投稿タブ
+              _PostsTab(
+                posts: widget.posts,
+                timelineManager: widget.timelineManager,
+              ),
+              // メディアタブ
+              _MediaTab(posts: mediaPosts),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PostsTab extends StatelessWidget {
+  const _PostsTab({
+    required this.posts,
+    required this.timelineManager,
+  });
+
+  final List<TimelinePost> posts;
   final TimelineManager timelineManager;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (posts.isEmpty) {
-      final message =
-          isSelf ? 'まだタイムラインに投稿がありません。写真や気持ちをシェアするとここに表示されます。' : 'まだ投稿がありません。';
-      return Text(
-        message,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
+      return Center(
+        child: Text(
+          'まだ投稿がありません',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
       );
     }
-    final visiblePosts = posts.take(5).toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final post in visiblePosts)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _ProfileTimelinePostCard(
-              post: post,
-              timelineManager: timelineManager,
-            ),
-          ),
-        if (posts.length > visiblePosts.length)
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              '最新${visiblePosts.length}件を表示しています',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-      ],
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 8),
+      itemCount: posts.length,
+      itemBuilder: (context, index) {
+        final post = posts[index];
+        return _ProfilePostCard(
+          post: post,
+          timelineManager: timelineManager,
+        );
+      },
     );
   }
 }
 
-class _ProfileTimelinePostCard extends StatelessWidget {
-  const _ProfileTimelinePostCard({
+class _MediaTab extends StatelessWidget {
+  const _MediaTab({required this.posts});
+
+  final List<TimelinePost> posts;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (posts.isEmpty) {
+      return Center(
+        child: Text(
+          'メディアがありません',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+    return GridView.builder(
+      padding: const EdgeInsets.all(4),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 2,
+        mainAxisSpacing: 2,
+      ),
+      itemCount: posts.length,
+      itemBuilder: (context, index) {
+        final post = posts[index];
+        return _MediaThumbnail(post: post);
+      },
+    );
+  }
+}
+
+class _MediaThumbnail extends StatelessWidget {
+  const _MediaThumbnail({required this.post});
+
+  final TimelinePost post;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageBytes = post.decodeImage();
+    final hasImageUrl = post.imageUrl?.isNotEmpty ?? false;
+
+    Widget buildImage() {
+      if (imageBytes != null) {
+        return Image.memory(
+          imageBytes,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+        );
+      }
+      if (hasImageUrl) {
+        return Image.network(
+          post.imageUrl!,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            color: Colors.grey.shade300,
+            child: const Icon(Icons.broken_image, color: Colors.grey),
+          ),
+        );
+      }
+      return Container(
+        color: Colors.grey.shade300,
+        child: const Icon(Icons.image, color: Colors.grey),
+      );
+    }
+
+    return buildImage();
+  }
+}
+
+class _ProfilePostCard extends StatelessWidget {
+  const _ProfilePostCard({
     required this.post,
     required this.timelineManager,
   });
@@ -542,164 +670,238 @@ class _ProfileTimelinePostCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final viewerId = context.watch<ProfileController>().profile.id;
+    final canDelete = post.authorId.isEmpty ||
+        post.authorId == viewerId ||
+        post.authorId == 'local';
     final imageBytes = post.decodeImage();
-    final hasImageUrl = (post.imageUrl?.isNotEmpty ?? false);
-    final likeLabel =
-        post.likeCount > 0 ? '${post.likeCount}件のいいね' : 'まだいいねはありません';
-    return Card(
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (imageBytes != null || hasImageUrl)
-            _ProfileTimelineImage(
-              bytes: imageBytes,
-              imageUrl: hasImageUrl ? post.imageUrl : null,
-            ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    final hasImageUrl = post.imageUrl?.isNotEmpty ?? false;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(0, 12, 0, 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // アバター
+              _buildAvatar(theme),
+              const SizedBox(width: 12),
+              // コンテンツ
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _formatTimelineTimestamp(post.createdAt),
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    // ヘッダー: ユーザー名 + 時間 + メニュー
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            post.authorName.isEmpty ? '匿名' : post.authorName,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          _formatTimelineTimestamp(post.createdAt),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (canDelete) ...[
+                          const SizedBox(width: 4),
+                          PopupMenuButton<String>(
+                            icon: Icon(
+                              Icons.more_horiz,
+                              size: 20,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onSelected: (value) {
+                              if (value == 'delete') {
+                                _confirmDelete(context);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Text('削除'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
-                    const Spacer(),
-                    IconButton(
-                      tooltip: 'いいね',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () {
-                        timelineManager.toggleLike(post.id);
-                      },
-                      icon: Icon(
-                        post.isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: post.isLiked
-                            ? theme.colorScheme.error
-                            : theme.colorScheme.onSurfaceVariant,
+                    // 本文
+                    if (post.caption.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, bottom: 8),
+                        child: Text(
+                          post.caption,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                            height: 1.4,
+                          ),
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${post.likeCount}',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+                    // ハッシュタグ
+                    if (post.hashtags.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: [
+                            for (final tag in post.hashtags)
+                              Text(
+                                tag.startsWith('#') ? tag : '#$tag',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
+                    // 画像
+                    if (imageBytes != null || hasImageUrl)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: _buildImage(imageBytes, hasImageUrl),
+                        ),
+                      ),
+                    // アクション
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => timelineManager.toggleLike(post.id),
+                          child: Icon(
+                            post.isLiked
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            size: 22,
+                            color: post.isLiked
+                                ? Colors.red
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (post.likeCount > 0) ...[
+                          const SizedBox(width: 4),
+                          Text(
+                            '${post.likeCount}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
-                if (post.caption.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    post.caption,
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                ],
-                if (post.hashtags.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      for (final tag in post.hashtags)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            tag,
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Text(
-                  likeLabel,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        Divider(
+          height: 1,
+          thickness: 0.5,
+          color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+        ),
+      ],
     );
   }
-}
 
-class _ProfileTimelineImage extends StatelessWidget {
-  const _ProfileTimelineImage({this.bytes, this.imageUrl});
-
-  final Uint8List? bytes;
-  final String? imageUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    final placeholder = Container(
-      color: Colors.grey.shade200,
-      alignment: Alignment.center,
-      child: const Icon(
-        Icons.image_not_supported_outlined,
-        size: 48,
-        color: Colors.black38,
-      ),
-    );
-
-    Widget buildImage() {
-      if (bytes != null) {
-        return Image.memory(
-          bytes!,
-          fit: BoxFit.cover,
-          gaplessPlayback: true,
-          filterQuality: FilterQuality.high,
-          errorBuilder: (_, __, ___) => placeholder,
-        );
-      }
-      if (imageUrl != null && imageUrl!.isNotEmpty) {
-        return Image.network(
-          imageUrl!,
-          fit: BoxFit.cover,
-          filterQuality: FilterQuality.high,
-          errorBuilder: (_, __, ___) => placeholder,
-          loadingBuilder: (context, child, progress) {
-            if (progress == null) return child;
-            return Center(
-              child: CircularProgressIndicator(
-                value: progress.expectedTotalBytes != null
-                    ? progress.cumulativeBytesLoaded /
-                        progress.expectedTotalBytes!
-                    : null,
-              ),
-            );
-          },
-        );
-      }
-      return placeholder;
+  Widget _buildAvatar(ThemeData theme) {
+    MemoryImage? avatarImage;
+    if (post.authorAvatarImageBase64 != null &&
+        post.authorAvatarImageBase64!.trim().isNotEmpty) {
+      try {
+        final bytes = base64Decode(post.authorAvatarImageBase64!.trim());
+        if (bytes.isNotEmpty) {
+          avatarImage = MemoryImage(bytes);
+        }
+      } catch (_) {}
     }
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      child: AspectRatio(
-        aspectRatio: 4 / 5,
-        child: buildImage(),
-      ),
+    final trimmedName =
+        post.authorName.trim().isEmpty ? '匿名' : post.authorName.trim();
+    final initial = trimmedName.characters.first.toUpperCase();
+
+    return CircleAvatar(
+      radius: 20,
+      backgroundColor: post.authorColor,
+      foregroundImage: avatarImage,
+      child: avatarImage == null
+          ? Text(
+              initial,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            )
+          : null,
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('投稿を削除'),
+          content: const Text('この投稿を削除しますか？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('キャンセル'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('削除'),
+            ),
+          ],
+        );
+      },
+    );
+    if (result != true) return;
+    try {
+      await timelineManager.deletePost(post);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('投稿を削除しました。')),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('削除に失敗しました: $error')),
+      );
+    }
+  }
+
+  Widget _buildImage(Uint8List? imageBytes, bool hasImageUrl) {
+    if (imageBytes != null) {
+      return Image.memory(
+        imageBytes,
+        fit: BoxFit.cover,
+        width: double.infinity,
+      );
+    }
+    if (hasImageUrl) {
+      return Image.network(
+        post.imageUrl!,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }

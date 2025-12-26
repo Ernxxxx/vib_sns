@@ -1171,9 +1171,8 @@ class _UserPostCard extends StatelessWidget {
   }
 
   void _navigateToProfile(BuildContext context) {
-    final encounter = context
-        .read<EncounterManager>()
-        .findById('encounter_${post.authorId}');
+    final encounter =
+        context.read<EncounterManager>().findById('encounter_${post.authorId}');
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ProfileViewScreen(
@@ -1846,7 +1845,7 @@ class _ProfileScreenState extends State<_ProfileScreen> {
                           style: theme.textTheme.titleMedium,
                         ),
                         const SizedBox(height: 10),
-                        _ProfileTimelineSection(
+                        _ProfileTimelineTabs(
                           profileId: profile.id,
                         ),
                       ],
@@ -1899,52 +1898,169 @@ String _hashtagsOrPlaceholder(List<String> hashtags) {
   return hashtags.join(' ');
 }
 
-class _ProfileTimelineSection extends StatelessWidget {
-  const _ProfileTimelineSection({required this.profileId});
+class _ProfileTimelineTabs extends StatefulWidget {
+  const _ProfileTimelineTabs({required this.profileId});
 
   final String profileId;
+
+  @override
+  State<_ProfileTimelineTabs> createState() => _ProfileTimelineTabsState();
+}
+
+class _ProfileTimelineTabsState extends State<_ProfileTimelineTabs>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final timelineManager = context.watch<TimelineManager>();
     final posts = timelineManager.posts
-        .where((post) => post.authorId == profileId)
+        .where((post) => post.authorId == widget.profileId)
         .toList();
-
-    if (posts.isEmpty) {
-      return Text(
-        'まだ投稿がありません。',
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      );
-    }
-    // 最新5件
-    final visiblePosts = posts.take(5).toList();
+    final mediaPosts = posts
+        .where(
+            (p) => p.imageBase64 != null || (p.imageUrl?.isNotEmpty ?? false))
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final post in visiblePosts)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _UserPostCard(
-              post: post,
-              timelineManager: timelineManager,
-            ),
-          ),
-        if (posts.length > visiblePosts.length)
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              '最新${visiblePosts.length}件を表示しています',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+        TabBar(
+          controller: _tabController,
+          labelColor: theme.colorScheme.onSurface,
+          unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+          indicatorColor: theme.colorScheme.primary,
+          tabs: const [
+            Tab(text: '投稿'),
+            Tab(text: 'メディア'),
+          ],
+        ),
+        SizedBox(
+          height: 400,
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              // 投稿タブ
+              _PostsTabContent(
+                posts: posts,
+                timelineManager: timelineManager,
               ),
-            ),
+              // メディアタブ
+              _MediaTabContent(posts: mediaPosts),
+            ],
           ),
+        ),
       ],
+    );
+  }
+}
+
+class _PostsTabContent extends StatelessWidget {
+  const _PostsTabContent({
+    required this.posts,
+    required this.timelineManager,
+  });
+
+  final List<TimelinePost> posts;
+  final TimelineManager timelineManager;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (posts.isEmpty) {
+      return Center(
+        child: Text(
+          'まだ投稿がありません',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 8),
+      itemCount: posts.length,
+      itemBuilder: (context, index) {
+        final post = posts[index];
+        return _UserPostCard(
+          post: post,
+          timelineManager: timelineManager,
+        );
+      },
+    );
+  }
+}
+
+class _MediaTabContent extends StatelessWidget {
+  const _MediaTabContent({required this.posts});
+
+  final List<TimelinePost> posts;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (posts.isEmpty) {
+      return Center(
+        child: Text(
+          'メディアがありません',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+    return GridView.builder(
+      padding: const EdgeInsets.all(4),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 2,
+        mainAxisSpacing: 2,
+      ),
+      itemCount: posts.length,
+      itemBuilder: (context, index) {
+        final post = posts[index];
+        final imageBytes = post.decodeImage();
+        final hasImageUrl = post.imageUrl?.isNotEmpty ?? false;
+
+        Widget buildImage() {
+          if (imageBytes != null) {
+            return Image.memory(
+              imageBytes,
+              fit: BoxFit.cover,
+              gaplessPlayback: true,
+            );
+          }
+          if (hasImageUrl) {
+            return Image.network(
+              post.imageUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: Colors.grey.shade300,
+                child: const Icon(Icons.broken_image, color: Colors.grey),
+              ),
+            );
+          }
+          return Container(
+            color: Colors.grey.shade300,
+            child: const Icon(Icons.image, color: Colors.grey),
+          );
+        }
+
+        return buildImage();
+      },
     );
   }
 }
