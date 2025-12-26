@@ -39,32 +39,19 @@ class ProfileAvatar extends StatelessWidget {
         }
       }
     }
-    final displayName = profile.displayName.trim();
-    final fallback = profile.id.trim();
-    String initial;
-    if (displayName.isNotEmpty) {
-      initial = displayName.characters.first;
-    } else if (fallback.isNotEmpty) {
-      initial = fallback.characters.first;
-    } else {
-      initial = '?';
-    }
     final hasImage = imageProvider != null;
     final backgroundColor =
-        hasImage && !showBorder ? Colors.transparent : profile.avatarColor;
+        hasImage && !showBorder ? Colors.transparent : Colors.grey;
     return CircleAvatar(
       radius: radius,
       backgroundColor: backgroundColor,
       foregroundImage: imageProvider,
       child: hasImage
           ? null
-          : Text(
-              initial,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: radius * 0.9,
-                fontWeight: FontWeight.bold,
-              ),
+          : Icon(
+              Icons.person,
+              color: Colors.white,
+              size: radius * 1.2,
             ),
     );
   }

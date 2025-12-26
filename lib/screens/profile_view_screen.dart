@@ -831,22 +831,15 @@ class _ProfilePostCard extends StatelessWidget {
       } catch (_) {}
     }
 
-    final trimmedName =
-        post.authorName.trim().isEmpty ? '匿名' : post.authorName.trim();
-    final initial = trimmedName.characters.first.toUpperCase();
-
     return CircleAvatar(
       radius: 20,
-      backgroundColor: post.authorColor,
+      backgroundColor: Colors.grey,
       foregroundImage: avatarImage,
       child: avatarImage == null
-          ? Text(
-              initial,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+          ? const Icon(
+              Icons.person,
+              color: Colors.white,
+              size: 24,
             )
           : null,
     );
