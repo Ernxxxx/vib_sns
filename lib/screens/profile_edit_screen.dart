@@ -105,7 +105,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     try {
       final file = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1024,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 70,
       );
       if (file == null) {
         return;
@@ -325,8 +327,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       label: Text(tag),
                       selected: selected,
                       backgroundColor: Colors.white,
-                      selectedColor:
-                          Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
+                      selectedColor: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.25),
                       side: BorderSide(
                         color: selected
                             ? Theme.of(context).colorScheme.primary

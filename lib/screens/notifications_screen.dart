@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/app_notification.dart';
+import '../state/encounter_manager.dart';
 import '../state/notification_manager.dart';
 import '../utils/color_extensions.dart';
 import '../widgets/app_logo.dart';
-import 'encounter_detail_screen.dart';
 import 'profile_view_screen.dart';
 
 class NotificationsScreen extends StatelessWidget {
@@ -129,10 +129,18 @@ class _NotificationTile extends StatelessWidget {
       case AppNotificationType.encounter:
         if (notification.encounterId != null) {
           manager.markEncounterNotificationsRead(notification.encounterId!);
+          final encounter = context
+              .read<EncounterManager>()
+              .findById(notification.encounterId!);
+          if (encounter == null) {
+            return;
+          }
+          context.read<EncounterManager>().markSeen(encounter.id);
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => EncounterDetailScreen(
-                encounterId: notification.encounterId!,
+              builder: (_) => ProfileViewScreen(
+                profileId: encounter.profile.id,
+                initialProfile: encounter.profile,
               ),
             ),
           );

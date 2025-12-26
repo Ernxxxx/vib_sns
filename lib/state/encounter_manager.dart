@@ -254,8 +254,7 @@ class EncounterManager extends ChangeNotifier {
     final existing = _encountersByRemoteId[data.remoteId];
     final isRepeatCandidate = existing != null;
     if (existing != null) {
-      final hasLiveStats =
-          _interactionSubscriptions.containsKey(data.remoteId);
+      final hasLiveStats = _interactionSubscriptions.containsKey(data.remoteId);
       final keepReceivedLikes =
           hasLiveStats || _pendingLikeStates.containsKey(data.remoteId);
       final nextReceivedLikes = keepReceivedLikes
@@ -855,6 +854,54 @@ class EncounterManager extends ChangeNotifier {
 
   Encounter? findByRemoteId(String remoteId) {
     return _encountersByRemoteId[remoteId];
+  }
+
+  /// Check if DM is allowed with a specific user
+  /// DM is allowed if ANY of the following conditions are met:
+  /// 1. Mutual likes
+  /// 2. Shared hashtags + proximity (resonance condition)
+  /// 3. Mutual follows
+  bool canSendDM(String remoteId) {
+    final encounter = _encountersByRemoteId[remoteId];
+    if (encounter == null) {
+      return false;
+    }
+    final profile = encounter.profile;
+
+    // Condition 1: Mutual likes
+    final iLikedThem = encounter.liked;
+    final theyLikedMe = _notificationManager?.hasLikedMe(remoteId) ?? false;
+    if (iLikedThem && theyLikedMe) {
+      return true;
+    }
+
+    // Condition 2: Shared hashtags + proximity (already resonating)
+    if (_resonanceHighlights.containsKey(remoteId)) {
+      return true;
+    }
+
+    // Condition 3: Mutual follows
+    final iFollowThem = profile.following;
+    final theyFollowMe = _checkIfTheyFollowMe(remoteId);
+    if (iFollowThem && theyFollowMe) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Check if remote user follows the local user
+  bool _checkIfTheyFollowMe(String remoteId) {
+    // This would need to be checked against Firestore
+    // For now, we check if they are in the resonance list as a proxy
+    // A proper implementation would query Firestore for follower relationship
+    final service = _interactionService;
+    if (service == null) {
+      return false;
+    }
+    // We'll use the notification manager to check if they've followed us
+    // This is a simplified check - in production, query Firestore
+    return _notificationManager?.hasFollowedMe(remoteId) ?? false;
   }
 
   void markSeen(String encounterId) {

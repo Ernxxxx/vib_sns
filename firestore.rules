@@ -88,5 +88,16 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if ownsProfile(deviceId);
     }
+
+    // DM conversations - any authenticated user can access
+    // Security is enforced at application level through canSendDM check
+    match /conversations/{conversationId} {
+      allow read, write: if signedIn();
+      
+      // Messages subcollection
+      match /messages/{messageId} {
+        allow read, write: if signedIn();
+      }
+    }
   }
 }

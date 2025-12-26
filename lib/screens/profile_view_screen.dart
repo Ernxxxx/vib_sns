@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -8,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../models/profile.dart';
 import '../models/timeline_post.dart';
+import '../services/firestore_dm_service.dart';
 import '../services/profile_interaction_service.dart';
 import '../state/encounter_manager.dart';
 import '../state/profile_controller.dart';
@@ -17,6 +17,7 @@ import '../widgets/like_button.dart';
 import '../widgets/profile_avatar.dart';
 import '../widgets/profile_info_tile.dart';
 import '../widgets/profile_stats_row.dart';
+import 'chat_screen.dart';
 import 'profile_follow_list_sheet.dart';
 
 class ProfileViewScreen extends StatefulWidget {
@@ -138,12 +139,11 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
     final shouldHoldFollow = _pendingFollowTarget != null &&
         snapshotFollow != null &&
         snapshotFollow != _pendingFollowTarget;
+    // Use snapshot counts if available, otherwise use fresh profile counts from Firestore
     final resolvedReceivedLikes =
-        snapshot?.receivedLikes ?? _profile.receivedLikes;
-    final resolvedFollowers =
-        snapshot?.followersCount ?? _profile.followersCount;
-    final resolvedFollowing =
-        snapshot?.followingCount ?? _profile.followingCount;
+        snapshot?.receivedLikes ?? fresh.receivedLikes;
+    final resolvedFollowers = snapshot?.followersCount ?? fresh.followersCount;
+    final resolvedFollowing = snapshot?.followingCount ?? fresh.followingCount;
     return fresh.copyWith(
       followersCount: resolvedFollowers,
       followingCount: resolvedFollowing,
@@ -275,6 +275,32 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
     );
   }
 
+  Future<void> _openDMChat(BuildContext context) async {
+    final dmService = FirestoreDmService();
+    final myId = context.read<ProfileController>().profile.id;
+
+    try {
+      final conversation = await dmService.getOrCreateConversation(
+        userId1: myId,
+        userId2: widget.profileId,
+      );
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            conversationId: conversation.id,
+            otherProfile: _profile,
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('チャットを開けませんでした: $error')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -348,6 +374,78 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
                             onFollowingTap: () => _showFollowSheet(
                                 ProfileFollowSheetMode.following),
                           ),
+                          // Modern DM Button - positioned prominently below stats
+                          if (!isSelf)
+                            Builder(
+                              builder: (context) {
+                                final encounterManager =
+                                    context.watch<EncounterManager>();
+                                final canDM = encounterManager
+                                    .canSendDM(widget.profileId);
+                                if (!canDM) {
+                                  return const SizedBox(height: 28);
+                                }
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 20),
+                                  child: Container(
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          theme.colorScheme.primary
+                                              .withOpacity(0.1),
+                                          theme.colorScheme.secondary
+                                              .withOpacity(0.05),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: theme.colorScheme.primary
+                                            .withOpacity(0.3),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () => _openDMChat(context),
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 14, horizontal: 20),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.chat_bubble_rounded,
+                                                color:
+                                                    theme.colorScheme.primary,
+                                                size: 22,
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Text(
+                                                'メッセージを送る',
+                                                style: theme
+                                                    .textTheme.titleSmall
+                                                    ?.copyWith(
+                                                  color:
+                                                      theme.colorScheme.primary,
+                                                  fontWeight: FontWeight.w600,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                           const SizedBox(height: 28),
                           Text(
                             'ステータス',
@@ -820,16 +918,7 @@ class _ProfilePostCard extends StatelessWidget {
   }
 
   Widget _buildAvatar(ThemeData theme) {
-    MemoryImage? avatarImage;
-    if (post.authorAvatarImageBase64 != null &&
-        post.authorAvatarImageBase64!.trim().isNotEmpty) {
-      try {
-        final bytes = base64Decode(post.authorAvatarImageBase64!.trim());
-        if (bytes.isNotEmpty) {
-          avatarImage = MemoryImage(bytes);
-        }
-      } catch (_) {}
-    }
+    final avatarImage = post.resolveAvatarImage();
 
     return CircleAvatar(
       radius: 20,

@@ -11,7 +11,7 @@ import '../widgets/app_logo.dart';
 import '../widgets/emotion_map.dart';
 import '../widgets/like_button.dart';
 import '../widgets/profile_avatar.dart';
-import 'encounter_detail_screen.dart';
+import 'profile_view_screen.dart';
 
 enum EncounterListFilter { encounter, reunion, resonance }
 
@@ -310,9 +310,13 @@ class _EncounterTile extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
         onTap: () {
+          context.read<EncounterManager>().markSeen(encounter.id);
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => EncounterDetailScreen(encounterId: encounter.id),
+              builder: (_) => ProfileViewScreen(
+                profileId: encounter.profile.id,
+                initialProfile: encounter.profile,
+              ),
             ),
           );
         },
@@ -474,10 +478,13 @@ class _HighlightEntryTile extends StatelessWidget {
           final manager = context.read<EncounterManager>();
           for (final encounter in manager.encounters) {
             if (encounter.profile.id == entry.profile.id) {
+              manager.markSeen(encounter.id);
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) =>
-                      EncounterDetailScreen(encounterId: encounter.id),
+                  builder: (_) => ProfileViewScreen(
+                    profileId: encounter.profile.id,
+                    initialProfile: encounter.profile,
+                  ),
                 ),
               );
               return;

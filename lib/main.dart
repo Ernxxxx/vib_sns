@@ -90,7 +90,13 @@ Future<void> main() async {
   // appear in Firestore. Only bootstrap when we have an auth user or the
   // local profile already has a display name.
   if (currentUser != null && hasName) {
-    await interactionService.bootstrapProfile(localProfile);
+    try {
+      await interactionService.bootstrapProfile(localProfile);
+    } catch (e, stackTrace) {
+      debugPrint('main: bootstrapProfile failed: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      // Continue app startup even if bootstrap fails
+    }
   } else {
     debugPrint(
         'main: skipping bootstrapProfile because no auth or no displayName (auth=${currentUser != null}, hasName=$hasName)');

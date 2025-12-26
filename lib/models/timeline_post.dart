@@ -37,6 +37,8 @@ class TimelinePost {
   final List<String> likedBy;
   Uint8List? _cachedImageBytes;
   String? _cachedImageKey;
+  MemoryImage? _cachedAvatarImage;
+  String? _cachedAvatarKey;
 
   Color get authorColor => Color(authorColorValue);
 
@@ -55,6 +57,30 @@ class TimelinePost {
     } catch (_) {
       _cachedImageBytes = null;
       _cachedImageKey = null;
+      return null;
+    }
+  }
+
+  ImageProvider? resolveAvatarImage() {
+    final raw = authorAvatarImageBase64;
+    if (raw == null || raw.trim().isEmpty) {
+      return null;
+    }
+    final key = raw.trim();
+    if (_cachedAvatarImage != null && _cachedAvatarKey == key) {
+      return _cachedAvatarImage;
+    }
+    try {
+      final bytes = base64Decode(key);
+      if (bytes.isEmpty) {
+        return null;
+      }
+      _cachedAvatarImage = MemoryImage(bytes);
+      _cachedAvatarKey = key;
+      return _cachedAvatarImage;
+    } catch (_) {
+      _cachedAvatarImage = null;
+      _cachedAvatarKey = null;
       return null;
     }
   }

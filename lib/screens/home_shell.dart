@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui';
@@ -11,11 +12,14 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/firestore_streetpass_service.dart';
+import '../services/firestore_dm_service.dart';
 
 import 'encounter_list_screen.dart';
+import 'conversation_list_screen.dart';
 import 'notifications_screen.dart';
 import '../data/preset_hashtags.dart';
 import '../services/streetpass_service.dart';
+import '../services/profile_interaction_service.dart';
 import '../state/encounter_manager.dart';
 import '../state/local_profile_loader.dart';
 import '../state/emotion_map_manager.dart';
@@ -25,6 +29,7 @@ import '../state/timeline_manager.dart';
 import 'profile_edit_screen.dart';
 import '../models/profile.dart';
 import '../models/encounter.dart';
+import '../widgets/full_screen_image_viewer.dart';
 import '../utils/color_extensions.dart';
 import 'package:vib_sns/models/timeline_post.dart';
 import '../widgets/app_logo.dart';
@@ -241,6 +246,57 @@ class _TimelineScreenState extends State<_TimelineScreen> {
         backgroundColor: palette.background,
         elevation: 0,
         scrolledUnderElevation: 0,
+        actions: [
+          StreamBuilder<int>(
+            stream: FirestoreDmService().watchTotalUnreadCount(
+              context.read<ProfileController>().profile.id,
+            ),
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data ?? 0;
+              return Stack(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ConversationListScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.chat_bubble_outline),
+                    tooltip: 'メッセージ',
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          unreadCount > 99 ? '99+' : '$unreadCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Align(
@@ -1068,9 +1124,16 @@ class _UserPostCard extends StatelessWidget {
                     if (imageBytes != null || hasImageUrl)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: _buildImage(imageBytes, hasImageUrl),
+                        child: GestureDetector(
+                          onTap: () => FullScreenImageViewer.show(
+                            context,
+                            imageBytes: imageBytes,
+                            imageUrl: hasImageUrl ? post.imageUrl : null,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: _buildImage(imageBytes, hasImageUrl),
+                          ),
                         ),
                       ),
                     // アクションボタン（ハート + 数字）
@@ -1092,16 +1155,7 @@ class _UserPostCard extends StatelessWidget {
   }
 
   Widget _buildAvatar(ThemeData theme) {
-    MemoryImage? avatarImage;
-    if (post.authorAvatarImageBase64 != null &&
-        post.authorAvatarImageBase64!.trim().isNotEmpty) {
-      try {
-        final bytes = base64Decode(post.authorAvatarImageBase64!.trim());
-        if (bytes.isNotEmpty) {
-          avatarImage = MemoryImage(bytes);
-        }
-      } catch (_) {}
-    }
+    final avatarImage = post.resolveAvatarImage();
 
     return CircleAvatar(
       radius: 20,
@@ -1452,6 +1506,39 @@ class _ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<_ProfileScreen> {
   bool _loggingOut = false;
+  StreamSubscription<ProfileInteractionSnapshot>? _statsSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeToOwnStats();
+  }
+
+  @override
+  void dispose() {
+    _statsSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeToOwnStats() {
+    final profileController = context.read<ProfileController>();
+    final service = context.read<ProfileInteractionService>();
+    final myId = profileController.profile.id;
+    _statsSubscription =
+        service.watchProfile(targetId: myId, viewerId: myId).listen(
+      (snapshot) {
+        if (!mounted) return;
+        profileController.updateStats(
+          followersCount: snapshot.followersCount,
+          followingCount: snapshot.followingCount,
+          receivedLikes: snapshot.receivedLikes,
+        );
+      },
+      onError: (error) {
+        debugPrint('Failed to watch own profile stats: $error');
+      },
+    );
+  }
 
   Future<void> _logout() async {
     if (_loggingOut) return;
