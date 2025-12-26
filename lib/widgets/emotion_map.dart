@@ -1154,7 +1154,13 @@ class _EmotionMapState extends State<EmotionMap> {
       isDismissible: true, // 外部タップで閉じる
       enableDrag: true, // ドラッグで閉じる（モバイル）
       backgroundColor: Colors.transparent, // グラスモーフィズム用に透明
-      builder: (_) => const _EmotionPostSheet(),
+      builder: (sheetContext) {
+        final bottomPadding = MediaQuery.of(sheetContext).viewInsets.bottom;
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottomPadding),
+          child: const _EmotionPostSheet(),
+        );
+      },
     );
     if (!mounted) return;
     if (result == null) {
@@ -2097,8 +2103,8 @@ class _EmotionPostSheetState extends State<_EmotionPostSheet> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
-    final viewInsets = MediaQuery.of(context).viewInsets.bottom;
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       child: BackdropFilter(
@@ -2113,141 +2119,116 @@ class _EmotionPostSheetState extends State<_EmotionPostSheet> {
                   color: Colors.white.withValues(alpha: 0.5), width: 1),
             ),
           ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return Padding(
-                padding: EdgeInsets.only(bottom: viewInsets),
-                child: SafeArea(
-                  top: false,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight == double.infinity
-                            ? 0
-                            : constraints.maxHeight,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // 上部のタップ可能な空白領域、タップで閉じる
-                          GestureDetector(
-                            onTap: () => Navigator.of(context).pop(),
-                            behavior: HitTestBehavior.opaque, // 領域全体をタップ可能にする
-                            child: Container(
-                              height: 60, // 高さを増やして十分な空白領域を確保
-                              alignment: Alignment.center,
-                              child: Container(
-                                width: 40,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.withValues(alpha: 0.3),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            '今の気持ちは？',
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          const SizedBox(height: 24),
-                          Center(
-                            child: Wrap(
-                              spacing: 12,
-                              runSpacing: 12,
-                              alignment: WrapAlignment.center,
-                              children: const [
-                                EmotionType.happy,
-                                EmotionType.sad
-                              ].map((emotion) {
-                                final selected = _selectedEmotion == emotion;
-                                return ChoiceChip(
-                                  label: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 4, vertical: 8),
-                                    child: Text(
-                                      '${emotion.emoji} ${emotion.label}',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: selected
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                      ),
-                                    ),
-                                  ),
-                                  selected: selected,
-                                  selectedColor:
-                                      emotion.color.withValues(alpha: 0.3),
-                                  backgroundColor:
-                                      Colors.grey.withValues(alpha: 0.1),
-                                  side: BorderSide.none,
-                                  onSelected: (_) {
-                                    setState(() => _selectedEmotion = emotion);
-                                  },
-                                );
-                              }).toList(growable: false),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          TextField(
-                            controller: _controller,
-                            maxLength: 60,
-                            maxLines: 3,
-                            decoration: InputDecoration(
-                              labelText: 'ひとことメモ（任意）',
-                              alignLabelWithHint: true,
-                              filled: true,
-                              fillColor: Colors.grey.withValues(alpha: 0.1),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: const EdgeInsets.all(16),
-                            ),
-                            textInputAction: TextInputAction.done,
-                          ),
-                          const SizedBox(height: 16),
-                          FilledButton.icon(
-                            onPressed: _selectedEmotion == null
-                                ? null
-                                : () {
-                                    final trimmed = _controller.text.trim();
-                                    final message =
-                                        trimmed.isEmpty ? null : trimmed;
-                                    Navigator.of(context).pop(
-                                      _EmotionFormResult(
-                                        emotion: _selectedEmotion!,
-                                        message: message,
-                                      ),
-                                    );
-                                  },
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            icon: const Icon(Icons.send_rounded),
-                            label: const Text('投稿する',
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 上部のタップ可能な空白領域、タップで閉じる
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  behavior: HitTestBehavior.opaque, // 領域全体をタップ可能にする
+                  child: Container(
+                    height: 24,
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   ),
                 ),
-              );
-            },
+                const SizedBox(height: 24),
+                Text(
+                  '今の気持ちは？',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 24),
+                Center(
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    alignment: WrapAlignment.center,
+                    children: const [EmotionType.happy, EmotionType.sad]
+                        .map((emotion) {
+                      final selected = _selectedEmotion == emotion;
+                      return ChoiceChip(
+                        label: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 8),
+                          child: Text(
+                            '${emotion.emoji} ${emotion.label}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: selected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                        selected: selected,
+                        selectedColor: emotion.color.withValues(alpha: 0.3),
+                        backgroundColor: Colors.grey.withValues(alpha: 0.1),
+                        side: BorderSide.none,
+                        onSelected: (_) {
+                          setState(() => _selectedEmotion = emotion);
+                        },
+                      );
+                    }).toList(growable: false),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: _controller,
+                  maxLength: 60,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'ひとことメモ（任意）',
+                    alignLabelWithHint: true,
+                    filled: true,
+                    fillColor: Colors.grey.withValues(alpha: 0.1),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
+                  textInputAction: TextInputAction.done,
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: _selectedEmotion == null
+                      ? null
+                      : () {
+                          final trimmed = _controller.text.trim();
+                          final message = trimmed.isEmpty ? null : trimmed;
+                          Navigator.of(context).pop(
+                            _EmotionFormResult(
+                              emotion: _selectedEmotion!,
+                              message: message,
+                            ),
+                          );
+                        },
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  icon: const Icon(Icons.send_rounded),
+                  label: const Text('投稿する',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
           ),
         ),
       ),
