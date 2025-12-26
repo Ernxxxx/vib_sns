@@ -1728,6 +1728,11 @@ class _ProfileScreenState extends State<_ProfileScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final profile = context.watch<ProfileController>().profile;
+    final timelineManager = context.watch<TimelineManager>();
+    final postLikesTotal = timelineManager.getPostLikesForUser(profile.id);
+    final totalLikes =
+        (profile.receivedLikes + postLikesTotal).clamp(0, 999999);
+    final displayProfile = profile.copyWith(receivedLikes: totalLikes);
     final bio = _displayOrPlaceholder(profile.bio);
     final homeTown = _displayOrPlaceholder(profile.homeTown);
     final hashtags = _hashtagsOrPlaceholder(profile.favoriteGames);
@@ -1804,7 +1809,7 @@ class _ProfileScreenState extends State<_ProfileScreen> {
                         ),
                         const SizedBox(height: 24),
                         ProfileStatsRow(
-                          profile: profile,
+                          profile: displayProfile,
                           onFollowersTap: () => _openRelationsSheet(
                             profile,
                             ProfileFollowSheetMode.followers,

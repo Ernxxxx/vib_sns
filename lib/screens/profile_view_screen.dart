@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -138,12 +137,10 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
     final shouldHoldFollow = _pendingFollowTarget != null &&
         snapshotFollow != null &&
         snapshotFollow != _pendingFollowTarget;
-    final resolvedReceivedLikes = snapshot?.receivedLikes ??
-        max(_profile.receivedLikes, fresh.receivedLikes);
-    final resolvedFollowers =
-        snapshot?.followersCount ?? max(_profile.followersCount, fresh.followersCount);
-    final resolvedFollowing =
-        snapshot?.followingCount ?? max(_profile.followingCount, fresh.followingCount);
+    final resolvedReceivedLikes =
+        snapshot?.receivedLikes ?? _profile.receivedLikes;
+    final resolvedFollowers = snapshot?.followersCount ?? _profile.followersCount;
+    final resolvedFollowing = snapshot?.followingCount ?? _profile.followingCount;
     return fresh.copyWith(
       followersCount: resolvedFollowers,
       followingCount: resolvedFollowing,
@@ -286,6 +283,11 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
     final profilePosts = timelineManager.posts
         .where((post) => post.authorId == _profile.id)
         .toList();
+    final postLikesTotal = timelineManager.getPostLikesForUser(_profile.id);
+    final totalLikes =
+        (_profile.receivedLikes + postLikesTotal).clamp(0, 999999);
+    final displayProfile =
+        _profile.copyWith(receivedLikes: totalLikes);
 
     return Scaffold(
       appBar: AppBar(
@@ -338,7 +340,7 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
                           ),
                           const SizedBox(height: 24),
                           ProfileStatsRow(
-                            profile: _profile,
+                            profile: displayProfile,
                             onFollowersTap: () => _showFollowSheet(
                                 ProfileFollowSheetMode.followers),
                             onFollowingTap: () => _showFollowSheet(
@@ -398,7 +400,7 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
                                   child: LikeButton(
                                     variant: LikeButtonVariant.hero,
                                     isLiked: _isLikedByViewer,
-                                    likeCount: _profile.receivedLikes,
+                                    likeCount: totalLikes,
                                     onPressed: _toggleLike,
                                     maxHeight: maxHeight,
                                   ),

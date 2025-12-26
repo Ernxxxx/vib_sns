@@ -5,6 +5,7 @@ import '../models/encounter.dart';
 import '../services/streetpass_service.dart';
 import '../state/encounter_manager.dart';
 import '../state/runtime_config.dart';
+import '../state/timeline_manager.dart';
 import '../utils/color_extensions.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/emotion_map.dart';
@@ -297,8 +298,13 @@ class _EncounterTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final timelineManager = context.watch<TimelineManager>();
     final distance = encounter.displayDistance;
     final accent = theme.colorScheme.primary;
+    final postLikesTotal =
+        timelineManager.getPostLikesForUser(encounter.profile.id);
+    final totalLikes =
+        (encounter.profile.receivedLikes + postLikesTotal).clamp(0, 999999);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -395,9 +401,7 @@ class _EncounterTile extends StatelessWidget {
                                 ? rawWidth
                                 : availableWidth / 2;
                         final int displayLikeCount = encounter.liked
-                            ? (encounter.profile.receivedLikes > 0
-                                ? encounter.profile.receivedLikes
-                                : 1)
+                            ? (totalLikes > 0 ? totalLikes : 1)
                             : 0; // Hide counter until the viewer likes to avoid phantom "1" states.
                         return Row(
                           children: [
@@ -556,6 +560,8 @@ class _HighlightEntryTile extends StatelessWidget {
                                 : availableWidth / 2;
                         // Find the corresponding encounter for like/follow buttons
                         final manager = context.watch<EncounterManager>();
+                        final timelineManager =
+                            context.watch<TimelineManager>();
                         Encounter? matchedEncounter;
                         for (final encounter in manager.encounters) {
                           if (encounter.profile.id == entry.profile.id) {
@@ -566,10 +572,13 @@ class _HighlightEntryTile extends StatelessWidget {
                         if (matchedEncounter == null) {
                           return const SizedBox.shrink();
                         }
+                        final postLikesTotal = timelineManager.getPostLikesForUser(
+                            matchedEncounter.profile.id);
+                        final totalLikes = (matchedEncounter.profile.receivedLikes +
+                                postLikesTotal)
+                            .clamp(0, 999999);
                         final displayLikeCount = matchedEncounter.liked
-                            ? (matchedEncounter.profile.receivedLikes > 0
-                                ? matchedEncounter.profile.receivedLikes
-                                : 1)
+                            ? (totalLikes > 0 ? totalLikes : 1)
                             : 0;
                         return Row(
                           children: [

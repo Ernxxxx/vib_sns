@@ -60,6 +60,17 @@ class TimelineManager extends ChangeNotifier {
     return hashtags;
   }
 
+  /// 指定ユーザーの投稿に付いたいいね数の合計を取得
+  int getPostLikesForUser(String userId) {
+    var total = 0;
+    for (final post in _posts) {
+      if (post.authorId == userId) {
+        total += post.likeCount;
+      }
+    }
+    return total;
+  }
+
   Future<void> refresh() async {
     if (_paused) return;
     // 既存のサブスクリプションをリセットして再取得
@@ -224,45 +235,8 @@ class TimelineManager extends ChangeNotifier {
             : FieldValue.arrayRemove([viewerId]),
       });
 
-      // 投稿者のプロフィールのreceivedLikesも更新
-      // ProfileViewScreenはlikesサブコレクションのサイズを使用するため、
-      // サブコレクションにもドキュメントを追加/削除する
-      final authorId = post.authorId;
-      final authUid = FirebaseAuth.instance.currentUser?.uid;
-      if (authorId.isNotEmpty && authorId != viewerId && authUid != null) {
-        debugPrint('[LIKE] Updating likes for author $authorId by $delta');
-        final profileRef =
-            FirebaseFirestore.instance.collection('profiles').doc(authorId);
-        final likeDocRef = profileRef.collection('likes').doc(authUid);
-
-        try {
-          if (nextLiked) {
-            // いいねを追加
-            await likeDocRef.set({
-              'createdAt': FieldValue.serverTimestamp(),
-              'viewerProfileId': viewerId,
-              'profile': {
-                'id': viewerId,
-                'displayName': viewer.displayName,
-                'avatarColor': viewer.avatarColor.value,
-                'avatarImageBase64': viewer.avatarImageBase64,
-              },
-            });
-          } else {
-            // いいねを削除
-            await likeDocRef.delete();
-          }
-          debugPrint(
-              '[LIKE] Successfully updated likes subcollection for $authorId');
-
-          // receivedLikesフィールドも更新（バックアップ用）
-          await profileRef.update({
-            'receivedLikes': FieldValue.increment(delta),
-          });
-        } catch (profileError) {
-          debugPrint('[LIKE] Failed to update profile likes: $profileError');
-        }
-      }
+      // 投稿いいねはプロフィールいいねとは別扱いにするため、
+      // プロフィールのlikesサブコレクションやカウンタには触れない。
       // Let the Firestore snapshot listener clear the pending state when server catches up.
     } catch (error, stackTrace) {
       debugPrint('Failed to update timeline like: $error');

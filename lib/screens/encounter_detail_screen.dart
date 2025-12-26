@@ -5,6 +5,7 @@ import '../models/encounter.dart';
 import '../models/profile.dart';
 import '../state/encounter_manager.dart';
 import '../state/profile_controller.dart';
+import '../state/timeline_manager.dart';
 import '../widgets/like_button.dart';
 import '../widgets/profile_avatar.dart';
 import '../widgets/profile_info_tile.dart';
@@ -83,6 +84,11 @@ class _EncounterDetailBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final profile = encounter.profile;
     final theme = Theme.of(context);
+    final timelineManager = context.watch<TimelineManager>();
+    final postLikesTotal = timelineManager.getPostLikesForUser(profile.id);
+    final totalLikes =
+        (profile.receivedLikes + postLikesTotal).clamp(0, 999999);
+    final displayProfile = profile.copyWith(receivedLikes: totalLikes);
     final viewerId = context.read<ProfileController>().profile.id;
     final double? gpsDistance = encounter.gpsDistanceMeters;
     final double? bleDistance = encounter.bleDistanceMeters;
@@ -156,7 +162,7 @@ class _EncounterDetailBody extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     ProfileStatsRow(
-                      profile: profile,
+                      profile: displayProfile,
                       onFollowersTap: () => _openRelationsSheet(
                         context,
                         profile,
@@ -232,7 +238,7 @@ class _EncounterDetailBody extends StatelessWidget {
                           child: LikeButton(
                             variant: LikeButtonVariant.hero,
                             isLiked: encounter.liked,
-                            likeCount: encounter.profile.receivedLikes,
+                            likeCount: totalLikes,
                             onPressed: onLikePressed,
                             maxHeight: maxHeight,
                           ),
