@@ -327,10 +327,8 @@ class TimelineManager extends ChangeNotifier {
         }
       }
 
-      // Always replace the list - the pending states are already applied to nextPosts
-      _posts
-        ..clear()
-        ..addAll(nextPosts);
+      // Replace list contents atomically to avoid empty state
+      _posts.replaceRange(0, _posts.length, nextPosts);
       _isLoaded = true;
       notifyListeners();
     }, onError: (Object error, StackTrace stackTrace) {
