@@ -885,6 +885,7 @@ class _ProfilePostCard extends StatelessWidget {
         imageBytes,
         fit: BoxFit.cover,
         width: double.infinity,
+        gaplessPlayback: true,
       );
     }
     if (hasImageUrl) {
@@ -892,6 +893,7 @@ class _ProfilePostCard extends StatelessWidget {
         post.imageUrl!,
         fit: BoxFit.cover,
         width: double.infinity,
+        gaplessPlayback: true,
         errorBuilder: (_, __, ___) => const SizedBox.shrink(),
       );
     }

@@ -1123,6 +1123,7 @@ class _UserPostCard extends StatelessWidget {
         imageBytes,
         fit: BoxFit.cover,
         width: double.infinity,
+        gaplessPlayback: true,
       );
     }
     if (hasImageUrl) {
@@ -1130,6 +1131,7 @@ class _UserPostCard extends StatelessWidget {
         post.imageUrl!,
         fit: BoxFit.cover,
         width: double.infinity,
+        gaplessPlayback: true,
         errorBuilder: (_, __, ___) => const SizedBox.shrink(),
       );
     }
