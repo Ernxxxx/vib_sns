@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "vib-sns-prod"
-  }
+  },
+  "targets": {
+    "vib-sns-prod": {
+      "hosting": {
+        "app": [
+          "default"
+        ],
+        "dashboard": [
+          "dashboard"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

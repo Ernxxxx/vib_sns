@@ -1,0 +1,13 @@
+.emotion-chart {
+  width: 100%;
+}
+
+.emotion-chart-loading,
+.emotion-chart-empty {
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+}
+
