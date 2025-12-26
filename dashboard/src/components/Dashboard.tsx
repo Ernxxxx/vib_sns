@@ -174,7 +174,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     <div className="dashboard">
       <nav className={`dashboard-nav ${scrolled ? 'scrolled' : ''}`}>
         <div className="nav-container">
-          {/* 左侧：Logo和标题 */}
+          {/* 左側：Logoとタイトル */}
           <div className="nav-brand">
             <div className="nav-logo">
               <img src={vibLogo} alt="VIB logo" className="logo-img" />
@@ -195,13 +195,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             </div>
           </div>
 
-          {/* 中间：导航链接（已移除） */}
-
-          {/* 右侧：操作按钮组 */}
+          {/* 右側：操作ボタン群 */}
           <div className="nav-actions">
-            {/* 时钟和状态栏容器 */}
+            {/* 時計とステータスバーコンテナ */}
             <div className="clock-status-group">
-              {/* 时钟 */}
+              {/* 時計 */}
               <div className="clock-display" aria-live="polite">
                 <span className="clock-icon">🕐</span>
                 <span className="clock-text">{formatDateTime(currentTime)}</span>
@@ -236,7 +234,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             <div className="refresh-control">
               <div className="status-row">
                 <span className="auto-refresh-status">{autoStatusText}</span>
-                <label className="auto-label" htmlFor="auto-refresh">⏱️ 动态间隔</label>
+                <label className="auto-label" htmlFor="auto-refresh">⏱️ 自動更新</label>
               </div>
               <div className="refresh-actions">
                 <button
@@ -261,19 +259,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 </select>
               </div>
             </div>
-
-            {/* 登出按钮 */}
-            <button
-              className="nav-button logout-btn power-btn"
-              onClick={handleLogout}
-              aria-label="ログアウト"
-            >
-              <span className="button-icon">⏻</span>
-              <span className="button-text sr-only">ログアウト</span>
-            </button>
-
-            {/* 移动端菜单开关（已移除） */}
           </div>
+
+          {/* ログアウトボタン（独立配置） */}
+          <button
+            className="nav-button logout-btn power-btn"
+            onClick={handleLogout}
+            aria-label="ログアウト"
+          >
+            <span className="button-icon">⏻</span>
+            <span className="button-text sr-only">ログアウト</span>
+          </button>
         </div>
       </nav>
 

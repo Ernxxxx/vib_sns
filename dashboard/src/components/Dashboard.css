@@ -28,7 +28,7 @@
   100% { background-position: 0% 50%; }
 }
 
-/* ============= 导航栏样式 ============= */
+/* ============= ナビゲーションバースタイル ============= */
 .dashboard-nav {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.92) 50%, rgba(255, 255, 255, 0.85) 100%);
   backdrop-filter: blur(18px) saturate(160%);
@@ -73,10 +73,11 @@
   align-items: center;
   gap: 20px;
   min-height: 40px;
+  position: relative;
 }
 .nav-links { display: none; }
 
-/* 品牌区域 */
+/* ブランドエリア */
 .nav-brand {
   display: flex;
   align-items: center;
@@ -216,7 +217,7 @@
   }
 }
 
-/* 操作按钮区域 */
+/* 操作ボタンエリア */
 .nav-actions {
   display: flex;
   align-items: center;
@@ -497,7 +498,7 @@
   transform: translateY(0);
 }
 
-/* 下拉菜单 */
+/* ドロップダウンメニュー */
 .nav-dropdown {
   display: flex;
   flex-direction: column;
@@ -542,7 +543,7 @@
   box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.1);
 }
 
-/* 响应式设计 */
+/* レスポンシブデザイン */
 @media (max-width: 1200px) {
   .nav-container {
     padding: 14px 24px;
@@ -569,8 +570,9 @@
 @media (max-width: 900px) {
   .nav-container {
     flex-direction: column;
-    gap: 16px;
-    padding: 16px 20px;
+    gap: 12px;
+    padding: 12px 16px 12px 16px;
+    padding-right: 60px;
   }
 
   .nav-brand {
@@ -578,13 +580,33 @@
     justify-content: center;
   }
 
+  .nav-title-group {
+    text-align: center;
+  }
+
   .nav-actions {
     width: 100%;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .clock-status-group {
+    width: 100%;
+    align-items: center;
+  }
+
+  .clock-display,
+  .system-status-card {
+    width: 100%;
     justify-content: center;
-    flex-wrap: wrap;
   }
 
   .refresh-control {
+    width: 100%;
+  }
+
+  .refresh-actions {
     width: 100%;
     justify-content: center;
   }
@@ -597,19 +619,38 @@
     padding: 10px 12px;
   }
 
-  .dropdown-label span:not(.label-icon) {
-    display: none;
+  .refresh-btn {
+    flex: 1;
   }
 
+  .logout-btn.power-btn {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
 }
 
 @media (max-width: 600px) {
+  .nav-container {
+    padding: 10px 12px 10px 12px;
+    padding-right: 56px;
+    gap: 10px;
+  }
+
   .nav-title {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .nav-subtitle {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .nav-status {
@@ -617,16 +658,52 @@
   }
 
   .nav-logo {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
   }
 
   .logo-icon {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .nav-actions {
     gap: 8px;
+  }
+
+  .clock-display,
+  .system-status-card {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .clock-text {
+    font-size: 10px;
+  }
+
+  .refresh-control {
+    padding: 6px;
+  }
+
+  .auto-label {
+    font-size: 10px;
+  }
+
+  .auto-interval-select {
+    font-size: 10px;
+    padding: 3px 6px;
+    height: 32px;
+  }
+
+  .nav-button {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  .logout-btn.power-btn {
+    top: 10px;
+    right: 12px;
+    width: 44px;
+    height: 44px;
   }
 }
 
@@ -887,6 +964,14 @@
   .dashboard-content-compact {
     padding: 16px;
   }
+
+  .main-charts {
+    grid-template-columns: 1fr;
+  }
+
+  .bottom-section {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
@@ -896,6 +981,11 @@
 
   .dashboard-header h1 {
     font-size: 20px;
+  }
+
+  .dashboard-content-compact {
+    padding: 12px;
+    gap: 12px;
   }
 
   .top-stats {
@@ -911,10 +1001,21 @@
 
   .chart-section,
   .users-section {
-    padding: 14px;
+    padding: 12px;
   }
   
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
   .section-header h2 {
-    font-size: 16px;
+    font-size: 14px;
+  }
+
+  .activity-range-switch {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
