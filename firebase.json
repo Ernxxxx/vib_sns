@@ -31,8 +31,23 @@
     ],
     "rewrites": [
       {
+        "source": "dashboard/**",
+        "destination": "/dashboard/index.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/dashboard/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
+          }
+        ]
       }
     ]
   }
