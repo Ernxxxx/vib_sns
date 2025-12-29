@@ -293,6 +293,12 @@ class MockProfileInteractionService implements ProfileInteractionService {
     _profiles.clear();
   }
 
+  @override
+  Future<bool> isUsernameTaken(String username, {String? excludeProfileId}) async {
+    // モック実装では常にfalseを返す
+    return false;
+  }
+
   _MockProfileState _getProfileState(String id) {
     return _profiles.putIfAbsent(id, () => _MockProfileState());
   }

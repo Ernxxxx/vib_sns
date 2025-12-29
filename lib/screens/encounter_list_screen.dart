@@ -354,12 +354,24 @@ class _EncounterTile extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            encounter.profile.displayName,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                encounter.profile.displayName,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (encounter.profile.formattedUsername != null)
+                                Text(
+                                  encounter.profile.formattedUsername!,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -521,12 +533,24 @@ class _HighlightEntryTile extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            entry.profile.displayName,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                entry.profile.displayName,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (entry.profile.formattedUsername != null)
+                                Text(
+                                  entry.profile.formattedUsername!,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -579,11 +603,12 @@ class _HighlightEntryTile extends StatelessWidget {
                         if (matchedEncounter == null) {
                           return const SizedBox.shrink();
                         }
-                        final postLikesTotal = timelineManager.getPostLikesForUser(
-                            matchedEncounter.profile.id);
-                        final totalLikes = (matchedEncounter.profile.receivedLikes +
-                                postLikesTotal)
-                            .clamp(0, 999999);
+                        final postLikesTotal = timelineManager
+                            .getPostLikesForUser(matchedEncounter.profile.id);
+                        final totalLikes =
+                            (matchedEncounter.profile.receivedLikes +
+                                    postLikesTotal)
+                                .clamp(0, 999999);
                         final displayLikeCount = matchedEncounter.liked
                             ? (totalLikes > 0 ? totalLikes : 1)
                             : 0;

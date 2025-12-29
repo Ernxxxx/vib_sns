@@ -1,20 +1,27 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../data/preset_hashtags.dart';
-import '../utils/color_extensions.dart';
+import '../models/profile.dart';
 
-Future<({String name, List<String> hashtags})?> showProfileSetupModal(
+Future<({String name, String? username, List<String> hashtags})?>
+    showProfileSetupModal(
   BuildContext context, {
   String? initialName,
+  String? initialUsername,
   List<String>? initialHashtags,
   int minHashtags = 2,
   int maxHashtags = 10,
   bool lockName = false,
 }) {
-  return Navigator.of(context).push<({String name, List<String> hashtags})>(
+  return Navigator.of(context)
+      .push<({String name, String? username, List<String> hashtags})>(
     MaterialPageRoute(
       builder: (_) => _ProfileSetupPage(
         initialName: initialName,
+        initialUsername: initialUsername,
         initialHashtags: initialHashtags,
         minHashtags: minHashtags,
         maxHashtags: maxHashtags,
@@ -27,6 +34,7 @@ Future<({String name, List<String> hashtags})?> showProfileSetupModal(
 class _ProfileSetupPage extends StatefulWidget {
   const _ProfileSetupPage({
     this.initialName,
+    this.initialUsername,
     this.initialHashtags,
     required this.minHashtags,
     required this.maxHashtags,
@@ -34,6 +42,7 @@ class _ProfileSetupPage extends StatefulWidget {
   });
 
   final String? initialName;
+  final String? initialUsername;
   final List<String>? initialHashtags;
   final int minHashtags;
   final int maxHashtags;
@@ -46,19 +55,79 @@ class _ProfileSetupPage extends StatefulWidget {
 class _ProfileSetupPageState extends State<_ProfileSetupPage> {
   late final TextEditingController _nameController =
       TextEditingController(text: widget.initialName ?? '');
+  late final TextEditingController _usernameController =
+      TextEditingController(text: widget.initialUsername ?? '');
   late final Set<String> _selected = {
     ...?widget.initialHashtags,
   };
+  String? _usernameError;
+  bool _checkingUsername = false;
+  Timer? _debounceTimer;
 
   bool get _hasValidName => _nameController.text.trim().isNotEmpty;
 
+  bool get _hasValidUsername {
+    final username = _usernameController.text.trim();
+    if (username.isEmpty) return false;
+    return Profile.validateUsername(username) == null;
+  }
+
   bool get _canSubmit =>
-      _hasValidName && _selected.length >= widget.minHashtags;
+      _hasValidName &&
+      _hasValidUsername &&
+      _selected.length >= widget.minHashtags &&
+      _usernameError == null &&
+      !_checkingUsername;
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _nameController.dispose();
+    _usernameController.dispose();
     super.dispose();
+  }
+
+  void _validateUsername(String value) {
+    // まずローカルバリデーション
+    final localError = Profile.validateUsername(value);
+    if (localError != null) {
+      setState(() {
+        _usernameError = localError;
+        _checkingUsername = false;
+      });
+      return;
+    }
+
+    // デバウンスしてFirestoreチェック
+    _debounceTimer?.cancel();
+    setState(() => _checkingUsername = true);
+
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
+      if (!mounted) return;
+      final normalizedUsername = value.toLowerCase().trim();
+      try {
+        final query = await FirebaseFirestore.instance
+            .collection('profiles')
+            .where('username', isEqualTo: normalizedUsername)
+            .limit(1)
+            .get();
+        if (!mounted) return;
+        setState(() {
+          _checkingUsername = false;
+          if (query.docs.isNotEmpty) {
+            _usernameError = 'このユーザーIDは既に使用されています';
+          } else {
+            _usernameError = null;
+          }
+        });
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _checkingUsername = false;
+          _usernameError = null; // エラー時は許可
+        });
+      }
+    });
   }
 
   void _toggleHashtag(String tag, bool enabled) {
@@ -75,8 +144,10 @@ class _ProfileSetupPageState extends State<_ProfileSetupPage> {
 
   void _submit() {
     if (!_canSubmit) return;
+    final username = Profile.normalizeUsername(_usernameController.text);
     Navigator.of(context).pop((
       name: _nameController.text.trim(),
+      username: username,
       hashtags: _selected.toList(),
     ));
   }
@@ -128,6 +199,20 @@ class _ProfileSetupPageState extends State<_ProfileSetupPage> {
                   onChanged: (_) => setState(() {}),
                 ),
               ],
+              const SizedBox(height: 16),
+              // Username field
+              TextField(
+                controller: _usernameController,
+                decoration: InputDecoration(
+                  labelText: 'ユーザーID（必須）',
+                  hintText: '@username',
+                  prefixText: '@',
+                  border: const OutlineInputBorder(),
+                  errorText: _usernameError,
+                  helperText: '英数字とアンダースコア、3〜20文字',
+                ),
+                onChanged: _validateUsername,
+              ),
               const SizedBox(height: 24),
               Text(
                 '興味のあるハッシュタグを選択してください（${widget.minHashtags}～${widget.maxHashtags}件）。',
@@ -144,10 +229,8 @@ class _ProfileSetupPageState extends State<_ProfileSetupPage> {
                     label: Text(tag),
                     selected: isSelected,
                     backgroundColor: Colors.white,
-                    selectedColor: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.25),
+                    selectedColor:
+                        Theme.of(context).colorScheme.primary.withOpacity(0.25),
                     side: BorderSide(
                       color: isSelected
                           ? Theme.of(context).colorScheme.primary

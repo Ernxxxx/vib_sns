@@ -11,6 +11,7 @@ class Profile {
     required this.homeTown,
     required List<String> favoriteGames,
     required this.avatarColor,
+    this.username,
     this.avatarImageBase64,
     this.following = false,
     this.receivedLikes = 0,
@@ -23,6 +24,7 @@ class Profile {
 
   final String id;
   final String beaconId;
+  final String? username; // @username (stored without @)
   final String displayName;
   final String bio;
   final String homeTown;
@@ -33,6 +35,9 @@ class Profile {
   int receivedLikes;
   int followersCount;
   int followingCount;
+
+  /// Get formatted username with @ prefix
+  String? get formattedUsername => username != null ? '@$username' : null;
 
   void toggleFollow() {
     following = !following;
@@ -45,6 +50,8 @@ class Profile {
   Profile copyWith({
     String? id,
     String? beaconId,
+    String? username,
+    bool clearUsername = false,
     String? displayName,
     String? bio,
     String? homeTown,
@@ -60,6 +67,7 @@ class Profile {
     return Profile(
       id: id ?? this.id,
       beaconId: beaconId ?? this.beaconId,
+      username: clearUsername ? null : (username ?? this.username),
       displayName: displayName ?? this.displayName,
       bio: bio ?? this.bio,
       homeTown: homeTown ?? this.homeTown,
@@ -80,6 +88,7 @@ class Profile {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'username': username,
       'displayName': displayName,
       'beaconId': beaconId,
       'bio': bio,
@@ -103,6 +112,7 @@ class Profile {
           : <String>[];
       return Profile(
         id: map['id']?.toString() ?? '',
+        username: map['username']?.toString(),
         displayName: map['displayName']?.toString() ?? 'Unknown',
         beaconId: map['beaconId']?.toString() ?? map['id']?.toString() ?? '',
         bio: map['bio']?.toString() ?? '',
@@ -120,6 +130,43 @@ class Profile {
       return null;
     }
   }
+
+  /// Validate username format
+  /// Returns null if valid, error message if invalid
+  static String? validateUsername(String? username, {bool required = true}) {
+    if (username == null || username.isEmpty) {
+      return required ? 'ユーザーIDを入力してください' : null;
+    }
+
+    // Remove @ prefix if present
+    final cleanUsername =
+        username.startsWith('@') ? username.substring(1) : username;
+
+    if (cleanUsername.isEmpty) {
+      return required ? 'ユーザーIDを入力してください' : null;
+    }
+    if (cleanUsername.length < 3) {
+      return 'ユーザーIDは3文字以上で入力してください';
+    }
+    if (cleanUsername.length > 20) {
+      return 'ユーザーIDは20文字以内で入力してください';
+    }
+    if (!RegExp(r'^[a-zA-Z][a-zA-Z0-9_]*$').hasMatch(cleanUsername)) {
+      return 'ユーザーIDは英字で始まり、英数字とアンダースコアのみ使用できます';
+    }
+    return null;
+  }
+
+  /// Normalize username (remove @ and convert to lowercase for storage)
+  static String? normalizeUsername(String? username) {
+    if (username == null || username.isEmpty) return null;
+    var clean = username.trim();
+    if (clean.startsWith('@')) {
+      clean = clean.substring(1);
+    }
+    return clean.isEmpty ? null : clean.toLowerCase();
+  }
+
   static List<String> sanitizeHashtags(Iterable<String> values) {
     final sanitized = <String>[];
     final seen = <String>{};

@@ -5,13 +5,9 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../services/firestore_streetpass_service.dart';
 import '../services/firestore_dm_service.dart';
 
 import 'encounter_list_screen.dart';
@@ -21,12 +17,11 @@ import '../data/preset_hashtags.dart';
 import '../services/streetpass_service.dart';
 import '../services/profile_interaction_service.dart';
 import '../state/encounter_manager.dart';
-import '../state/local_profile_loader.dart';
-import '../state/emotion_map_manager.dart';
 import '../state/notification_manager.dart';
 import '../state/profile_controller.dart';
 import '../state/timeline_manager.dart';
 import 'profile_edit_screen.dart';
+import 'settings_screen.dart';
 import '../models/profile.dart';
 import '../models/encounter.dart';
 import '../widgets/full_screen_image_viewer.dart';
@@ -39,7 +34,6 @@ import '../widgets/profile_info_tile.dart';
 import '../widgets/profile_stats_row.dart';
 import 'profile_follow_list_sheet.dart';
 import 'profile_view_screen.dart';
-import '../utils/auth_helpers.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -311,6 +305,66 @@ class _TimelineScreenState extends State<_TimelineScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                 children: [
+                  // Banner for users without username
+                  if (localProfile.username == null ||
+                      localProfile.username!.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Material(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    ProfileEditScreen(profile: localProfile),
+                              ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.amber.shade300),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.person_add_alt_1,
+                                    color: Colors.amber.shade700, size: 28),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'ユーザーIDを設定しよう！',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.amber.shade900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '@usernameでプロフィールを検索できるようになります',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.amber.shade800,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(Icons.chevron_right,
+                                    color: Colors.amber.shade700),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   _HighlightsSection(
                     palette: palette,
                     metrics: metrics,
@@ -1054,6 +1108,15 @@ class _UserPostCard extends StatelessWidget {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
+                                if (post.formattedAuthorUsername != null) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    post.formattedAuthorUsername!,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -1505,7 +1568,6 @@ class _ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<_ProfileScreen> {
-  bool _loggingOut = false;
   StreamSubscription<ProfileInteractionSnapshot>? _statsSubscription;
 
   @override
@@ -1538,222 +1600,6 @@ class _ProfileScreenState extends State<_ProfileScreen> {
         debugPrint('Failed to watch own profile stats: $error');
       },
     );
-  }
-
-  Future<void> _logout() async {
-    if (_loggingOut) return;
-    setState(() => _loggingOut = true);
-    final controller = context.read<ProfileController>();
-    final manager = context.read<EncounterManager>();
-    final notificationManager = context.read<NotificationManager>();
-    final timelineManager = context.read<TimelineManager>();
-    final emotionMapManager = context.read<EmotionMapManager>();
-    try {
-      // 認証がクリアされる前にサブスクリプションを停止（権限エラー回避）
-      manager.pauseProfileSync();
-      notificationManager.pauseForLogout();
-      timelineManager.pauseForLogout();
-      emotionMapManager.pauseForLogout();
-
-      // 認証が有効な間にstreetpass_presencesをクリーンアップ
-      try {
-        await _deleteStreetpassPresence(
-          profileId: controller.profile.id,
-          beaconId: controller.profile.beaconId,
-        );
-      } catch (e, st) {
-        debugPrint('Failed to delete streetpass presence: $e');
-        debugPrintStack(stackTrace: st);
-      }
-
-      // ユーザーが認証済みの場合、ローカル状態をクリアする前に
-      // サーバー側関数を呼び出してプロフィールと関連データを削除
-      final user = FirebaseAuth.instance.currentUser;
-      var serverDeleted = false;
-      if (user != null) {
-        try {
-          debugPrint(
-              'HomeShell._logout: calling deleteUserProfile for profileId=${controller.profile.id} beaconId=${controller.profile.beaconId}');
-          final callable =
-              FirebaseFunctions.instance.httpsCallable('deleteUserProfile');
-          final result = await callable.call(<String, dynamic>{
-            'profileId': controller.profile.id,
-            'beaconId': controller.profile.beaconId,
-          });
-          debugPrint(
-              'HomeShell._logout: deleteUserProfile result=${result.data}');
-          serverDeleted = true;
-        } catch (e, st) {
-          debugPrint('deleteUserProfile failed: $e');
-          debugPrintStack(stackTrace: st);
-          // フォールバック: 認証が有効な間にクライアント側でクリーンアップ
-          await _purgeProfileData(
-            profileId: controller.profile.id,
-            beaconId: controller.profile.beaconId,
-          );
-        }
-      }
-
-      // Firebase Authからサインアウト
-      debugPrint('HomeShell._logout: signing out FirebaseAuth');
-      await FirebaseAuth.instance.signOut();
-
-      // ローカルに保存されたタイムライン投稿をクリア
-      await timelineManager.clearPostsForCurrentProfile();
-
-      if (serverDeleted) {
-        // サーバー側削除が成功した場合のみローカルIDをリセット
-        // これによりサーバーが削除できなかった場合のプロフィール增殖を防止
-        debugPrint(
-            'HomeShell._logout: resetting local profile with wipeIdentity=true');
-        await LocalProfileLoader.resetLocalProfile(wipeIdentity: true);
-        final refreshed = await LocalProfileLoader.loadOrCreate();
-        debugPrint(
-            'HomeShell._logout: new local profile id=${refreshed.id} beaconId=${refreshed.beaconId}');
-        // ログアウト時はプロフィールをブートストラップせずサーバー統計再購読もしない
-        await manager.switchLocalProfile(refreshed, skipSync: true);
-        // ここでresetForProfileを呼ばない - まだ認証されていないため
-        // マネージャーはNameSetupScreenでログイン後に再起動される
-        // ログアウト時にUI表示の統計をゼロにリセット
-        controller.updateStats(
-            followersCount: 0, followingCount: 0, receivedLikes: 0);
-        controller.updateProfile(refreshed, needsSetup: true);
-      } else {
-        // サーバー削除が失敗または未実行。ローカルIDは保持して
-        // 次回起動時に新しいプロフィールが作られるのを防止
-        debugPrint(
-            'HomeShell._logout: server deletion failed or not attempted; wiping local identity to avoid lingering presence');
-        await LocalProfileLoader.resetLocalProfile(wipeIdentity: true);
-        final refreshed = await LocalProfileLoader.loadOrCreate();
-        await manager.switchLocalProfile(refreshed, skipSync: true);
-        // ここでresetForProfileを呼ばない - まだ認証されていないため
-        controller.updateStats(
-            followersCount: 0, followingCount: 0, receivedLikes: 0);
-        controller.updateProfile(refreshed, needsSetup: true);
-      }
-
-      // 即座に匿名認証を再確立してFirestoreアクセスを維持
-      await ensureAnonymousAuth();
-    } finally {
-      if (mounted) {
-        setState(() => _loggingOut = false);
-      }
-    }
-  }
-
-  Future<void> _deleteStreetpassPresence({
-    required String profileId,
-    required String beaconId,
-  }) async {
-    final firestore = FirebaseFirestore.instance;
-    final presences = firestore.collection('streetpass_presences');
-
-    // Get the actual deviceId from SharedPreferences (this is the document ID)
-    String? deviceId;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      deviceId = prefs.getString(FirestoreStreetPassService.prefsDeviceIdKey);
-      debugPrint('Found deviceId from SharedPreferences: $deviceId');
-    } catch (e) {
-      debugPrint('Failed to get deviceId from SharedPreferences: $e');
-    }
-
-    // Delete by deviceId (the actual document ID used by FirestoreStreetPassService)
-    if (deviceId != null && deviceId.isNotEmpty) {
-      try {
-        debugPrint('Deleting streetpass_presences doc by deviceId: $deviceId');
-        await presences.doc(deviceId).delete();
-      } catch (e) {
-        debugPrint('Failed to delete presence doc by deviceId: $e');
-      }
-    }
-
-    // Also try deleting by profileId (fallback if they differ)
-    if (profileId != deviceId) {
-      try {
-        debugPrint(
-            'Deleting streetpass_presences doc by profileId: $profileId');
-        await presences.doc(profileId).delete();
-      } catch (e) {
-        debugPrint('Failed to delete presence doc by profileId: $e');
-      }
-    }
-
-    // Delete any doc with matching profile.id
-    try {
-      final byProfileId =
-          await presences.where('profile.id', isEqualTo: profileId).get();
-      debugPrint(
-          'Found ${byProfileId.docs.length} docs with profile.id=$profileId');
-      for (final doc in byProfileId.docs) {
-        debugPrint('Deleting presence doc ${doc.id} (matched by profile.id)');
-        await doc.reference.delete();
-      }
-    } catch (e) {
-      debugPrint('Failed to query/delete by profile.id: $e');
-    }
-
-    // Also query by deviceId in profile.id
-    if (deviceId != null && deviceId != profileId) {
-      try {
-        final byDeviceId =
-            await presences.where('profile.id', isEqualTo: deviceId).get();
-        debugPrint(
-            'Found ${byDeviceId.docs.length} docs with profile.id=$deviceId');
-        for (final doc in byDeviceId.docs) {
-          debugPrint(
-              'Deleting presence doc ${doc.id} (matched by deviceId in profile.id)');
-          await doc.reference.delete();
-        }
-      } catch (e) {
-        debugPrint('Failed to query/delete by deviceId in profile.id: $e');
-      }
-    }
-
-    // Delete any doc with the same beaconId
-    try {
-      final byBeacon =
-          await presences.where('profile.beaconId', isEqualTo: beaconId).get();
-      debugPrint(
-          'Found ${byBeacon.docs.length} docs with profile.beaconId=$beaconId');
-      for (final doc in byBeacon.docs) {
-        debugPrint('Deleting presence doc ${doc.id} (matched by beaconId)');
-        await doc.reference.delete();
-      }
-    } catch (e) {
-      debugPrint('Failed to query/delete by beaconId: $e');
-    }
-  }
-
-  Future<void> _purgeProfileData({
-    required String profileId,
-    required String beaconId,
-  }) async {
-    final firestore = FirebaseFirestore.instance;
-    try {
-      await firestore.collection('profiles').doc(profileId).delete();
-    } catch (_) {}
-    try {
-      await _deleteStreetpassPresence(profileId: profileId, beaconId: beaconId);
-    } catch (_) {}
-    try {
-      final timeline = await firestore
-          .collection('timelinePosts')
-          .where('authorId', isEqualTo: profileId)
-          .get();
-      for (final doc in timeline.docs) {
-        await doc.reference.delete();
-      }
-    } catch (_) {}
-    try {
-      final emotions = await firestore
-          .collection('emotion_map_posts')
-          .where('profileId', isEqualTo: profileId)
-          .get();
-      for (final doc in emotions.docs) {
-        await doc.reference.delete();
-      }
-    } catch (_) {}
   }
 
   void _openRelationsSheet(
@@ -1823,9 +1669,15 @@ class _ProfileScreenState extends State<_ProfileScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: '\u7de8\u96c6',
-            onPressed: _openProfileEdit,
-            icon: const Icon(Icons.edit_outlined),
+            tooltip: '設定',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -1880,13 +1732,35 @@ class _ProfileScreenState extends State<_ProfileScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 6),
-                                Text(
-                                  '\u30b5\u30de\u30ea\u30fc\u3092\u7de8\u96c6\u3057\u3066\n\u3042\u306a\u305f\u3089\u3057\u3055\u3092\u5c4a\u3051\u307e\u3057\u3087\u3046\u3002',
-                                  style: theme.textTheme.bodyMedium,
-                                ),
+                                if (profile.username != null &&
+                                    profile.username!.isNotEmpty)
+                                  Text(
+                                    '@${profile.username}',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
                               ],
                             )
                           ],
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: _openProfileEdit,
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              side: BorderSide(
+                                color:
+                                    theme.colorScheme.outline.withOpacity(0.3),
+                              ),
+                            ),
+                            child: const Text('プロフィールを編集'),
+                          ),
                         ),
                         const SizedBox(height: 24),
                         ProfileStatsRow(
@@ -1934,28 +1808,6 @@ class _ProfileScreenState extends State<_ProfileScreen> {
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton.tonalIcon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                  foregroundColor: theme.colorScheme.primary,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  minimumSize: const Size.fromHeight(48),
-                  side: BorderSide(
-                    color: theme.colorScheme.primary.withOpacity(0.4),
-                  ),
-                ),
-                onPressed: _loggingOut ? null : _logout,
-                icon: const Icon(Icons.logout),
-                label: _loggingOut
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('\u30ed\u30b0\u30a2\u30a6\u30c8'),
               ),
             ],
           ),

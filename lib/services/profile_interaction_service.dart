@@ -87,5 +87,10 @@ abstract class ProfileInteractionService {
 
   Future<Profile?> loadProfile(String profileId);
 
+  /// ユーザー名が既に使用されているかチェック
+  /// [username] チェック対象のユーザー名
+  /// [excludeProfileId] 除外するプロフィールID（自分自身の更新時に使用）
+  Future<bool> isUsernameTaken(String username, {String? excludeProfileId});
+
   Future<void> dispose();
 }

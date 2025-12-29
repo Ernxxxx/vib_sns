@@ -69,6 +69,18 @@ service cloud.firestore {
       }
     }
 
+    match /usernames/{username} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.profileId is string
+        && ownsProfile(request.resource.data.profileId)
+        && !exists(/databases/$(database)/documents/usernames/$(username));
+      allow delete: if signedIn()
+        && resource.data.profileId is string
+        && ownsProfile(resource.data.profileId);
+      allow update: if false;
+    }
+
     match /timelinePosts/{postId} {
       allow read: if signedIn();
       allow create: if signedIn() && ownsProfile(request.resource.data.authorId);

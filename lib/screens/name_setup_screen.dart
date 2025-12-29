@@ -50,11 +50,19 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
         _showSnack('表示名とハッシュタグの設定を完了してください。');
         return;
       }
-      await completeProfileSetup(
-        context,
-        displayName: result.name,
-        hashtags: result.hashtags,
-      );
+      try {
+        await completeProfileSetup(
+          context,
+          displayName: result.name,
+          username: result.username,
+          hashtags: result.hashtags,
+        );
+      } on UsernameAlreadyTakenException catch (e) {
+        if (mounted) {
+          _showSnack(e.toString());
+        }
+        return;
+      }
     } on FirebaseAuthException catch (error) {
       _showSnack(_describeAuthError(error));
     } catch (error) {

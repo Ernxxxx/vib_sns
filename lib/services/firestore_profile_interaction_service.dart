@@ -13,6 +13,7 @@ class FirestoreProfileInteractionService implements ProfileInteractionService {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   static const _profilesCollection = 'profiles';
+  static const _usernamesCollection = 'usernames';
 
   final FirebaseFirestore _firestore;
   final Map<String, _ProfileWatcher> _watchers = {};
@@ -389,6 +390,45 @@ class FirestoreProfileInteractionService implements ProfileInteractionService {
     _followingCaches.clear();
   }
 
+
+  @override
+  Future<bool> isUsernameTaken(String username, {String? excludeProfileId}) async {
+    if (username.isEmpty) {
+      return false;
+    }
+    final normalizedUsername = username.toLowerCase().trim();
+    try {
+      final usernameDoc = await _firestore
+          .collection(_usernamesCollection)
+          .doc(normalizedUsername)
+          .get();
+      if (usernameDoc.exists) {
+        final ownerId = usernameDoc.data()?['profileId']?.toString();
+        if (excludeProfileId != null && ownerId == excludeProfileId) {
+          return false;
+        }
+        return true;
+      }
+      final query = await _firestore
+          .collection(_profilesCollection)
+          .where('username', isEqualTo: normalizedUsername)
+          .limit(1)
+          .get();
+      if (query.docs.isEmpty) {
+        return false;
+      }
+      // 自分自身のプロフィールなら重複とみなさない
+      if (excludeProfileId != null && query.docs.first.id == excludeProfileId) {
+        return false;
+      }
+      return true;
+    } catch (error, stackTrace) {
+      debugPrint('Failed to check username availability: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      // エラー時は安全のため重複とみなす
+      return true;
+    }
+  }
   String _keyFor(String targetId, String viewerId) => '$targetId|$viewerId';
 
   _FollowingCache _ensureFollowingCache(String viewerId) {

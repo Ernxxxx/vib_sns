@@ -9,6 +9,7 @@ class TimelinePost {
     required this.id,
     required this.authorId,
     required this.authorName,
+    this.authorUsername,
     required this.authorColorValue,
     required this.caption,
     required this.createdAt,
@@ -25,6 +26,7 @@ class TimelinePost {
   final String id;
   final String authorId;
   final String authorName;
+  final String? authorUsername;
   final int authorColorValue;
   final String caption;
   final DateTime createdAt;
@@ -85,10 +87,17 @@ class TimelinePost {
     }
   }
 
+  /// Get formatted username with @ prefix
+  String? get formattedAuthorUsername =>
+      authorUsername != null && authorUsername!.isNotEmpty
+          ? '@$authorUsername'
+          : null;
+
   Map<String, dynamic> toMap() => {
         'id': id,
         'authorId': authorId,
         'authorName': authorName,
+        'authorUsername': authorUsername,
         'authorColorValue': authorColorValue,
         'caption': caption,
         'createdAt': createdAt.toIso8601String(),
@@ -126,11 +135,11 @@ class TimelinePost {
       final likedBy = likedByRaw is Iterable
           ? likedByRaw.map((e) => e.toString()).toList()
           : <String>[];
-      final likeCount =
-          (map['likeCount'] as num?)?.toInt() ?? likedBy.length;
+      final likeCount = (map['likeCount'] as num?)?.toInt() ?? likedBy.length;
       final isLiked = viewerId != null && likedBy.contains(viewerId);
       final imageBase64 = map['imageBase64'] as String?;
       final authorAvatarImageBase64 = map['authorAvatarImageBase64'] as String?;
+      final authorUsername = map['authorUsername'] as String?;
       final hashtagsRaw = map['hashtags'];
       final hashtags = hashtagsRaw is Iterable
           ? hashtagsRaw.map((tag) => tag.toString()).toList()
@@ -139,6 +148,7 @@ class TimelinePost {
         id: id,
         authorId: authorId,
         authorName: authorName,
+        authorUsername: authorUsername,
         authorColorValue: authorColor,
         caption: caption,
         createdAt: createdAt,

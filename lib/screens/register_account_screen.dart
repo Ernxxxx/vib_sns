@@ -5,7 +5,6 @@ import '../utils/auth_helpers.dart';
 import '../utils/profile_setup_helper.dart';
 import '../utils/profile_setup_modal.dart';
 import '../widgets/google_auth_button.dart';
-import 'display_name_login_screen.dart';
 
 class RegisterAccountScreen extends StatefulWidget {
   const RegisterAccountScreen({super.key});
@@ -121,11 +120,19 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
           return;
         }
         if (!mounted) return;
-        await completeProfileSetup(
-          context,
-          displayName: setup.name,
-          hashtags: setup.hashtags,
-        );
+        debugPrint('RegisterAccountScreen: setup.username=${setup.username}');
+        try {
+          await completeProfileSetup(
+            context,
+            displayName: setup.name,
+            username: setup.username,
+            hashtags: setup.hashtags,
+          );
+        } on UsernameAlreadyTakenException catch (error) {
+          if (!mounted) return;
+          _showSnack(error.toString());
+          return;
+        }
         if (!mounted) return;
         _showSnack('メールアドレスで登録しました。');
         if (mounted) {
@@ -187,11 +194,18 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
         return;
       }
       if (!mounted) return;
-      await completeProfileSetup(
-        context,
-        displayName: setup.name,
-        hashtags: setup.hashtags,
-      );
+      try {
+        await completeProfileSetup(
+          context,
+          displayName: setup.name,
+          username: setup.username,
+          hashtags: setup.hashtags,
+        );
+      } on UsernameAlreadyTakenException catch (error) {
+        if (!mounted) return;
+        _showSnack(error.toString());
+        return;
+      }
       if (!mounted) return;
       _showSnack('Googleアカウントで登録しました。');
       if (mounted) {
@@ -490,12 +504,30 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
               // その他の方法
               Center(
                 child: TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const DisplayNameLoginScreen(),
-                      ),
+                  onPressed: () async {
+                    final result = await showProfileSetupModal(
+                      context,
+                      lockName: false,
                     );
+                    if (result == null || !mounted) {
+                      return;
+                    }
+                    try {
+                      await completeProfileSetup(
+                        context,
+                        displayName: result.name,
+                        username: result.username,
+                        hashtags: result.hashtags,
+                      );
+                      if (!mounted) return;
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    } on UsernameAlreadyTakenException catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString())),
+                        );
+                      }
+                    }
                   },
                   child: Text(
                     '表示名のみでログイン',

@@ -48,11 +48,24 @@ class _DisplayNameLoginScreenState extends State<DisplayNameLoginScreen> {
         return;
       }
       if (!mounted) return;
-      await completeProfileSetup(
-        context,
-        displayName: setup.name,
-        hashtags: setup.hashtags,
-      );
+      try {
+        await completeProfileSetup(
+          context,
+          displayName: setup.name,
+          username: setup.username,
+          hashtags: setup.hashtags,
+        );
+      } on UsernameAlreadyTakenException catch (e) {
+        if (mounted) {
+          _showSnack(e.toString());
+        }
+        return;
+      } catch (error) {
+        if (mounted) {
+          _showSnack('プロフィールの設定に失敗しました: $error');
+        }
+        return;
+      }
       if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
     } finally {
@@ -114,6 +127,7 @@ class _DisplayNameLoginScreenState extends State<DisplayNameLoginScreen> {
       ),
     );
   }
+
   void _showSnack(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)

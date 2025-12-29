@@ -354,13 +354,16 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      bio == '未登録' ? '自己紹介はまだありません。' : bio,
-                                      style: theme.textTheme.bodyMedium,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                    if (_profile.formattedUsername != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _profile.formattedUsername!,
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -12,7 +13,9 @@ import '../services/profile_interaction_service.dart';
 import '../state/encounter_manager.dart';
 import '../state/local_profile_loader.dart';
 import '../state/profile_controller.dart';
+import '../utils/auth_helpers.dart';
 import '../utils/color_extensions.dart';
+import '../utils/profile_setup_helper.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key, required this.profile});
@@ -26,6 +29,7 @@ class ProfileEditScreen extends StatefulWidget {
 class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
+  late final TextEditingController _usernameController;
   late final TextEditingController _bioController;
   late final TextEditingController _homeTownController;
   bool _saving = false;
@@ -43,6 +47,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.profile.displayName);
+    _usernameController =
+        TextEditingController(text: widget.profile.username ?? '');
     _bioController =
         TextEditingController(text: _initialValue(widget.profile.bio));
     _homeTownController =
@@ -64,6 +70,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       _nameListener = null;
     }
     _nameController.dispose();
+    _usernameController.dispose();
     _bioController.dispose();
     _homeTownController.dispose();
     super.dispose();
@@ -154,6 +161,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
     setState(() => _saving = true);
     final displayName = _nameController.text.trim();
+    final username = Profile.normalizeUsername(_usernameController.text);
     final bio = _bioController.text.trim();
     final homeTown = _homeTownController.text.trim();
     final hashtags = _selectedHashtags.toList();
@@ -164,8 +172,31 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     final wasRunning = encounterManager.isRunning;
 
     try {
+      if (username != null && username.isNotEmpty) {
+        try {
+          final ensuredUser = await ensureAnonymousAuth();
+          final currentUser = ensuredUser ?? FirebaseAuth.instance.currentUser;
+          if (currentUser == null) {
+            _showSnack('認証情報を取得できませんでした。もう一度お試しください。');
+            setState(() => _saving = false);
+            return;
+          }
+          await syncUsernameReservation(
+            profileId: widget.profile.id,
+            authUid: currentUser.uid,
+            currentUsername: widget.profile.username,
+            nextUsername: username,
+          );
+        } on UsernameAlreadyTakenException {
+          _showSnack('ユーザーID「@$username」は既に使用されています。');
+          setState(() => _saving = false);
+          return;
+        }
+      }
+
       final updated = await LocalProfileLoader.updateLocalProfile(
         displayName: displayName,
+        username: username,
         bio: bio,
         homeTown: homeTown,
         favoriteGames: hashtags,
@@ -244,8 +275,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     final hasAvatar = !_avatarRemoved &&
                         (_avatarImageBytes != null || hasInitialAvatar);
                     return _AvatarEditor(
-                      imageBytes: hasAvatar ? _avatarImageBytes : null,
-                      fallbackColor: widget.profile.avatarColor,
+                      imageBytes: _avatarImageBytes,
+                      fallbackColor: Colors.grey,
                       displayName: displayNameForAvatar,
                       onPickImage: _pickAvatar,
                       onRemoveImage: hasAvatar ? _removeAvatar : null,
@@ -272,6 +303,21 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       return '24\u6587\u5b57\u4ee5\u5185\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044';
                     }
                     return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _usernameController,
+                  decoration: InputDecoration(
+                    labelText: 'ユーザーID',
+                    hintText: '@username',
+                    prefixText: '@',
+                    helperText: '英数字とアンダースコア、3〜20文字',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                  ),
+                  validator: (value) {
+                    return Profile.validateUsername(value);
                   },
                 ),
                 const SizedBox(height: 20),
@@ -389,9 +435,6 @@ class _AvatarEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final initialsSource =
-        displayName.trim().isEmpty ? '?' : displayName.trim();
-    final initial = initialsSource.characters.first;
     final hasImage = imageBytes != null;
     return Column(
       children: [
@@ -410,13 +453,7 @@ class _AvatarEditor extends StatelessWidget {
                   backgroundImage: hasImage ? MemoryImage(imageBytes!) : null,
                   child: hasImage
                       ? null
-                      : Text(
-                          initial,
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                      : const Icon(Icons.person, size: 52, color: Colors.white),
                 ),
                 Positioned(
                   bottom: -2,

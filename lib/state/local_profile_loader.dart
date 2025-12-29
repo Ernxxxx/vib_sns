@@ -10,6 +10,7 @@ import '../services/firestore_streetpass_service.dart';
 
 class LocalProfileLoader {
   static const _displayNameKey = 'local_display_name';
+  static const _usernameKey = 'local_username';
   static const _bioKey = 'local_bio';
   static const _homeTownKey = 'local_home_town';
   static const _favoriteGamesKey = 'local_favorite_games';
@@ -25,6 +26,7 @@ class LocalProfileLoader {
     final beaconId = await _ensureBeaconId(prefs);
 
     final displayName = prefs.getString(_displayNameKey) ?? '';
+    final username = prefs.getString(_usernameKey);
     final bio = prefs.getString(_bioKey) ?? '\u672a\u767b\u9332';
     final homeTown = prefs.getString(_homeTownKey) ?? '\u672a\u767b\u9332';
     final favoriteGames = Profile.sanitizeHashtags(
@@ -39,6 +41,7 @@ class LocalProfileLoader {
     return Profile(
       id: deviceId,
       beaconId: beaconId,
+      username: username,
       displayName: displayName,
       bio: bio,
       homeTown: homeTown,
@@ -94,6 +97,7 @@ class LocalProfileLoader {
 
   static Future<Profile> updateLocalProfile({
     String? displayName,
+    String? username,
     String? bio,
     String? homeTown,
     List<String>? favoriteGames,
@@ -115,6 +119,9 @@ class LocalProfileLoader {
 
     if (displayName != null) {
       await writeString(_displayNameKey, displayName);
+    }
+    if (username != null) {
+      await writeString(_usernameKey, username);
     }
     if (bio != null) {
       await writeString(_bioKey, bio);
@@ -166,6 +173,7 @@ class LocalProfileLoader {
   static Future<void> resetLocalProfile({bool wipeIdentity = false}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_displayNameKey);
+    await prefs.remove(_usernameKey);
     await prefs.remove(_bioKey);
     await prefs.remove(_homeTownKey);
     await prefs.remove(_favoriteGamesKey);

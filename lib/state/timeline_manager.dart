@@ -127,6 +127,7 @@ class TimelineManager extends ChangeNotifier {
       'authorName': profile.displayName.isEmpty
           ? '\u3042\u306a\u305f'
           : profile.displayName,
+      'authorUsername': profile.username,
       'authorColorValue': profile.avatarColor.toARGB32(),
       'authorAvatarImageBase64': profile.avatarImageBase64,
       'caption': caption.trim(),
