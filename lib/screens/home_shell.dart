@@ -306,8 +306,7 @@ class _TimelineScreenState extends State<_TimelineScreen> {
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                 children: [
                   // Banner for users without username
-                  if (localProfile.username == null ||
-                      localProfile.username!.isEmpty)
+                  if ((localProfile.username ?? '').isEmpty)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: Material(
@@ -1732,8 +1731,7 @@ class _ProfileScreenState extends State<_ProfileScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 6),
-                                if (profile.username != null &&
-                                    profile.username!.isNotEmpty)
+                                if ((profile.username ?? '').isNotEmpty)
                                   Text(
                                     '@${profile.username}',
                                     style: theme.textTheme.bodyMedium?.copyWith(

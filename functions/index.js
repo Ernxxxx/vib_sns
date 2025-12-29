@@ -114,10 +114,18 @@ exports.deleteUserProfile = functions.https.onCall(async (data, context) => {
   // Perform deletion
   try {
     await deleteProfileAndReferences(targetProfileId, beaconId);
-    // Optionally, if using Firebase Auth, delete the user account as well
-    // (requires stronger permissions; leave to operator decision). We do not
-    // delete the Auth user here to avoid surprising side effects.
-    return { success: true, profileId: targetProfileId };
+
+    // Delete the Firebase Authentication user account
+    try {
+      await admin.auth().deleteUser(uid);
+      console.log(`Successfully deleted Firebase Auth user: ${uid}`);
+    } catch (authError) {
+      // Log but don't fail the entire operation if Auth deletion fails
+      // (e.g., user might already be deleted or have special status)
+      console.warn(`Failed to delete Firebase Auth user ${uid}:`, authError.message);
+    }
+
+    return { success: true, profileId: targetProfileId, authUserDeleted: true };
   } catch (err) {
     console.error('Deletion failed', err);
     throw new functions.https.HttpsError('internal', 'Failed to delete profile');

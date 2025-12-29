@@ -16,6 +16,8 @@ import '../state/profile_controller.dart';
 import '../state/timeline_manager.dart';
 import '../utils/auth_helpers.dart';
 import 'profile_edit_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'terms_of_service_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -352,8 +354,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icons.description_outlined,
                   title: '利用規約',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('利用規約は準備中です')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const TermsOfServiceScreen(),
+                      ),
                     );
                   },
                 ),
@@ -362,8 +366,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icons.privacy_tip_outlined,
                   title: 'プライバシーポリシー',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('プライバシーポリシーは準備中です')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PrivacyPolicyScreen(),
+                      ),
                     );
                   },
                 ),
