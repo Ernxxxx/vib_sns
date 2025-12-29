@@ -18,6 +18,10 @@ class TimelinePost {
     this.authorAvatarImageBase64,
     this.likeCount = 0,
     this.isLiked = false,
+    this.replyCount = 0,
+    this.parentPostId,
+    this.replyToId,
+    this.replyToAuthorName,
     List<String>? likedBy,
     List<String>? hashtags,
   })  : hashtags = hashtags ?? const <String>[],
@@ -35,6 +39,10 @@ class TimelinePost {
   final String? authorAvatarImageBase64;
   int likeCount;
   bool isLiked;
+  int replyCount;
+  final String? parentPostId;
+  final String? replyToId;
+  final String? replyToAuthorName;
   final List<String> hashtags;
   final List<String> likedBy;
   Uint8List? _cachedImageBytes;
@@ -105,6 +113,10 @@ class TimelinePost {
         'imageUrl': imageUrl,
         'authorAvatarImageBase64': authorAvatarImageBase64,
         'likeCount': likeCount,
+        'replyCount': replyCount,
+        'parentPostId': parentPostId,
+        'replyToId': replyToId,
+        'replyToAuthorName': replyToAuthorName,
         'likedBy': likedBy,
         'hashtags': hashtags,
       };
@@ -136,10 +148,14 @@ class TimelinePost {
           ? likedByRaw.map((e) => e.toString()).toList()
           : <String>[];
       final likeCount = (map['likeCount'] as num?)?.toInt() ?? likedBy.length;
+      final replyCount = (map['replyCount'] as num?)?.toInt() ?? 0;
       final isLiked = viewerId != null && likedBy.contains(viewerId);
       final imageBase64 = map['imageBase64'] as String?;
       final authorAvatarImageBase64 = map['authorAvatarImageBase64'] as String?;
       final authorUsername = map['authorUsername'] as String?;
+      final parentPostId = map['parentPostId'] as String?;
+      final replyToId = map['replyToId'] as String?;
+      final replyToAuthorName = map['replyToAuthorName'] as String?;
       final hashtagsRaw = map['hashtags'];
       final hashtags = hashtagsRaw is Iterable
           ? hashtagsRaw.map((tag) => tag.toString()).toList()
@@ -156,6 +172,10 @@ class TimelinePost {
         imageUrl: map['imageUrl'] as String?,
         authorAvatarImageBase64: authorAvatarImageBase64,
         likeCount: likeCount,
+        replyCount: replyCount,
+        parentPostId: parentPostId,
+        replyToId: replyToId,
+        replyToAuthorName: replyToAuthorName,
         isLiked: isLiked,
         likedBy: likedBy,
         hashtags: hashtags,

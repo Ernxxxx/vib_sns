@@ -108,6 +108,15 @@ class _NotificationTile extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (notification.profile?.formattedUsername != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        notification.profile!.formattedUsername!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     Text(
                       notification.message,
@@ -175,6 +184,32 @@ class _NotificationIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final profile = notification.profile;
+
+    // プロフィールがある場合はアバターを表示
+    if (profile != null) {
+      ImageProvider? imageProvider;
+      if (profile.avatarImageBase64 != null &&
+          profile.avatarImageBase64!.isNotEmpty) {
+        try {
+          final uri = Uri.parse(profile.avatarImageBase64!);
+          if (uri.data != null) {
+            imageProvider = MemoryImage(uri.data!.contentAsBytes());
+          }
+        } catch (_) {}
+      }
+
+      return CircleAvatar(
+        radius: 22,
+        backgroundColor: Colors.grey,
+        backgroundImage: imageProvider,
+        child: imageProvider == null
+            ? const Icon(Icons.person, color: Colors.white, size: 22)
+            : null,
+      );
+    }
+
+    // プロフィールがない場合は従来のアイコン表示
     final iconColor = notification.iconColor(theme);
     return Container(
       width: 44,

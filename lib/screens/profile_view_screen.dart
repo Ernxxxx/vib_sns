@@ -104,20 +104,23 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
         // If pending doesn't match, keep local state
 
         // For like: only update if no pending operation OR server matches pending target
+        final pendingLike = _pendingLikeTarget;
         bool shouldUpdateLike = false;
-        if (_pendingLikeTarget == null) {
+        if (pendingLike == null) {
           shouldUpdateLike = true;
-        } else if (snapshot.isLikedByViewer == _pendingLikeTarget) {
+        } else if (snapshot.isLikedByViewer == pendingLike) {
           _pendingLikeTarget = null;
           shouldUpdateLike = true;
         }
         // If pending doesn't match, keep local state
+        final resolvedReceivedLikes =
+            shouldUpdateLike ? snapshot.receivedLikes : _profile.receivedLikes;
 
         setState(() {
           _profile = _profile.copyWith(
             followersCount: snapshot.followersCount,
             followingCount: snapshot.followingCount,
-            receivedLikes: snapshot.receivedLikes,
+            receivedLikes: resolvedReceivedLikes,
             following: shouldUpdateFollow
                 ? snapshot.isFollowedByViewer
                 : _profile.following,
@@ -136,12 +139,17 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
   Profile _mergeProfileDetails(Profile fresh) {
     final snapshot = _latestSnapshot;
     final snapshotFollow = snapshot?.isFollowedByViewer;
+    final snapshotLike = snapshot?.isLikedByViewer;
+    final pendingLike = _pendingLikeTarget;
     final shouldHoldFollow = _pendingFollowTarget != null &&
         snapshotFollow != null &&
         snapshotFollow != _pendingFollowTarget;
+    final shouldHoldLike = pendingLike != null &&
+        (snapshotLike == null || snapshotLike != pendingLike);
     // Use snapshot counts if available, otherwise use fresh profile counts from Firestore
-    final resolvedReceivedLikes =
-        snapshot?.receivedLikes ?? fresh.receivedLikes;
+    final resolvedReceivedLikes = shouldHoldLike
+        ? _profile.receivedLikes
+        : (snapshot?.receivedLikes ?? fresh.receivedLikes);
     final resolvedFollowers = snapshot?.followersCount ?? fresh.followersCount;
     final resolvedFollowing = snapshot?.followingCount ?? fresh.followingCount;
     return fresh.copyWith(
@@ -213,15 +221,23 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
       return;
     }
     final shouldLike = !_isLikedByViewer;
+    final wasLiked = _isLikedByViewer;
+    final previousCount = _profile.receivedLikes;
+    final delta = shouldLike ? 1 : -1;
+    final nextCount = (previousCount + delta).clamp(0, 999999);
     setState(() {
       _isProcessingLike = true;
       _pendingLikeTarget = shouldLike;
-      final delta = shouldLike ? 1 : -1;
       _isLikedByViewer = shouldLike;
       _profile = _profile.copyWith(
-        receivedLikes: (_profile.receivedLikes + delta).clamp(0, 999999),
+        receivedLikes: nextCount,
       );
     });
+    context.read<EncounterManager>().applyLocalLikeUpdate(
+          profileId: widget.profileId,
+          liked: shouldLike,
+          receivedLikes: nextCount,
+        );
     try {
       await service.setLike(
         targetId: widget.profileId,
@@ -231,13 +247,18 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _isLikedByViewer = !_isLikedByViewer;
+        _isLikedByViewer = wasLiked;
         _profile = _profile.copyWith(
-          receivedLikes: (_profile.receivedLikes + (_isLikedByViewer ? 1 : -1))
-              .clamp(0, 999999),
+          receivedLikes: previousCount,
         );
         _pendingLikeTarget = null;
       });
+      context.read<EncounterManager>().applyLocalLikeUpdate(
+            profileId: widget.profileId,
+            liked: wasLiked,
+            receivedLikes: previousCount,
+            pending: false,
+          );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('いいねの更新に失敗しました: $error')),
       );

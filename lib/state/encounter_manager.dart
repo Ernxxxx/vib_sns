@@ -367,9 +367,13 @@ class EncounterManager extends ChangeNotifier {
         }
         var updated = false;
         final profile = encounter.profile;
-        if (profile.receivedLikes != snapshot.receivedLikes) {
-          profile.receivedLikes = snapshot.receivedLikes;
-          updated = true;
+        final pendingLike = _pendingLikeStates[remoteId];
+        if (pendingLike == null ||
+            snapshot.isLikedByViewer == pendingLike) {
+          if (profile.receivedLikes != snapshot.receivedLikes) {
+            profile.receivedLikes = snapshot.receivedLikes;
+            updated = true;
+          }
         }
         if (profile.followersCount != snapshot.followersCount) {
           profile.followersCount = snapshot.followersCount;
@@ -394,7 +398,6 @@ class EncounterManager extends ChangeNotifier {
           updated = true;
         }
         // Handle like state with pending check
-        final pendingLike = _pendingLikeStates[remoteId];
         if (pendingLike != null) {
           if (pendingLike == snapshot.isLikedByViewer) {
             // Server caught up, clear pending state
@@ -956,6 +959,26 @@ class EncounterManager extends ChangeNotifier {
       encounter.profile.receivedLikes = previousCount;
       notifyListeners();
     }));
+  }
+
+  void applyLocalLikeUpdate({
+    required String profileId,
+    required bool liked,
+    required int receivedLikes,
+    bool pending = true,
+  }) {
+    final encounter = _encountersByRemoteId[profileId];
+    if (encounter == null) {
+      return;
+    }
+    encounter.liked = liked;
+    encounter.profile.receivedLikes = receivedLikes;
+    if (pending) {
+      _pendingLikeStates[profileId] = liked;
+    } else {
+      _pendingLikeStates.remove(profileId);
+    }
+    notifyListeners();
   }
 
   void toggleFollow(String encounterId) {

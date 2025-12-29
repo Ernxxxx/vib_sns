@@ -52,8 +52,11 @@ service cloud.firestore {
 
       match /followers/{followerId} {
         allow read: if signedIn();
-        allow create: if signedIn() && authUid() == followerId;
-        allow delete: if ownsProfile(profileId) || authUid() == followerId;
+        allow create: if signedIn()
+          && (authUid() == followerId || ownsProfile(followerId));
+        allow delete: if ownsProfile(profileId)
+          || authUid() == followerId
+          || ownsProfile(followerId);
         allow update: if false;
       }
       match /following/{targetId} {
@@ -63,8 +66,11 @@ service cloud.firestore {
       }
       match /likes/{likerId} {
         allow read: if signedIn();
-        allow create: if signedIn() && authUid() == likerId;
-        allow delete: if ownsProfile(profileId) || authUid() == likerId;
+        allow create: if signedIn()
+          && (authUid() == likerId || ownsProfile(likerId));
+        allow delete: if ownsProfile(profileId)
+          || authUid() == likerId
+          || ownsProfile(likerId);
         allow update: if false;
       }
     }
@@ -87,6 +93,14 @@ service cloud.firestore {
       allow delete: if resource.data.authorId != null && ownsProfile(resource.data.authorId);
       allow update: if (resource.data.authorId != null && ownsProfile(resource.data.authorId))
         || (signedIn() && timelineLikeOnlyChange());
+      
+      // リプライ用サブコレクション
+      match /replies/{replyId} {
+        allow read: if signedIn();
+        allow create: if signedIn() && ownsProfile(request.resource.data.authorId);
+        allow delete: if resource.data.authorId != null && ownsProfile(resource.data.authorId);
+        allow update: if signedIn();
+      }
     }
 
     match /emotion_map_posts/{postId} {

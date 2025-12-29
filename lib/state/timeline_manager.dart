@@ -35,7 +35,7 @@ class TimelineManager extends ChangeNotifier {
   bool _paused;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
   StreamSubscription<User?>? _authSubscription;
-  final Map<String, bool> _pendingLikeStates = {};
+  final Map<String, ({bool isLiked, int likeCount})> _pendingLikeStates = {};
 
   List<TimelinePost> get posts => List.unmodifiable(_posts);
   bool get isLoaded => _isLoaded;
@@ -224,7 +224,8 @@ class TimelineManager extends ChangeNotifier {
       post.likedBy.remove(viewerId);
     }
     notifyListeners();
-    _pendingLikeStates[postId] = nextLiked;
+    _pendingLikeStates[postId] =
+        (isLiked: nextLiked, likeCount: post.likeCount);
 
     final docRef =
         FirebaseFirestore.instance.collection('timelinePosts').doc(post.id);
@@ -308,20 +309,18 @@ class TimelineManager extends ChangeNotifier {
           .toList();
       // Preserve pending like states to avoid overwriting optimistic updates.
       for (final post in nextPosts) {
-        final pendingLike = _pendingLikeStates[post.id];
-        if (pendingLike != null) {
-          if (post.isLiked == pendingLike) {
+        final pendingState = _pendingLikeStates[post.id];
+        if (pendingState != null) {
+          if (post.isLiked == pendingState.isLiked) {
             // Server caught up, clear pending state.
             _pendingLikeStates.remove(post.id);
           } else {
             // Keep the optimistic state until server catches up.
-            post.isLiked = pendingLike;
-            post.likeCount = _posts
-                .firstWhere((p) => p.id == post.id, orElse: () => post)
-                .likeCount;
-            if (pendingLike && !post.likedBy.contains(viewerId)) {
+            post.isLiked = pendingState.isLiked;
+            post.likeCount = pendingState.likeCount;
+            if (pendingState.isLiked && !post.likedBy.contains(viewerId)) {
               post.likedBy.add(viewerId);
-            } else if (!pendingLike) {
+            } else if (!pendingState.isLiked) {
               post.likedBy.remove(viewerId);
             }
           }
@@ -340,6 +339,141 @@ class TimelineManager extends ChangeNotifier {
   Future<void> clearPostsForCurrentProfile() async {
     _posts.clear();
     notifyListeners();
+  }
+
+  /// リプライを追加
+  Future<void> addReply({
+    required String parentPostId,
+    required String caption,
+    Uint8List? imageBytes,
+    String? replyToId,
+    String? replyToAuthorName,
+  }) async {
+    final profile = _profileController.profile;
+    final parentRef = FirebaseFirestore.instance
+        .collection('timelinePosts')
+        .doc(parentPostId);
+    final replyRef = parentRef.collection('replies').doc();
+
+    String? imageUrl;
+    String? encodedImage;
+    if (imageBytes != null && imageBytes.isNotEmpty) {
+      final payload =
+          _prepareImagePayload(imageBytes, forceInlineForWeb: kIsWeb);
+      encodedImage = payload.inlineBase64 ?? base64Encode(payload.bytes);
+    }
+
+    await replyRef.set({
+      'id': replyRef.id,
+      'parentPostId': parentPostId,
+      'replyToId': replyToId,
+      'replyToAuthorName': replyToAuthorName,
+      'authorId': profile.id,
+      'authorName': profile.displayName.isEmpty ? 'あなた' : profile.displayName,
+      'authorUsername': profile.username,
+      'authorColorValue': profile.avatarColor.toARGB32(),
+      'authorAvatarImageBase64': profile.avatarImageBase64,
+      'caption': caption.trim(),
+      'createdAt': DateTime.now().toIso8601String(),
+      'imageBase64': encodedImage,
+      'imageUrl': imageUrl,
+      'likeCount': 0,
+      'likedBy': <String>[],
+      'hashtags': <String>[],
+    });
+
+    // 親投稿のリプライ数を更新
+    await parentRef.update({
+      'replyCount': FieldValue.increment(1),
+    });
+
+    // ローカルの親投稿のリプライ数も更新
+    final parentIndex = _posts.indexWhere((p) => p.id == parentPostId);
+    if (parentIndex != -1) {
+      _posts[parentIndex].replyCount++;
+      notifyListeners();
+    }
+  }
+
+  /// 投稿のリプライ一覧をストリームで取得
+  Stream<List<TimelinePost>> watchReplies(String postId) {
+    final viewerId = _profileController.profile.id;
+    return FirebaseFirestore.instance
+        .collection('timelinePosts')
+        .doc(postId)
+        .collection('replies')
+        .orderBy('createdAt', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) {
+            final data = doc.data();
+            data['id'] = data['id'] ?? doc.id;
+            return TimelinePost.fromMap(data, viewerId: viewerId);
+          })
+          .whereType<TimelinePost>()
+          .toList();
+    });
+  }
+
+  /// リプライを削除
+  Future<void> deleteReply({
+    required String parentPostId,
+    required String replyId,
+  }) async {
+    final parentRef = FirebaseFirestore.instance
+        .collection('timelinePosts')
+        .doc(parentPostId);
+    final replyRef = parentRef.collection('replies').doc(replyId);
+
+    await replyRef.delete();
+
+    // 親投稿のリプライ数を減少
+    await parentRef.update({
+      'replyCount': FieldValue.increment(-1),
+    });
+
+    // ローカルの親投稿のリプライ数も更新
+    final parentIndex = _posts.indexWhere((p) => p.id == parentPostId);
+    if (parentIndex != -1) {
+      _posts[parentIndex].replyCount =
+          (_posts[parentIndex].replyCount - 1).clamp(0, 999999);
+      notifyListeners();
+    }
+  }
+
+  /// リプライにいいね
+  Future<void> toggleReplyLike({
+    required String parentPostId,
+    required String replyId,
+  }) async {
+    final viewerId = _profileController.profile.id;
+    if (viewerId.isEmpty) return;
+
+    final replyRef = FirebaseFirestore.instance
+        .collection('timelinePosts')
+        .doc(parentPostId)
+        .collection('replies')
+        .doc(replyId);
+
+    final doc = await replyRef.get();
+    if (!doc.exists) return;
+
+    final data = doc.data() ?? {};
+    final likedBy = List<String>.from(data['likedBy'] ?? []);
+    final isLiked = likedBy.contains(viewerId);
+
+    if (isLiked) {
+      await replyRef.update({
+        'likeCount': FieldValue.increment(-1),
+        'likedBy': FieldValue.arrayRemove([viewerId]),
+      });
+    } else {
+      await replyRef.update({
+        'likeCount': FieldValue.increment(1),
+        'likedBy': FieldValue.arrayUnion([viewerId]),
+      });
+    }
   }
 
   bool get _hasAuthUser => FirebaseAuth.instance.currentUser != null;

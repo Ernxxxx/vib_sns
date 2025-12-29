@@ -34,6 +34,7 @@ import '../widgets/profile_info_tile.dart';
 import '../widgets/profile_stats_row.dart';
 import 'profile_follow_list_sheet.dart';
 import 'profile_view_screen.dart';
+import 'post_detail_screen.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -1067,152 +1068,158 @@ class _UserPostCard extends StatelessWidget {
     final hasImageUrl = (post.imageUrl?.isNotEmpty ?? false);
 
     // Threads風のクリーンなデザイン
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // アバター
-              GestureDetector(
-                onTap: () => _navigateToProfile(context),
-                child: _buildAvatar(theme),
-              ),
-              const SizedBox(width: 12),
-              // コンテンツ
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ヘッダー: ユーザー名 + 時間 + メニュー
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => _navigateToProfile(context),
-                            child: Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    post.authorName.isEmpty
-                                        ? '匿名'
-                                        : post.authorName,
-                                    style: theme.textTheme.titleSmall?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: theme.colorScheme.onSurface,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (post.formattedAuthorUsername != null) ...[
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    post.formattedAuthorUsername!,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: Colors.grey.shade600,
+    return GestureDetector(
+      onTap: () => _openPostDetail(context),
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // アバター
+                GestureDetector(
+                  onTap: () => _navigateToProfile(context),
+                  child: _buildAvatar(theme),
+                ),
+                const SizedBox(width: 12),
+                // コンテンツ
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ヘッダー: ユーザー名 + 時間 + メニュー
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => _navigateToProfile(context),
+                              child: Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      post.authorName.isEmpty
+                                          ? '匿名'
+                                          : post.authorName,
+                                      style:
+                                          theme.textTheme.titleSmall?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: theme.colorScheme.onSurface,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
+                                  if (post.formattedAuthorUsername != null) ...[
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      post.formattedAuthorUsername!,
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                        Text(
-                          _relativeTime(post.createdAt),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        if (canDelete) ...[
-                          const SizedBox(width: 4),
-                          PopupMenuButton<String>(
-                            icon: Icon(
-                              Icons.more_horiz,
-                              size: 20,
+                          Text(
+                            _relativeTime(post.createdAt),
+                            style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            onSelected: (value) {
-                              if (value == 'delete') {
-                                _confirmDelete(context);
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: Text('削除'),
+                          ),
+                          if (canDelete) ...[
+                            const SizedBox(width: 4),
+                            PopupMenuButton<String>(
+                              icon: Icon(
+                                Icons.more_horiz,
+                                size: 20,
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onSelected: (value) {
+                                if (value == 'delete') {
+                                  _confirmDelete(context);
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Text('削除'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                      // 本文
+                      if (post.caption.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, bottom: 8),
+                          child: Text(
+                            post.caption,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurface,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      // ハッシュタグ
+                      if (post.hashtags.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: [
+                              for (final tag in post.hashtags)
+                                Text(
+                                  tag.startsWith('#') ? tag : '#$tag',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                             ],
                           ),
-                        ],
-                      ],
-                    ),
-                    // 本文
-                    if (post.caption.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4, bottom: 8),
-                        child: Text(
-                          post.caption,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface,
-                            height: 1.4,
+                        ),
+                      // 画像
+                      if (imageBytes != null || hasImageUrl)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: GestureDetector(
+                            onTap: () => FullScreenImageViewer.show(
+                              context,
+                              imageBytes: imageBytes,
+                              imageUrl: hasImageUrl ? post.imageUrl : null,
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: _buildImage(imageBytes, hasImageUrl),
+                            ),
                           ),
                         ),
-                      ),
-                    // ハッシュタグ
-                    if (post.hashtags.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: [
-                            for (final tag in post.hashtags)
-                              Text(
-                                tag.startsWith('#') ? tag : '#$tag',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    // 画像
-                    if (imageBytes != null || hasImageUrl)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: GestureDetector(
-                          onTap: () => FullScreenImageViewer.show(
-                            context,
-                            imageBytes: imageBytes,
-                            imageUrl: hasImageUrl ? post.imageUrl : null,
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: _buildImage(imageBytes, hasImageUrl),
-                          ),
-                        ),
-                      ),
-                    // アクションボタン（ハート + 数字）
-                    _buildActions(context, theme),
-                  ],
+                      // アクションボタン（ハート + 数字）
+                      _buildActions(context, theme),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        // 区切り線
-        Divider(
-          height: 1,
-          thickness: 0.5,
-          color: theme.colorScheme.outlineVariant.withOpacity(0.5),
-        ),
-      ],
+          // 区切り線
+          Divider(
+            height: 1,
+            thickness: 0.5,
+            color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1277,7 +1284,35 @@ class _UserPostCard extends StatelessWidget {
             ),
           ),
         ],
+        const SizedBox(width: 16),
+        // リプライ数表示
+        Row(
+          children: [
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 20,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            if (post.replyCount > 0) ...[
+              const SizedBox(width: 4),
+              Text(
+                '${post.replyCount}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ],
+        ),
       ],
+    );
+  }
+
+  void _openPostDetail(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PostDetailScreen(post: post),
+      ),
     );
   }
 

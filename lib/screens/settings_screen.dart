@@ -298,7 +298,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           CircleAvatar(
                             radius: 30,
-                            backgroundColor: profile.avatarColor,
+                            backgroundColor: Colors.grey,
                             backgroundImage: profile.avatarImageBase64 != null
                                 ? MemoryImage(
                                     Uri.parse(profile.avatarImageBase64!)

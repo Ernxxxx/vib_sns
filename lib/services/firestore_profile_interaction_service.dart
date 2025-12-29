@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/profile.dart';
+import '../utils/auth_helpers.dart';
 import 'profile_interaction_service.dart';
 
 class FirestoreProfileInteractionService implements ProfileInteractionService {
@@ -187,44 +188,107 @@ class FirestoreProfileInteractionService implements ProfileInteractionService {
     required bool like,
   }) async {
     final viewerId = viewerProfile.id;
-    final authUid = FirebaseAuth.instance.currentUser?.uid;
-    if (targetId.isEmpty ||
-        viewerId.isEmpty ||
-        targetId == viewerId ||
-        authUid == null) {
+    if (targetId.isEmpty || viewerId.isEmpty || targetId == viewerId) {
       return;
+    }
+    var authUid = FirebaseAuth.instance.currentUser?.uid;
+    if (authUid == null) {
+      final ensured = await ensureAnonymousAuth();
+      authUid = ensured?.uid;
     }
     final profiles = _firestore.collection(_profilesCollection);
     final targetRef = profiles.doc(targetId);
-    // Use authUid as document ID to satisfy Firestore rules
-    final likeRef = targetRef.collection('likes').doc(authUid);
+    final legacyLikeRef = targetRef.collection('likes').doc(viewerId);
+    final DocumentReference<Map<String, dynamic>>? authLikeRef =
+        authUid == null ? null : targetRef.collection('likes').doc(authUid);
 
-    // First, perform the minimal write that must succeed (like document).
-    final likeSnapshot = await likeRef.get();
-    if (like && likeSnapshot.exists) {
+    DocumentSnapshot<Map<String, dynamic>>? authLikeSnap;
+    DocumentSnapshot<Map<String, dynamic>>? legacyLikeSnap;
+    try {
+      if (authLikeRef != null) {
+        authLikeSnap = await authLikeRef.get();
+      }
+      if (authLikeRef?.id != legacyLikeRef.id) {
+        legacyLikeSnap = await legacyLikeRef.get();
+      }
+    } on FirebaseException catch (error) {
+      if (error.code != 'permission-denied') {
+        rethrow;
+      }
+      debugPrint('setLike: permission denied while checking like state');
+    }
+
+    final hasAuthLike = authLikeSnap?.exists ?? false;
+    final hasLegacyLike = legacyLikeSnap?.exists ?? false;
+    final alreadyLiked = hasAuthLike || hasLegacyLike;
+    if (like && alreadyLiked) {
       return;
     }
-    if (!like && !likeSnapshot.exists) {
+    if (!like && !alreadyLiked) {
       return;
     }
-    final likeBatch = _firestore.batch();
+
+    final likeData = <String, dynamic>{
+      'createdAt': FieldValue.serverTimestamp(),
+      'profile': _profileSummary(viewerProfile),
+      'viewerProfileId': viewerId,
+    };
+
     if (like) {
-      likeBatch.set(likeRef, {
-        'createdAt': FieldValue.serverTimestamp(),
-        'profile': _profileSummary(viewerProfile),
-        'viewerProfileId': viewerId,
-      });
-    } else {
-      likeBatch.delete(likeRef);
+      var wrote = false;
+      if (authLikeRef != null) {
+        try {
+          await authLikeRef.set(likeData);
+          wrote = true;
+        } on FirebaseException catch (error) {
+          if (error.code != 'permission-denied') {
+            rethrow;
+          }
+          debugPrint('setLike: authUid write denied, trying legacy id');
+        }
+      }
+      if (!wrote) {
+        await legacyLikeRef.set(likeData);
+        wrote = true;
+      }
+      if (wrote) {
+        await _updateLikeCounters(
+          targetRef: targetRef,
+          like: true,
+        );
+      }
+      return;
     }
-    await likeBatch.commit();
 
-    // Then, best-effort counter bump. If this fails due to permissions, keep
-    // the like state and just log.
-    await _updateLikeCounters(
-      targetRef: targetRef,
-      like: like,
-    );
+    var removed = false;
+    if (authLikeRef != null && hasAuthLike) {
+      try {
+        await authLikeRef.delete();
+        removed = true;
+      } on FirebaseException catch (error) {
+        if (error.code != 'permission-denied') {
+          rethrow;
+        }
+        debugPrint('setLike: authUid delete denied');
+      }
+    }
+    if (legacyLikeRef.id != authLikeRef?.id && hasLegacyLike) {
+      try {
+        await legacyLikeRef.delete();
+        removed = true;
+      } on FirebaseException catch (error) {
+        if (error.code != 'permission-denied') {
+          rethrow;
+        }
+        debugPrint('setLike: legacy delete denied');
+      }
+    }
+    if (removed) {
+      await _updateLikeCounters(
+        targetRef: targetRef,
+        like: false,
+      );
+    }
   }
 
   @override
@@ -255,8 +319,8 @@ class FirestoreProfileInteractionService implements ProfileInteractionService {
     // follow state persists even if counter bumps are rejected by rules.
     final relationBatch = _firestore.batch();
     if (follow) {
-      final targetProfile = _profileFromDocument(
-          await targetRef.get(), fallbackId: targetId);
+      final targetProfile =
+          _profileFromDocument(await targetRef.get(), fallbackId: targetId);
       final viewerProfile =
           _profileFromDocument(viewerSnap, fallbackId: viewerId);
 
@@ -357,12 +421,40 @@ class FirestoreProfileInteractionService implements ProfileInteractionService {
       return null;
     }
     try {
-      final snapshot =
-          await _firestore.collection(_profilesCollection).doc(profileId).get();
+      final docRef = _firestore.collection(_profilesCollection).doc(profileId);
+      final snapshot = await docRef.get();
       if (!snapshot.exists) {
         return null;
       }
-      return _profileFromDocument(snapshot, fallbackId: profileId);
+      var profile = _profileFromDocument(snapshot, fallbackId: profileId);
+      try {
+        final likesSnapshot = await docRef.collection('likes').get();
+        if (likesSnapshot.docs.isNotEmpty) {
+          final uniqueLikers = <String>{};
+          for (final doc in likesSnapshot.docs) {
+            final data = doc.data();
+            final viewerProfileId = data['viewerProfileId']?.toString();
+            String? profileIdFromDoc;
+            final profileData = data['profile'];
+            if (profileData is Map) {
+              final rawId = profileData['id'];
+              if (rawId != null) {
+                profileIdFromDoc = rawId.toString();
+              }
+            }
+            final resolvedId =
+                (viewerProfileId ?? profileIdFromDoc ?? doc.id).trim();
+            if (resolvedId.isNotEmpty) {
+              uniqueLikers.add(resolvedId);
+            }
+          }
+          profile = profile.copyWith(receivedLikes: uniqueLikers.length);
+        }
+      } catch (error, stackTrace) {
+        debugPrint('Failed to load likes count for $profileId: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+      return profile;
     } catch (error, stackTrace) {
       debugPrint('Failed to load profile $profileId: $error');
       debugPrintStack(stackTrace: stackTrace);
@@ -390,9 +482,9 @@ class FirestoreProfileInteractionService implements ProfileInteractionService {
     _followingCaches.clear();
   }
 
-
   @override
-  Future<bool> isUsernameTaken(String username, {String? excludeProfileId}) async {
+  Future<bool> isUsernameTaken(String username,
+      {String? excludeProfileId}) async {
     if (username.isEmpty) {
       return false;
     }
@@ -429,6 +521,7 @@ class FirestoreProfileInteractionService implements ProfileInteractionService {
       return true;
     }
   }
+
   String _keyFor(String targetId, String viewerId) => '$targetId|$viewerId';
 
   _FollowingCache _ensureFollowingCache(String viewerId) {
@@ -565,7 +658,6 @@ class _ProfileWatcher {
 
   late final StreamController<ProfileInteractionSnapshot> _controller;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _profileSub;
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _likeSub;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _followSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _likeCountSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _followersCountSub;
@@ -613,6 +705,7 @@ class _ProfileWatcher {
     final docRef = _firestore
         .collection(FirestoreProfileInteractionService._profilesCollection)
         .doc(targetId);
+    final authUid = FirebaseAuth.instance.currentUser?.uid;
     _profileSub = docRef.snapshots().listen(
       (snapshot) {
         final data = snapshot.data();
@@ -632,12 +725,45 @@ class _ProfileWatcher {
 
     // Live counts derived from subcollections, so counters stay accurate even
     // if parent profile updates are rejected by security rules.
-    _likeCountSub =
-        docRef.collection('likes').snapshots().listen((snapshot) {
-      _hasSubcollectionCounts = true;
-      _receivedLikes = snapshot.size;
-      _emitSnapshot();
-    });
+    _likeCountSub = docRef.collection('likes').snapshots().listen(
+      (snapshot) {
+        _hasSubcollectionCounts = true;
+        final uniqueLikers = <String>{};
+        var likedByViewer = false;
+        for (final doc in snapshot.docs) {
+          final data = doc.data();
+          final viewerProfileId = data['viewerProfileId']?.toString();
+          String? profileId;
+          final profileData = data['profile'];
+          if (profileData is Map) {
+            final rawId = profileData['id'];
+            if (rawId != null) {
+              profileId = rawId.toString();
+            }
+          }
+          final resolvedId = (viewerProfileId ?? profileId ?? doc.id).trim();
+          if (resolvedId.isNotEmpty) {
+            uniqueLikers.add(resolvedId);
+          }
+          if (!likedByViewer) {
+            if (viewerProfileId == viewerId ||
+                profileId == viewerId ||
+                doc.id == viewerId ||
+                (authUid != null && doc.id == authUid)) {
+              likedByViewer = true;
+            }
+          }
+        }
+        _receivedLikes = uniqueLikers.length;
+        _likedByViewer = likedByViewer;
+        _emitSnapshot();
+      },
+      onError: (error, stackTrace) {
+        if (!_controller.isClosed) {
+          _controller.addError(error, stackTrace);
+        }
+      },
+    );
     _followersCountSub =
         docRef.collection('followers').snapshots().listen((snapshot) {
       _hasSubcollectionCounts = true;
@@ -652,37 +778,30 @@ class _ProfileWatcher {
     });
 
     // Use authUid to match the document ID used in setLike/setFollow
-    final authUid = FirebaseAuth.instance.currentUser?.uid;
-    if (targetId == viewerId || authUid == null) {
+    if (targetId == viewerId) {
       _likedByViewer = false;
       _followedByViewer = false;
       _emitSnapshot();
       return;
     }
 
-    _likeSub = docRef.collection('likes').doc(authUid).snapshots().listen(
-      (snapshot) {
-        _likedByViewer = snapshot.exists;
-        _emitSnapshot();
-      },
-      onError: (error, stackTrace) {
-        if (!_controller.isClosed) {
-          _controller.addError(error, stackTrace);
-        }
-      },
-    );
-
-    _followSub = docRef.collection('followers').doc(authUid).snapshots().listen(
-      (snapshot) {
-        _followedByViewer = snapshot.exists;
-        _emitSnapshot();
-      },
-      onError: (error, stackTrace) {
-        if (!_controller.isClosed) {
-          _controller.addError(error, stackTrace);
-        }
-      },
-    );
+    if (authUid != null) {
+      _followSub =
+          docRef.collection('followers').doc(authUid).snapshots().listen(
+        (snapshot) {
+          _followedByViewer = snapshot.exists;
+          _emitSnapshot();
+        },
+        onError: (error, stackTrace) {
+          if (!_controller.isClosed) {
+            _controller.addError(error, stackTrace);
+          }
+        },
+      );
+    } else {
+      _followedByViewer = false;
+      _emitSnapshot();
+    }
   }
 
   void _emitSnapshot() {
@@ -701,13 +820,11 @@ class _ProfileWatcher {
 
   void _unsubscribe() {
     unawaited(_profileSub?.cancel());
-    unawaited(_likeSub?.cancel());
     unawaited(_followSub?.cancel());
     unawaited(_likeCountSub?.cancel());
     unawaited(_followersCountSub?.cancel());
     unawaited(_followingCountSub?.cancel());
     _profileSub = null;
-    _likeSub = null;
     _followSub = null;
     _likeCountSub = null;
     _followersCountSub = null;
@@ -1155,6 +1272,7 @@ Profile _profileFromDocument(
       : const <String>[];
   final map = <String, dynamic>{
     'id': snapshot.id.isNotEmpty ? snapshot.id : fallbackId,
+    'username': data['username'],
     'displayName': data['displayName'] ?? 'Unknown',
     'beaconId': data['beaconId'] ?? snapshot.id,
     'bio': data['bio'] ?? '',

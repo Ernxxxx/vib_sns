@@ -23,6 +23,18 @@ async function deleteProfileAndReferences(profileId, beaconId = null) {
   const profiles = db.collection('profiles');
   const myRef = profiles.doc(profileId);
 
+  // Get the profile data to retrieve username before deletion
+  let username = null;
+  try {
+    const profileSnap = await myRef.get();
+    if (profileSnap.exists) {
+      const data = profileSnap.data();
+      username = data.username || null;
+    }
+  } catch (e) {
+    console.warn('Failed to get profile for username lookup:', e.message);
+  }
+
   // Remove followers/likes entries referencing this profile under other profiles
   const otherProfilesSnap = await profiles.get();
   for (const other of otherProfilesSnap.docs) {
@@ -55,6 +67,16 @@ async function deleteProfileAndReferences(profileId, beaconId = null) {
     const notifs = await db.collection('notifications').where('actorId', '==', profileId).get();
     for (const n of notifs.docs) { await n.ref.delete(); }
   } catch (e) { /* ignore */ }
+
+  // Delete the username from usernames collection
+  if (username) {
+    try {
+      await db.collection('usernames').doc(username.toLowerCase()).delete();
+      console.log(`Deleted username reservation: ${username}`);
+    } catch (e) {
+      console.warn('Failed to delete username reservation:', e.message);
+    }
+  }
 
   // Finally delete the profile doc itself
   await myRef.delete();
