@@ -4,8 +4,9 @@ import 'package:provider/provider.dart';
 import '../models/app_notification.dart';
 import '../state/encounter_manager.dart';
 import '../state/notification_manager.dart';
-import '../utils/color_extensions.dart';
+import '../state/timeline_manager.dart';
 import '../widgets/app_logo.dart';
+import 'post_detail_screen.dart';
 import 'profile_view_screen.dart';
 
 class NotificationsScreen extends StatelessWidget {
@@ -62,74 +63,140 @@ class _NotificationTile extends StatelessWidget {
 
   final AppNotification notification;
 
+  Color _getNotificationColor(ThemeData theme) {
+    switch (notification.type) {
+      case AppNotificationType.like:
+      case AppNotificationType.timelineLike:
+        return Colors.pinkAccent;
+      case AppNotificationType.reply:
+        return Colors.green;
+      case AppNotificationType.follow:
+        return Colors.blueAccent;
+      case AppNotificationType.encounter:
+        return Colors.purpleAccent;
+    }
+  }
+
+  IconData _getNotificationIconData() {
+    switch (notification.type) {
+      case AppNotificationType.like:
+      case AppNotificationType.timelineLike:
+        return Icons.favorite;
+      case AppNotificationType.reply:
+        return Icons.chat_bubble;
+      case AppNotificationType.follow:
+        return Icons.person_add;
+      case AppNotificationType.encounter:
+        return Icons.sensors;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isUnread = !notification.read;
-    final surface = theme.colorScheme.surface;
-    final tileColor =
-        isUnread ? theme.colorScheme.primary.withValues(alpha: 0.08) : surface;
+    final typeColor = _getNotificationColor(theme);
 
-    return Material(
-      color: tileColor,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => _handleTap(context),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _NotificationIcon(notification: notification),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            notification.title,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight:
-                                  isUnread ? FontWeight.w700 : FontWeight.w600,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Material(
+        color: theme.cardColor,
+        elevation: isUnread ? 2 : 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: isUnread
+              ? BorderSide(color: typeColor.withOpacity(0.5), width: 1.5)
+              : BorderSide.none,
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _handleTap(context),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _NotificationIcon(
+                  notification: notification,
+                  typeColor: typeColor,
+                  iconData: _getNotificationIconData(),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _getNotificationHeader(),
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: typeColor,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          _relativeTime(notification.createdAt),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: Colors.black.withValues(alpha: 0.55),
+                          Text(
+                            _relativeTime(notification.createdAt),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.disabledColor,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    if (notification.profile?.formattedUsername != null) ...[
+                        ],
+                      ),
                       const SizedBox(height: 4),
                       Text(
-                        notification.profile!.formattedUsername!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.grey.shade600,
+                        notification.title,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
+                      if (notification.message.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          notification.message,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.textTheme.bodySmall?.color
+                                ?.withOpacity(0.8),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
-                    const SizedBox(height: 8),
-                    Text(
-                      notification.message,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                if (isUnread)
+                  Container(
+                    margin: const EdgeInsets.only(left: 8, top: 8),
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: typeColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  String _getNotificationHeader() {
+    switch (notification.type) {
+      case AppNotificationType.like:
+      case AppNotificationType.timelineLike:
+        return 'NEW LIKE';
+      case AppNotificationType.reply:
+        return 'NEW REPLY';
+      case AppNotificationType.follow:
+        return 'NEW PROVIDER';
+      case AppNotificationType.encounter:
+        return 'STREETPASS';
+    }
   }
 
   void _handleTap(BuildContext context) {
@@ -172,26 +239,51 @@ class _NotificationTile extends StatelessWidget {
           );
         }
         break;
+      case AppNotificationType.reply:
+        manager.markNotificationRead(notification.id);
+        if (notification.postId != null) {
+          final timelineManager = context.read<TimelineManager>();
+          try {
+            final post = timelineManager.posts.firstWhere(
+              (p) => p.id == notification.postId,
+            );
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => PostDetailScreen(post: post),
+              ),
+            );
+          } catch (e) {
+            // Post not found
+          }
+        }
+        break;
     }
   }
 }
 
 class _NotificationIcon extends StatelessWidget {
-  const _NotificationIcon({required this.notification});
+  const _NotificationIcon({
+    required this.notification,
+    required this.typeColor,
+    required this.iconData,
+  });
 
   final AppNotification notification;
+  final Color typeColor;
+  final IconData iconData;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final profile = notification.profile;
 
-    // プロフィールがある場合はアバターを表示
+    Widget mainAvatar;
     if (profile != null) {
       ImageProvider? imageProvider;
       if (profile.avatarImageBase64 != null &&
           profile.avatarImageBase64!.isNotEmpty) {
         try {
+          // データURLスキームの処理は省略されていますが、
+          // 実際にはここのロジックは既存のものを使えばOK
           final uri = Uri.parse(profile.avatarImageBase64!);
           if (uri.data != null) {
             imageProvider = MemoryImage(uri.data!.contentAsBytes());
@@ -199,29 +291,46 @@ class _NotificationIcon extends StatelessWidget {
         } catch (_) {}
       }
 
-      return CircleAvatar(
-        radius: 22,
-        backgroundColor: Colors.grey,
+      mainAvatar = CircleAvatar(
+        radius: 24,
+        backgroundColor: Colors.grey.shade200,
         backgroundImage: imageProvider,
         child: imageProvider == null
-            ? const Icon(Icons.person, color: Colors.white, size: 22)
+            ? const Icon(Icons.person, color: Colors.grey)
             : null,
+      );
+    } else {
+      mainAvatar = CircleAvatar(
+        radius: 24,
+        backgroundColor: typeColor.withOpacity(0.1),
+        child: Icon(iconData, color: typeColor, size: 24),
       );
     }
 
-    // プロフィールがない場合は従来のアイコン表示
-    final iconColor = notification.iconColor(theme);
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: iconColor.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Icon(
-        notification.icon,
-        color: iconColor,
-      ),
+    if (profile == null) return mainAvatar;
+
+    return Stack(
+      children: [
+        mainAvatar,
+        Positioned(
+          right: -2,
+          bottom: -2,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: typeColor,
+              shape: BoxShape.circle,
+              border: Border.all(
+                  color: Theme.of(context).scaffoldBackgroundColor, width: 2),
+            ),
+            child: Icon(
+              iconData,
+              size: 12,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

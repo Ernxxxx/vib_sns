@@ -56,6 +56,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             replyToId: _replyingTo?.id,
             replyToAuthorName: _replyingTo?.authorName,
           );
+
       _replyController.clear();
       _clearReplyingTo();
     } catch (error) {

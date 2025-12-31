@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 
+import '../models/profile.dart';
 import '../models/timeline_post.dart';
 import '../utils/color_extensions.dart';
 import 'profile_controller.dart';
@@ -382,16 +383,54 @@ class TimelineManager extends ChangeNotifier {
       'hashtags': <String>[],
     });
 
-    // 親投稿のリプライ数を更新
+    // 親投稿のリプライ数を更新（Firestoreのスナップショットで自動反映されるため、ローカル更新は行わない）
     await parentRef.update({
       'replyCount': FieldValue.increment(1),
     });
 
-    // ローカルの親投稿のリプライ数も更新
-    final parentIndex = _posts.indexWhere((p) => p.id == parentPostId);
-    if (parentIndex != -1) {
-      _posts[parentIndex].replyCount++;
-      notifyListeners();
+    // 親投稿の投稿者に通知を送信（自分自身以外）
+    final parentPost = _posts.firstWhere(
+      (p) => p.id == parentPostId,
+      orElse: () => throw StateError('Parent post not found'),
+    );
+    if (parentPost.authorId != profile.id && parentPost.authorId.isNotEmpty) {
+      await _sendReplyNotification(
+        toUserId: parentPost.authorId,
+        fromProfile: profile,
+        postId: parentPostId,
+        caption: caption.trim(),
+      );
+    }
+  }
+
+  /// Firestoreに通知を書き込む
+  Future<void> _sendReplyNotification({
+    required String toUserId,
+    required Profile fromProfile,
+    required String postId,
+    required String caption,
+  }) async {
+    debugPrint('リプライ通知送信: toUserId=$toUserId, postId=$postId');
+    try {
+      final docRef = await FirebaseFirestore.instance
+          .collection('profiles')
+          .doc(toUserId)
+          .collection('notifications')
+          .add({
+        'type': 'reply',
+        'fromUserId': fromProfile.id,
+        'fromUserName': fromProfile.displayName,
+        'fromUserUsername': fromProfile.username,
+        'fromUserAvatarBase64': fromProfile.avatarImageBase64,
+        'fromUserColorValue': fromProfile.avatarColor.toARGB32(),
+        'postId': postId,
+        'caption': caption,
+        'createdAt': FieldValue.serverTimestamp(),
+        'read': false,
+      });
+      debugPrint('リプライ通知送信成功: docId=${docRef.id}');
+    } catch (e) {
+      debugPrint('リプライ通知送信失敗: $e');
     }
   }
 

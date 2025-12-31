@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/app_notification.dart';
@@ -36,12 +37,15 @@ class NotificationManager extends ChangeNotifier {
   StreamSubscription<List<ProfileFollowSnapshot>>? _followersSub;
   StreamSubscription<List<ProfileLikeSnapshot>>? _likesSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _timelineLikesSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+      _replyNotificationsSub;
   bool _followersInitialized = false;
   bool _likesInitialized = false;
   bool _timelineLikesInitialized = false;
   Set<String> _knownFollowerIds = const {};
   Set<String> _knownLikeIds = const {};
   final Map<String, Set<String>> _knownTimelineLikes = {};
+  Set<String> _knownReplyNotificationIds = const {};
   bool _paused;
   StreamSubscription<User?>? _authSubscription;
 
@@ -61,9 +65,7 @@ class NotificationManager extends ChangeNotifier {
     final title = isRepeat
         ? '${profile.displayName}さんとまたすれ違いました'
         : '${profile.displayName}さんとすれ違いました';
-    final body = message?.trim().isNotEmpty == true
-        ? message!.trim()
-        : 'プロフィールを確認してみましょう。';
+    final body = message?.trim().isNotEmpty == true ? message!.trim() : '';
     _appendNotification(
       AppNotification(
         id: _uuid.v4(),
@@ -73,8 +75,66 @@ class NotificationManager extends ChangeNotifier {
         createdAt: encounteredAt,
         profile: profile,
         encounterId: encounterId,
+        read: false,
       ),
     );
+  }
+
+  /// リプライ通知を追加
+  Future<void> addReplyNotification({
+    required String replierProfileId,
+    required String replierName,
+    required String postId,
+    required String caption,
+    Profile? replierProfile,
+  }) async {
+    // 自分自身へのリプライは通知しない
+    if (replierProfileId == _localProfile.id) return;
+
+    Profile? profile = replierProfile;
+    if (profile == null) {
+      try {
+        profile = await _interactionService.loadProfile(replierProfileId);
+      } catch (_) {
+        // プロフィール取得失敗時は簡易プロフィールを使用
+      }
+    }
+    profile ??= Profile(
+      id: replierProfileId,
+      beaconId: replierProfileId,
+      displayName: replierName,
+      username: null,
+      bio: '',
+      homeTown: '',
+      favoriteGames: const [],
+      avatarColor: Colors.grey,
+    );
+
+    final snippet = _buildReplySnippet(caption);
+    _appendNotification(
+      AppNotification(
+        id: _uuid.v4(),
+        type: AppNotificationType.reply,
+        title: snippet,
+        message: '',
+        createdAt: DateTime.now(),
+        profile: profile,
+        postId: postId,
+      ),
+    );
+  }
+
+  String _buildReplySnippet(String caption) {
+    final trimmed = caption.trim();
+    if (trimmed.isEmpty) {
+      return '投稿にリプライが届きました';
+    }
+    const maxLength = 24;
+    if (trimmed.length <= maxLength) {
+      return trimmed;
+    }
+    final shortened = '${trimmed.substring(0, maxLength)}…';
+    return shortened;
   }
 
   void markEncounterNotificationsRead(String encounterId) {
@@ -222,6 +282,7 @@ class NotificationManager extends ChangeNotifier {
     );
 
     _startTimelineLikeSubscription();
+    _startReplyNotificationSubscription();
   }
 
   void _startTimelineLikeSubscription() {
@@ -245,16 +306,99 @@ class NotificationManager extends ChangeNotifier {
     );
   }
 
+  void _startReplyNotificationSubscription() {
+    if (_paused || !_hasAuthUser) {
+      return;
+    }
+    _replyNotificationsSub?.cancel();
+    final profileId = _localProfile.id;
+    if (profileId.isEmpty) {
+      return;
+    }
+    // 複合インデックス不要のシンプルなクエリ
+    _replyNotificationsSub = FirebaseFirestore.instance
+        .collection('profiles')
+        .doc(profileId)
+        .collection('notifications')
+        .where('type', isEqualTo: 'reply')
+        .limit(50)
+        .snapshots()
+        .listen(
+      (snapshot) => unawaited(_handleReplyNotifications(snapshot)),
+      onError: (error, stackTrace) {
+        debugPrint('リプライ通知の監視に失敗: $error');
+      },
+    );
+  }
+
+  Future<void> _handleReplyNotifications(
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) async {
+    debugPrint('リプライ通知: ${snapshot.docs.length}件のドキュメントを受信');
+    final currentIds = snapshot.docs.map((doc) => doc.id).toSet();
+
+    // 初回は既存の通知IDを記録するだけ
+    if (_knownReplyNotificationIds.isEmpty && currentIds.isNotEmpty) {
+      debugPrint('リプライ通知: 初回ロード、${currentIds.length}件を記録');
+      _knownReplyNotificationIds = currentIds;
+      return;
+    }
+
+    final newIds = currentIds.difference(_knownReplyNotificationIds);
+    debugPrint('リプライ通知: 新規${newIds.length}件');
+    for (final id in newIds) {
+      final doc = snapshot.docs.firstWhere((d) => d.id == id);
+      final data = doc.data();
+      final fromUserId = data['fromUserId'] as String? ?? '';
+      final fromUserName = data['fromUserName'] as String? ?? 'Unknown';
+      final postId = data['postId'] as String? ?? '';
+      final caption = data['caption'] as String? ?? '';
+
+      debugPrint('リプライ通知: fromUserId=$fromUserId, postId=$postId');
+
+      if (fromUserId.isEmpty || fromUserId == _localProfile.id) continue;
+
+      final profile = Profile(
+        id: fromUserId,
+        beaconId: fromUserId,
+        displayName: fromUserName,
+        username: data['fromUserUsername'] as String?,
+        bio: '',
+        homeTown: '',
+        favoriteGames: const [],
+        avatarColor: Colors.grey,
+        avatarImageBase64: data['fromUserAvatarBase64'] as String?,
+      );
+
+      final snippet = _buildReplySnippet(caption);
+      _appendNotification(
+        AppNotification(
+          id: _uuid.v4(),
+          type: AppNotificationType.reply,
+          title: snippet,
+          message: '',
+          createdAt: DateTime.now(),
+          profile: profile,
+          postId: postId,
+          read: false,
+        ),
+      );
+    }
+    _knownReplyNotificationIds = currentIds;
+  }
+
   void _restartSubscriptions() {
     _followersSub?.cancel();
     _likesSub?.cancel();
     _timelineLikesSub?.cancel();
+    _replyNotificationsSub?.cancel();
     _followersInitialized = false;
     _likesInitialized = false;
     _timelineLikesInitialized = false;
     _knownFollowerIds = const {};
     _knownLikeIds = const {};
     _knownTimelineLikes.clear();
+    _knownReplyNotificationIds = const {};
     if (_paused) {
       return;
     }
@@ -269,6 +413,7 @@ class NotificationManager extends ChangeNotifier {
       return;
     }
     final newIds = currentIds.difference(_knownFollowerIds);
+    _knownFollowerIds = currentIds;
     for (final id in newIds) {
       final snapshot =
           snapshots.firstWhere((element) => element.profile.id == id);
@@ -284,13 +429,12 @@ class NotificationManager extends ChangeNotifier {
           id: _uuid.v4(),
           type: AppNotificationType.follow,
           title: '${profile.displayName}さんがあなたをフォローしました',
-          message: 'フォローバックしてみましょう。',
+          message: '',
           createdAt: snapshot.followedAt ?? DateTime.now(),
           profile: profile,
         ),
       );
     }
-    _knownFollowerIds = currentIds;
   }
 
   Future<void> _handleLikes(List<ProfileLikeSnapshot> snapshots) async {
@@ -301,6 +445,7 @@ class NotificationManager extends ChangeNotifier {
       return;
     }
     final newIds = currentIds.difference(_knownLikeIds);
+    _knownLikeIds = currentIds;
     for (final id in newIds) {
       final snapshot =
           snapshots.firstWhere((element) => element.profile.id == id);
@@ -316,13 +461,12 @@ class NotificationManager extends ChangeNotifier {
           id: _uuid.v4(),
           type: AppNotificationType.like,
           title: '${profile.displayName}さんがあなたにいいねしました',
-          message: 'お返しにいいねやフォローをしてみませんか？',
+          message: '',
           createdAt: snapshot.likedAt ?? DateTime.now(),
           profile: profile,
         ),
       );
     }
-    _knownLikeIds = currentIds;
   }
 
   Future<void> _handleTimelinePosts(
@@ -355,6 +499,33 @@ class NotificationManager extends ChangeNotifier {
   }
 
   void _appendNotification(AppNotification notification) {
+    // Check for duplicates
+    final isDuplicate = _notifications.any((n) {
+      if (n.type != notification.type) return false;
+      // For follow and like, check based on the profile ID
+      if (n.type == AppNotificationType.follow ||
+          n.type == AppNotificationType.like) {
+        return n.profile?.id == notification.profile?.id;
+      }
+      // For replies, check based on the post ID and the source profile
+      if (n.type == AppNotificationType.reply) {
+        return n.postId == notification.postId &&
+            n.profile?.id == notification.profile?.id &&
+            n.title == notification.title; // Check content too
+      }
+      // For timeline likes, check based on profile and title
+      if (n.type == AppNotificationType.timelineLike) {
+        return n.profile?.id == notification.profile?.id &&
+            n.title == notification.title;
+      }
+      return false;
+    });
+
+    if (isDuplicate) {
+      debugPrint('重複通知をスキップ: ${notification.title}');
+      return;
+    }
+
     _notifications.add(notification);
     _notifications.sort(_sortByNewest);
     notifyListeners();
@@ -371,8 +542,8 @@ class NotificationManager extends ChangeNotifier {
         AppNotification(
           id: _uuid.v4(),
           type: AppNotificationType.timelineLike,
-          title: '${profile.displayName}さんがあなたの投稿にいいねしました',
-          message: snippet,
+          title: snippet,
+          message: '',
           createdAt: DateTime.now(),
           profile: profile,
         ),
@@ -385,14 +556,14 @@ class NotificationManager extends ChangeNotifier {
   String _buildTimelineLikeSnippet(String caption) {
     final trimmed = caption.trim();
     if (trimmed.isEmpty) {
-      return '投稿した写真にリアクションが届きました。';
+      return '投稿にいいねされました';
     }
     const maxLength = 24;
     if (trimmed.length <= maxLength) {
-      return '「$trimmed」にいいねされました。';
+      return '$trimmedにいいねされました';
     }
     final shortened = '${trimmed.substring(0, maxLength)}…';
-    return '「$shortened」にいいねされました。';
+    return '$shortenedにいいねされました';
   }
 
   Future<Profile> _resolveProfile(

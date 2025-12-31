@@ -73,6 +73,12 @@ service cloud.firestore {
           || ownsProfile(likerId);
         allow update: if false;
       }
+      match /notifications/{notificationId} {
+        allow read: if ownsProfile(profileId);
+        allow create: if signedIn();
+        allow delete: if ownsProfile(profileId);
+        allow update: if ownsProfile(profileId);
+      }
     }
 
     match /usernames/{username} {

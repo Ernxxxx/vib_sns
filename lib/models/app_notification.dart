@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'profile.dart';
 
-enum AppNotificationType { encounter, like, follow, timelineLike }
+enum AppNotificationType { encounter, like, follow, timelineLike, reply }
 
 class AppNotification {
   AppNotification({
@@ -13,6 +13,7 @@ class AppNotification {
     required this.createdAt,
     this.profile,
     this.encounterId,
+    this.postId,
     this.read = false,
   });
 
@@ -23,6 +24,7 @@ class AppNotification {
   final DateTime createdAt;
   final Profile? profile;
   final String? encounterId;
+  final String? postId;
   bool read;
 
   IconData get icon {
@@ -35,6 +37,8 @@ class AppNotification {
         return Icons.person_add;
       case AppNotificationType.timelineLike:
         return Icons.favorite;
+      case AppNotificationType.reply:
+        return Icons.chat_bubble;
     }
   }
 
@@ -48,6 +52,8 @@ class AppNotification {
         return theme.colorScheme.tertiary;
       case AppNotificationType.timelineLike:
         return Colors.pink;
+      case AppNotificationType.reply:
+        return theme.colorScheme.secondary;
     }
   }
 
