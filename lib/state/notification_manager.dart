@@ -352,9 +352,11 @@ class NotificationManager extends ChangeNotifier {
       final fromUserId = data['fromUserId'] as String? ?? '';
       final fromUserName = data['fromUserName'] as String? ?? 'Unknown';
       final postId = data['postId'] as String? ?? '';
+      final replyId = data['replyId'] as String?;
       final caption = data['caption'] as String? ?? '';
 
-      debugPrint('リプライ通知: fromUserId=$fromUserId, postId=$postId');
+      debugPrint(
+          'リプライ通知: fromUserId=$fromUserId, postId=$postId, replyId=$replyId');
 
       if (fromUserId.isEmpty || fromUserId == _localProfile.id) continue;
 
@@ -380,6 +382,7 @@ class NotificationManager extends ChangeNotifier {
           createdAt: DateTime.now(),
           profile: profile,
           postId: postId,
+          replyId: replyId,
           read: false,
         ),
       );
@@ -489,7 +492,7 @@ class NotificationManager extends ChangeNotifier {
       final caption = data['caption']?.toString() ?? '';
       for (final likerId in newLikers) {
         if (likerId.isEmpty || likerId == _localProfile.id) continue;
-        unawaited(_notifyTimelineLike(likerId, caption));
+        unawaited(_notifyTimelineLike(likerId, caption, doc.id));
       }
     }
     _knownTimelineLikes
@@ -531,7 +534,8 @@ class NotificationManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _notifyTimelineLike(String likerId, String caption) async {
+  Future<void> _notifyTimelineLike(
+      String likerId, String caption, String postId) async {
     try {
       final profile = await _interactionService.loadProfile(likerId);
       if (profile == null) {
@@ -546,6 +550,7 @@ class NotificationManager extends ChangeNotifier {
           message: '',
           createdAt: DateTime.now(),
           profile: profile,
+          postId: postId,
         ),
       );
     } catch (error) {

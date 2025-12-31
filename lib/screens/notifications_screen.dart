@@ -1,11 +1,13 @@
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/app_notification.dart';
 import '../state/encounter_manager.dart';
 import '../state/notification_manager.dart';
+import '../state/profile_controller.dart';
 import '../state/timeline_manager.dart';
 import '../widgets/app_logo.dart';
 import 'post_detail_screen.dart';
@@ -44,12 +46,10 @@ class NotificationsScreen extends StatelessWidget {
                   const _EmptyNotificationsView(),
                 ],
               )
-            : ListView.separated(
+            : ListView.builder(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                padding: EdgeInsets.zero,
                 itemCount: notifications.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final notification = notifications[index];
                   return _NotificationTile(notification: notification);
@@ -60,10 +60,25 @@ class NotificationsScreen extends StatelessWidget {
   }
 }
 
-class _NotificationTile extends StatelessWidget {
+class _NotificationTile extends StatefulWidget {
   const _NotificationTile({required this.notification});
 
   final AppNotification notification;
+
+  @override
+  State<_NotificationTile> createState() => _NotificationTileState();
+}
+
+class _NotificationTileState extends State<_NotificationTile> {
+  final TextEditingController _replyController = TextEditingController();
+
+  AppNotification get notification => widget.notification;
+
+  @override
+  void dispose() {
+    _replyController.dispose();
+    super.dispose();
+  }
 
   Color _getNotificationColor(ThemeData theme) {
     switch (notification.type) {
@@ -99,57 +114,77 @@ class _NotificationTile extends StatelessWidget {
     final isUnread = !notification.read;
     final typeColor = _getNotificationColor(theme);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Material(
-        color: theme.cardColor,
-        elevation: isUnread ? 2 : 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: isUnread
-              ? BorderSide(color: typeColor.withOpacity(0.5), width: 1.5)
-              : BorderSide.none,
-        ),
+    // リプライ通知とそれ以外でレイアウトを分ける
+    final isReply = notification.type == AppNotificationType.reply;
+
+    return Material(
+        color: isUnread
+            ? typeColor.withOpacity(0.05)
+            : theme.scaffoldBackgroundColor,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
           onTap: () => _handleTap(context),
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _NotificationIcon(
-                      notification: notification,
-                      typeColor: typeColor,
-                      iconData: _getNotificationIconData(),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          splashColor: theme.colorScheme.onSurface.withOpacity(0.1),
+          highlightColor: theme.colorScheme.onSurface.withOpacity(0.05),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: theme.dividerColor.withOpacity(0.5),
+                  width: 0.5,
+                ),
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 左側：アイコンエリア
+                if (isReply) ...[
+                  // リプライの場合はアバターのみ（バッジなしでシンプルに）
+                  _NotificationIcon(
+                    notification: notification,
+                    typeColor: typeColor,
+                    iconData: _getNotificationIconData(),
+                  ),
+                ] else ...[
+                  // その他の場合はアクションアイコンまたはアバター＋バッジ
+                  // 画像のスタイル（左にアクションアイコン）に近づけるため
+                  // ここでは既存の「アバター＋右下バッジ」を維持しつつ、少しサイズ感を調整
+                  _NotificationIcon(
+                    notification: notification,
+                    typeColor: typeColor,
+                    iconData: _getNotificationIconData(),
+                  ),
+                ],
+                const SizedBox(width: 12),
+                // 右側：コンテンツエリア
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ヘッダー（名前・ID・時間）
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // 上段：名前、ID
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (notification.profile != null) ...[
+                          Expanded(
+                            child: Row(
+                              children: [
                                 Flexible(
                                   child: Text(
-                                    notification.profile!.displayName,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                    notification.profile?.displayName ??
+                                        'Unknown',
+                                    style: theme.textTheme.titleSmall?.copyWith(
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 15,
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                if (notification.profile!.formattedUsername !=
-                                    null) ...[
+                                if (notification.profile?.username != null) ...[
                                   const SizedBox(width: 4),
                                   Flexible(
                                     child: Text(
-                                      notification.profile!.formattedUsername!,
+                                      '@${notification.profile!.username}',
                                       style:
                                           theme.textTheme.bodySmall?.copyWith(
                                         color:
@@ -160,60 +195,264 @@ class _NotificationTile extends StatelessWidget {
                                   ),
                                 ],
                               ],
-                              // 時間表示用のスペース確保
-                              const SizedBox(width: 40),
-                            ],
+                            ),
                           ),
-                          const SizedBox(height: 2),
-                          // 下段：アクション内容または本文
-                          _buildNotificationContent(theme, typeColor),
+                          // 時間表示（右端）
+                          Text(
+                            _relativeTime(notification.createdAt),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
+                      ),
+                      const SizedBox(height: 2),
+
+                      // 本文またはアクションテキスト
+                      if (isReply) ...[
+                        // リプライ本文
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2, bottom: 8),
+                          child: Text(
+                            notification.title,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontSize: 15,
+                              height: 1.4,
+                            ),
+                            maxLines: 10,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // アクションボタン（枠線なし、アイコンのみ）
+                        _buildReplyActions(context, theme),
+                      ] else ...[
+                        // その他の通知テキスト
+                        _buildNotificationContent(context, theme, typeColor),
+                      ],
+                    ],
+                  ),
+                ),
+                // 未読インジケータ（右端中央などは邪魔なので、背景色で表現済みだが念のためドットも残すか？
+                // 画像のようにシンプルにするならドットは不要かも。背景色で十分。
+                // 一応、未読の場合は右上に小さなドットを表示
+                if (isUnread) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    margin: const EdgeInsets.only(top: 6),
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: typeColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ));
+  }
+
+  // リプライ用のアクションボタン群
+  Widget _buildReplyActions(BuildContext context, ThemeData theme) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('timelinePosts')
+          .doc(notification.postId)
+          .collection('replies')
+          .doc(notification.replyId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+        final likeCount = data['likeCount'] as int? ?? 0;
+        final replyCount = data['replyCount'] as int? ?? 0;
+        final likedBy = List<String>.from(data['likedBy'] ?? []);
+        final viewerId = context.read<ProfileController>().profile.id;
+        final isLiked = likedBy.contains(viewerId);
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // いいねボタン（左）
+            InkWell(
+              onTap: () {
+                _markAsRead();
+                _handleReplyLike(context, isLiked);
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Row(
+                  children: [
+                    Icon(
+                      isLiked ? Icons.favorite : Icons.favorite_border,
+                      size: 18,
+                      color: isLiked
+                          ? Colors.pink
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$likeCount',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: likeCount > 0
+                            ? (isLiked
+                                ? Colors.pink
+                                : theme.colorScheme.onSurfaceVariant)
+                            : Colors.transparent,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
               ),
-              Positioned(
-                top: 12,
-                right: 16,
+            ),
+
+            // 返信ボタン（右）
+            InkWell(
+              onTap: () {
+                _markAsRead();
+                _showReplySheet(context);
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.all(8),
                 child: Row(
                   children: [
+                    Icon(
+                      Icons.chat_bubble_outline,
+                      size: 18,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
                     Text(
-                      _relativeTime(notification.createdAt),
+                      '$replyCount',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.disabledColor,
-                        fontSize: 11,
+                        color: replyCount > 0
+                            ? theme.colorScheme.onSurfaceVariant
+                            : Colors.transparent,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (isUnread) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        width: 8,
-                        height: 8,
+                  ],
+                ),
+              ),
+            ),
+
+            // スペーサー（右側を空けるため）
+            const Spacer(flex: 3),
+          ],
+        );
+      },
+    );
+  }
+
+  void _markAsRead() {
+    if (!notification.read) {
+      context.read<NotificationManager>().markNotificationRead(notification.id);
+    }
+  }
+
+  Widget _buildNotificationContent(
+      BuildContext context, ThemeData theme, Color typeColor) {
+    if (notification.type == AppNotificationType.reply) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            notification.title,
+            style: theme.textTheme.bodyMedium,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (notification.postId != null &&
+                  notification.replyId != null) ...[
+                StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('timelinePosts')
+                      .doc(notification.postId)
+                      .collection('replies')
+                      .doc(notification.replyId)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    final data =
+                        snapshot.data?.data() as Map<String, dynamic>? ?? {};
+                    final likeCount = data['likeCount'] as int? ?? 0;
+                    final likedBy = List<String>.from(data['likedBy'] ?? []);
+                    final viewerId =
+                        context.read<ProfileController>().profile.id;
+                    final isLiked = likedBy.contains(viewerId);
+
+                    return InkWell(
+                      onTap: () => _handleReplyLike(context, isLiked),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: typeColor,
-                          shape: BoxShape.circle,
+                          color: isLiked
+                              ? Colors.pink.withOpacity(0.1)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isLiked
+                                ? Colors.pink.withOpacity(0.5)
+                                : theme.dividerColor,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isLiked ? Icons.favorite : Icons.favorite_border,
+                              size: 16,
+                              color: isLiked
+                                  ? Colors.pink
+                                  : theme.colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$likeCount',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: isLiked
+                                    ? Colors.pink
+                                    : theme.colorScheme.onSurfaceVariant
+                                        .withOpacity(likeCount > 0 ? 1.0 : 0.6),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ],
+                    );
+                  },
+                ),
+                const SizedBox(width: 12),
+              ],
+              InkWell(
+                onTap: () => _showReplySheet(context),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: theme.dividerColor),
+                  ),
+                  child: Icon(
+                    Icons.chat_bubble_outline,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNotificationContent(ThemeData theme, Color typeColor) {
-    if (notification.type == AppNotificationType.reply) {
-      // リプライの場合は本文をそのまま表示
-      return Text(
-        notification.title,
-        style: theme.textTheme.bodyMedium,
-        maxLines: 3,
-        overflow: TextOverflow.ellipsis,
+        ],
       );
     }
 
@@ -222,6 +461,9 @@ class _NotificationTile extends StatelessWidget {
 
     switch (notification.type) {
       case AppNotificationType.like:
+        actionText = 'あなたにいいねしました';
+        actionIcon = Icons.favorite;
+        break;
       case AppNotificationType.timelineLike:
         actionText = 'あなたの投稿にいいねしました';
         actionIcon = Icons.favorite;
@@ -231,11 +473,13 @@ class _NotificationTile extends StatelessWidget {
         actionIcon = Icons.person_add;
         break;
       case AppNotificationType.encounter:
-        actionText = 'すれ違いました';
-        actionIcon = Icons.directions_walk;
+        actionText = notification.message.isEmpty
+            ? 'すれちがいが発生しました！'
+            : notification.message;
+        actionIcon = Icons.sensors;
         break;
       default:
-        actionText = notification.title;
+        actionText = notification.message;
         actionIcon = null;
     }
 
@@ -286,12 +530,32 @@ class _NotificationTile extends StatelessWidget {
     );
   }
 
-  void _handleTap(BuildContext context) {
-    final manager = context.read<NotificationManager>();
+  Future<void> _handleTap(BuildContext context) async {
+    final notificationManager = context.read<NotificationManager>();
+
+    if (notification.type == AppNotificationType.reply) {
+      // リプライの本文や余白をタップした時も投稿詳細へ
+      if (notification.postId != null) {
+        final timelineManager = context.read<TimelineManager>();
+        final post = await timelineManager.getPost(notification.postId!);
+
+        if (post != null && context.mounted) {
+          notificationManager.markNotificationRead(notification.id);
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PostDetailScreen(post: post),
+            ),
+          );
+        }
+      }
+      return;
+    }
+
     switch (notification.type) {
       case AppNotificationType.encounter:
         if (notification.encounterId != null) {
-          manager.markEncounterNotificationsRead(notification.encounterId!);
+          notificationManager
+              .markEncounterNotificationsRead(notification.encounterId!);
           final encounter = context
               .read<EncounterManager>()
               .findById(notification.encounterId!);
@@ -308,13 +572,11 @@ class _NotificationTile extends StatelessWidget {
             ),
           );
         } else {
-          manager.markNotificationRead(notification.id);
+          notificationManager.markNotificationRead(notification.id);
         }
         break;
-      case AppNotificationType.like:
       case AppNotificationType.follow:
-      case AppNotificationType.timelineLike:
-        manager.markNotificationRead(notification.id);
+        notificationManager.markNotificationRead(notification.id);
         if (notification.profile != null) {
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -326,25 +588,192 @@ class _NotificationTile extends StatelessWidget {
           );
         }
         break;
-      case AppNotificationType.reply:
-        manager.markNotificationRead(notification.id);
+      case AppNotificationType.like:
+        notificationManager.markNotificationRead(notification.id);
+        if (notification.profile != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProfileViewScreen(
+                profileId: notification.profile!.id,
+                initialProfile: notification.profile!,
+              ),
+            ),
+          );
+        }
+        break;
+      case AppNotificationType.timelineLike:
         if (notification.postId != null) {
           final timelineManager = context.read<TimelineManager>();
-          try {
-            final post = timelineManager.posts.firstWhere(
-              (p) => p.id == notification.postId,
-            );
+          final post = await timelineManager.getPost(notification.postId!);
+
+          if (post != null && context.mounted) {
+            notificationManager.markNotificationRead(notification.id);
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => PostDetailScreen(post: post),
               ),
             );
-          } catch (e) {
-            // Post not found
           }
+        } else {
+          notificationManager.markNotificationRead(notification.id);
         }
         break;
+      default:
+        break;
     }
+  }
+
+  void _handleReplyLike(BuildContext context, bool isLiked) {
+    if (notification.postId == null || notification.replyId == null) return;
+
+    // StreamBuilderが更新を検知するのでsetState不要
+    context.read<TimelineManager>().toggleReplyLike(
+          parentPostId: notification.postId!,
+          replyId: notification.replyId!,
+        );
+  }
+
+  void _showReplySheet(BuildContext context) {
+    _replyController.clear();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Padding(
+        padding: MediaQuery.of(sheetContext).viewInsets,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.reply, size: 20, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${notification.profile?.displayName ?? "ユーザー"}への返信',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // 元のリプライ内容（引用）
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Text(
+                  notification.title,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade700,
+                      ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _replyController,
+                autofocus: true,
+                maxLines: 4,
+                minLines: 1,
+                maxLength: 140,
+                decoration: InputDecoration(
+                  hintText: '返信を入力...',
+                  filled: true,
+                  fillColor: Colors.grey.withOpacity(0.05),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.all(16),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.grey,
+                    ),
+                    child: const Text('キャンセル'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      final caption = _replyController.text.trim();
+                      if (caption.isEmpty) return;
+
+                      Navigator.pop(sheetContext);
+
+                      if (notification.postId != null) {
+                        try {
+                          await context.read<TimelineManager>().addReply(
+                                parentPostId: notification.postId!,
+                                caption: caption,
+                                replyToId: notification.replyId,
+                                replyToAuthorName:
+                                    notification.profile?.displayName,
+                              );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('返信しました'),
+                                behavior: SnackBarBehavior.floating,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('エラーが発生しました: $e'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.send, size: 16),
+                    label: const Text('送信'),
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -353,11 +782,13 @@ class _NotificationIcon extends StatelessWidget {
     required this.notification,
     required this.typeColor,
     required this.iconData,
+    this.showBadge = true,
   });
 
   final AppNotification notification;
   final Color typeColor;
   final IconData iconData;
+  final bool showBadge;
 
   @override
   Widget build(BuildContext context) {
@@ -401,7 +832,7 @@ class _NotificationIcon extends StatelessWidget {
       );
     }
 
-    if (profile == null) return mainAvatar;
+    if (profile == null || !showBadge) return mainAvatar;
 
     return Stack(
       children: [

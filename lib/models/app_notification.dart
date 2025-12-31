@@ -14,6 +14,7 @@ class AppNotification {
     this.profile,
     this.encounterId,
     this.postId,
+    this.replyId,
     this.read = false,
   });
 
@@ -25,6 +26,7 @@ class AppNotification {
   final Profile? profile;
   final String? encounterId;
   final String? postId;
+  final String? replyId;
   bool read;
 
   IconData get icon {

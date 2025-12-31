@@ -82,6 +82,37 @@ class TimelineManager extends ChangeNotifier {
     _subscribeToPosts();
   }
 
+  Future<TimelinePost?> getPost(String postId) async {
+    // 1. メモリ内から検索
+    try {
+      return _posts.firstWhere((p) => p.id == postId);
+    } catch (_) {
+      // 見つからない場合はFirestoreから取得
+    }
+
+    // 2. Firestoreから取得
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('timelinePosts')
+          .doc(postId)
+          .get();
+
+      if (!doc.exists) return null;
+
+      final data = doc.data();
+      if (data == null) return null;
+
+      data['id'] = data['id'] ?? doc.id;
+      return TimelinePost.fromMap(
+        data,
+        viewerId: _profileController.profile.id,
+      );
+    } catch (e) {
+      debugPrint('Failed to fetch post $postId: $e');
+      return null;
+    }
+  }
+
   Future<void> addPost({
     required String caption,
     Uint8List? imageBytes,
@@ -388,6 +419,17 @@ class TimelineManager extends ChangeNotifier {
       'replyCount': FieldValue.increment(1),
     });
 
+    // リプライ先（親リプライ）がある場合は、そのリプライのリプライ数も更新
+    if (replyToId != null) {
+      try {
+        await parentRef.collection('replies').doc(replyToId).update({
+          'replyCount': FieldValue.increment(1),
+        });
+      } catch (e) {
+        debugPrint('Failed to update parent reply count: $e');
+      }
+    }
+
     // 親投稿の投稿者に通知を送信（自分自身以外）
     final parentPost = _posts.firstWhere(
       (p) => p.id == parentPostId,
@@ -398,6 +440,7 @@ class TimelineManager extends ChangeNotifier {
         toUserId: parentPost.authorId,
         fromProfile: profile,
         postId: parentPostId,
+        replyId: replyRef.id,
         caption: caption.trim(),
       );
     }
@@ -408,9 +451,11 @@ class TimelineManager extends ChangeNotifier {
     required String toUserId,
     required Profile fromProfile,
     required String postId,
+    required String replyId,
     required String caption,
   }) async {
-    debugPrint('リプライ通知送信: toUserId=$toUserId, postId=$postId');
+    debugPrint(
+        'リプライ通知送信: toUserId=$toUserId, postId=$postId, replyId=$replyId');
     try {
       final docRef = await FirebaseFirestore.instance
           .collection('profiles')
@@ -424,6 +469,7 @@ class TimelineManager extends ChangeNotifier {
         'fromUserAvatarBase64': fromProfile.avatarImageBase64,
         'fromUserColorValue': fromProfile.avatarColor.toARGB32(),
         'postId': postId,
+        'replyId': replyId,
         'caption': caption,
         'createdAt': FieldValue.serverTimestamp(),
         'read': false,
