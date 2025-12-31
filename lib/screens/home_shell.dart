@@ -234,11 +234,11 @@ class _TimelineScreenState extends State<_TimelineScreen> {
     final feedPosts = _buildFeedPosts(filteredPosts);
 
     return Scaffold(
-      backgroundColor: palette.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const AppLogo(),
         centerTitle: true,
-        backgroundColor: palette.background,
+        backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
         actions: [
@@ -1082,7 +1082,7 @@ class _UserPostCard extends StatelessWidget {
                 // アバター
                 GestureDetector(
                   onTap: () => _navigateToProfile(context),
-                  child: _buildAvatar(theme),
+                  child: _buildAvatar(context, theme),
                 ),
                 const SizedBox(width: 12),
                 // コンテンツ
@@ -1126,35 +1126,48 @@ class _UserPostCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          Text(
-                            _relativeTime(post.createdAt),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          if (canDelete) ...[
-                            const SizedBox(width: 4),
-                            PopupMenuButton<String>(
-                              icon: Icon(
-                                Icons.more_horiz,
-                                size: 20,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onSelected: (value) {
-                                if (value == 'delete') {
-                                  _confirmDelete(context);
-                                }
-                              },
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('削除'),
+                          // 時間とメニューを配置（メニューがない場合も幅を確保して時間を揃える）
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _relativeTime(post.createdAt),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
-                              ],
-                            ),
-                          ],
+                              ),
+                              const SizedBox(width: 4),
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: canDelete
+                                    ? PopupMenuButton<String>(
+                                        icon: Icon(
+                                          Icons.more_horiz,
+                                          size: 18,
+                                          color: theme
+                                              .colorScheme.onSurfaceVariant,
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        // 余白を詰める
+                                        constraints: const BoxConstraints(),
+                                        splashRadius: 12,
+                                        onSelected: (value) {
+                                          if (value == 'delete') {
+                                            _confirmDelete(context);
+                                          }
+                                        },
+                                        itemBuilder: (context) => [
+                                          const PopupMenuItem(
+                                            value: 'delete',
+                                            child: Text('削除'),
+                                          ),
+                                        ],
+                                      )
+                                    : null, // メニューがない場合は空のSizedBoxでスペースだけ確保（あるいはSizedBox自体を表示しない選択肢もあるが、今回は時間を揃えるためあえてスペースを確保するか、あるいはスペースなしで右端に寄せるか。ユーザーは「時間のズレ」を気にしているので、自分の投稿（メニューあり）と他人の投稿（メニューなし）で時間がずれるのを防ぐなら、この方法が良い）
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                       // 本文
@@ -1223,21 +1236,37 @@ class _UserPostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatar(ThemeData theme) {
-    final avatarImage = post.resolveAvatarImage();
+  Widget _buildAvatar(BuildContext context, ThemeData theme) {
+    // 自分の投稿の場合は現在のプロフィールアバターを使用
+    final currentProfile = context.watch<ProfileController>().profile;
+    final isOwnPost = post.authorId == currentProfile.id;
 
-    return CircleAvatar(
-      radius: 20,
-      backgroundColor: Colors.grey,
-      foregroundImage: avatarImage,
-      child: avatarImage == null
-          ? const Icon(
-              Icons.person,
-              color: Colors.white,
-              size: 24,
-            )
-          : null,
-    );
+    if (isOwnPost) {
+      // 自分の投稿なら現在のプロフィール画像を使う（ProfileAvatarのキャッシュを活用）
+      return ProfileAvatar(
+        profile: currentProfile,
+        radius: 20,
+        showBorder: false,
+      );
+    } else {
+      // 他のユーザーの投稿なら投稿時のスナップショットを使用
+      final authorProfile = Profile(
+        id: post.authorId,
+        beaconId: post.authorId,
+        displayName: post.authorName,
+        username: post.authorUsername,
+        bio: '',
+        homeTown: '',
+        favoriteGames: const [],
+        avatarColor: post.authorColor,
+        avatarImageBase64: post.authorAvatarImageBase64,
+      );
+      return ProfileAvatar(
+        profile: authorProfile,
+        radius: 20,
+        showBorder: false,
+      );
+    }
   }
 
   Widget _buildImage(Uint8List? imageBytes, bool hasImageUrl) {

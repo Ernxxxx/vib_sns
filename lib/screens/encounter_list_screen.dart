@@ -391,11 +391,15 @@ class _EncounterTile extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      encounter.message ?? '「こんにちは！」と伝えてみましょう。',
-                      style: theme.textTheme.bodyMedium,
-                    ),
+                    if (encounter.message != null &&
+                        encounter.message!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          encounter.message!,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
                     if (distance != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 6),
@@ -478,29 +482,35 @@ class _HighlightEntryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final manager = context.watch<EncounterManager>();
+
+    // Find the corresponding encounter
+    Encounter? matchedEncounter;
+    for (final encounter in manager.encounters) {
+      if (encounter.profile.id == entry.profile.id) {
+        matchedEncounter = encounter;
+        break;
+      }
+    }
+
     final accent = theme.colorScheme.primary;
-    final hashtags = entry.profile.favoriteGames.take(3).join(' ');
+    final distance = matchedEncounter?.displayDistance;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
         onTap: () {
-          // プロフィール詳細画面へ遷移（対応するEncounterを探す）
-          final manager = context.read<EncounterManager>();
-          for (final encounter in manager.encounters) {
-            if (encounter.profile.id == entry.profile.id) {
-              manager.markSeen(encounter.id);
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => ProfileViewScreen(
-                    profileId: encounter.profile.id,
-                    initialProfile: encounter.profile,
-                  ),
+          if (matchedEncounter != null) {
+            manager.markSeen(matchedEncounter.id);
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ProfileViewScreen(
+                  profileId: matchedEncounter!.profile.id,
+                  initialProfile: matchedEncounter.profile,
                 ),
-              );
-              return;
-            }
+              ),
+            );
           }
         },
         child: AnimatedContainer(
@@ -510,12 +520,16 @@ class _HighlightEntryTile extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: (matchedEncounter?.unread ?? false)
+                  ? accent.withValues(alpha: 0.45)
+                  : Colors.black.withValues(alpha: 0.06),
               width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: accent.withValues(alpha: 0.08),
+                color: (matchedEncounter?.unread ?? false)
+                    ? accent.withValues(alpha: 0.18)
+                    : Colors.black.withValues(alpha: 0.03),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
@@ -570,14 +584,24 @@ class _HighlightEntryTile extends StatelessWidget {
                         ),
                       ],
                     ),
-                    if (hashtags.isNotEmpty)
+                    if (matchedEncounter?.message != null &&
+                        matchedEncounter!.message!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          hashtags,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: Colors.black87,
-                          ),
+                          matchedEncounter.message!,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
+                    if (distance != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          matchedEncounter!.proximityVerified
+                              ? 'BLE\u8fd1\u63a5 約${distance.toStringAsFixed(2)}m'
+                              : 'GPS\u63a8\u5b9a 約${distance.round()}m',
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: Colors.black54),
                         ),
                       ),
                     const SizedBox(height: 10),
@@ -589,20 +613,11 @@ class _HighlightEntryTile extends StatelessWidget {
                             rawWidth.isFinite && rawWidth > 0
                                 ? rawWidth
                                 : availableWidth / 2;
-                        // Find the corresponding encounter for like/follow buttons
-                        final manager = context.watch<EncounterManager>();
-                        final timelineManager =
-                            context.watch<TimelineManager>();
-                        Encounter? matchedEncounter;
-                        for (final encounter in manager.encounters) {
-                          if (encounter.profile.id == entry.profile.id) {
-                            matchedEncounter = encounter;
-                            break;
-                          }
-                        }
                         if (matchedEncounter == null) {
                           return const SizedBox.shrink();
                         }
+                        final timelineManager =
+                            context.watch<TimelineManager>();
                         final postLikesTotal = timelineManager
                             .getPostLikesForUser(matchedEncounter.profile.id);
                         final totalLikes =

@@ -8,6 +8,7 @@ import '../models/timeline_post.dart';
 import '../state/profile_controller.dart';
 import '../state/timeline_manager.dart';
 import '../widgets/full_screen_image_viewer.dart';
+import '../widgets/profile_avatar.dart';
 import 'profile_view_screen.dart';
 
 class PostDetailScreen extends StatefulWidget {
@@ -77,7 +78,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final viewerId = context.watch<ProfileController>().profile.id;
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('投稿'),
         surfaceTintColor: Colors.transparent,
@@ -202,11 +203,29 @@ class _PostCard extends StatelessWidget {
       (p) => p.id == post.id,
       orElse: () => post,
     );
-    final avatarImage = currentPost.resolveAvatarImage();
+
+    // 自分の投稿の場合は現在のプロフィールアバターを使用
+    final currentProfile = context.watch<ProfileController>().profile;
+    final isOwnPost = post.authorId == currentProfile.id;
+
+    // ProfileAvatarを使用してキャッシュを活用
+    final avatarProfile = isOwnPost
+        ? currentProfile
+        : Profile(
+            id: post.authorId,
+            beaconId: post.authorId,
+            displayName: post.authorName,
+            username: post.authorUsername,
+            bio: '',
+            homeTown: '',
+            favoriteGames: const [],
+            avatarColor: post.authorColor,
+            avatarImageBase64: currentPost.authorAvatarImageBase64,
+          );
 
     return Container(
       padding: const EdgeInsets.all(20),
-      color: theme.colorScheme.surface,
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -214,13 +233,10 @@ class _PostCard extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: () => _openProfile(context),
-                child: CircleAvatar(
+                child: ProfileAvatar(
+                  profile: avatarProfile,
                   radius: 24,
-                  backgroundColor: Colors.grey,
-                  foregroundImage: avatarImage,
-                  child: avatarImage == null
-                      ? const Icon(Icons.person, color: Colors.white, size: 28)
-                      : null,
+                  showBorder: false,
                 ),
               ),
               const SizedBox(width: 12),
@@ -574,8 +590,26 @@ class _ReplyItemState extends State<_ReplyItem> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final avatarImage = widget.reply.resolveAvatarImage();
     final childReplies = widget.replyMap[widget.reply.id] ?? [];
+
+    // 自分のリプライの場合は現在のプロフィールアバターを使用
+    final currentProfile = context.watch<ProfileController>().profile;
+    final isOwnReply = widget.reply.authorId == currentProfile.id;
+
+    // ProfileAvatarを使用してキャッシュを活用
+    final avatarProfile = isOwnReply
+        ? currentProfile
+        : Profile(
+            id: widget.reply.authorId,
+            beaconId: widget.reply.authorId,
+            displayName: widget.reply.authorName,
+            username: widget.reply.authorUsername,
+            bio: '',
+            homeTown: '',
+            favoriteGames: const [],
+            avatarColor: widget.reply.authorColor,
+            avatarImageBase64: widget.reply.authorAvatarImageBase64,
+          );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -587,13 +621,10 @@ class _ReplyItemState extends State<_ReplyItem> {
             children: [
               GestureDetector(
                 onTap: () => _openProfile(context, widget.reply.authorId),
-                child: CircleAvatar(
+                child: ProfileAvatar(
+                  profile: avatarProfile,
                   radius: 18,
-                  backgroundColor: Colors.grey,
-                  foregroundImage: avatarImage,
-                  child: avatarImage == null
-                      ? const Icon(Icons.person, size: 18, color: Colors.white)
-                      : null,
+                  showBorder: false,
                 ),
               ),
               const SizedBox(width: 12),

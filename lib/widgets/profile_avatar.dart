@@ -13,7 +13,10 @@ class ProfileAvatar extends StatelessWidget {
     this.showBorder = true,
   });
 
-  static final Map<String, Uint8List> _imageCache = <String, Uint8List>{};
+  // profileId -> (base64, bytes) でキャッシュを管理
+  // 同じprofileIdで異なるbase64が来たらキャッシュを更新
+  static final Map<String, (String, Uint8List)> _imageCache =
+      <String, (String, Uint8List)>{};
 
   final Profile profile;
   final double radius;
@@ -24,14 +27,16 @@ class ProfileAvatar extends StatelessWidget {
     final imageBase64 = profile.avatarImageBase64?.trim();
     MemoryImage? imageProvider;
     if (imageBase64 != null && imageBase64.isNotEmpty) {
-      final cached = _imageCache[imageBase64];
-      if (cached != null) {
-        imageProvider = MemoryImage(cached);
+      final cacheKey = profile.id;
+      final cached = _imageCache[cacheKey];
+      // キャッシュがあり、かつ同じbase64なら再利用
+      if (cached != null && cached.$1 == imageBase64) {
+        imageProvider = MemoryImage(cached.$2);
       } else {
         try {
           final bytes = base64Decode(imageBase64);
           if (bytes.isNotEmpty) {
-            _imageCache[imageBase64] = bytes;
+            _imageCache[cacheKey] = (imageBase64, bytes);
             imageProvider = MemoryImage(bytes);
           }
         } catch (_) {

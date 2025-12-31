@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -111,92 +113,177 @@ class _NotificationTile extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () => _handleTap(context),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _NotificationIcon(
-                  notification: notification,
-                  typeColor: typeColor,
-                  iconData: _getNotificationIconData(),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _NotificationIcon(
+                      notification: notification,
+                      typeColor: typeColor,
+                      iconData: _getNotificationIconData(),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Text(
-                              _getNotificationHeader(),
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                color: typeColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                          // 上段：名前、ID
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (notification.profile != null) ...[
+                                Flexible(
+                                  child: Text(
+                                    notification.profile!.displayName,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (notification.profile!.formattedUsername !=
+                                    null) ...[
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      notification.profile!.formattedUsername!,
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                              // 時間表示用のスペース確保
+                              const SizedBox(width: 40),
+                            ],
                           ),
-                          Text(
-                            _relativeTime(notification.createdAt),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.disabledColor,
-                            ),
-                          ),
+                          const SizedBox(height: 2),
+                          // 下段：アクション内容または本文
+                          _buildNotificationContent(theme, typeColor),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        notification.title,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 12,
+                right: 16,
+                child: Row(
+                  children: [
+                    Text(
+                      _relativeTime(notification.createdAt),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.disabledColor,
+                        fontSize: 11,
+                      ),
+                    ),
+                    if (isUnread) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: typeColor,
+                          shape: BoxShape.circle,
                         ),
                       ),
-                      if (notification.message.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          notification.message,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.textTheme.bodySmall?.color
-                                ?.withOpacity(0.8),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
-                if (isUnread)
-                  Container(
-                    margin: const EdgeInsets.only(left: 8, top: 8),
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: typeColor,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  String _getNotificationHeader() {
+  Widget _buildNotificationContent(ThemeData theme, Color typeColor) {
+    if (notification.type == AppNotificationType.reply) {
+      // リプライの場合は本文をそのまま表示
+      return Text(
+        notification.title,
+        style: theme.textTheme.bodyMedium,
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    String actionText;
+    IconData? actionIcon;
+
     switch (notification.type) {
       case AppNotificationType.like:
       case AppNotificationType.timelineLike:
-        return 'NEW LIKE';
-      case AppNotificationType.reply:
-        return 'NEW REPLY';
+        actionText = 'あなたの投稿にいいねしました';
+        actionIcon = Icons.favorite;
+        break;
       case AppNotificationType.follow:
-        return 'NEW PROVIDER';
+        actionText = 'あなたをフォローしました';
+        actionIcon = Icons.person_add;
+        break;
       case AppNotificationType.encounter:
-        return 'STREETPASS';
+        actionText = 'すれ違いました';
+        actionIcon = Icons.directions_walk;
+        break;
+      default:
+        actionText = notification.title;
+        actionIcon = null;
     }
+
+    // すれ違いの場合はメッセージがあればそれを表示
+    if (notification.type == AppNotificationType.encounter &&
+        notification.message.isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(actionIcon, size: 14, color: theme.colorScheme.primary),
+              const SizedBox(width: 4),
+              Text(
+                actionText,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            notification.message,
+            style: theme.textTheme.bodyMedium,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        if (actionIcon != null) ...[
+          Icon(actionIcon, size: 14, color: typeColor.withOpacity(0.8)),
+          const SizedBox(width: 4),
+        ],
+        Expanded(
+          child: Text(
+            actionText,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   void _handleTap(BuildContext context) {
@@ -279,24 +366,31 @@ class _NotificationIcon extends StatelessWidget {
     Widget mainAvatar;
     if (profile != null) {
       ImageProvider? imageProvider;
-      if (profile.avatarImageBase64 != null &&
-          profile.avatarImageBase64!.isNotEmpty) {
+      final imageBase64 = profile.avatarImageBase64?.trim();
+      if (imageBase64 != null && imageBase64.isNotEmpty) {
         try {
-          // データURLスキームの処理は省略されていますが、
-          // 実際にはここのロジックは既存のものを使えばOK
-          final uri = Uri.parse(profile.avatarImageBase64!);
-          if (uri.data != null) {
-            imageProvider = MemoryImage(uri.data!.contentAsBytes());
+          // data: URL形式かraw base64のどちらにも対応
+          if (imageBase64.startsWith('data:')) {
+            final uri = Uri.parse(imageBase64);
+            if (uri.data != null) {
+              imageProvider = MemoryImage(uri.data!.contentAsBytes());
+            }
+          } else {
+            // ProfileAvatarと同じ方式でbase64デコード
+            final bytes = base64Decode(imageBase64);
+            if (bytes.isNotEmpty) {
+              imageProvider = MemoryImage(bytes);
+            }
           }
         } catch (_) {}
       }
 
       mainAvatar = CircleAvatar(
         radius: 24,
-        backgroundColor: Colors.grey.shade200,
+        backgroundColor: Colors.grey,
         backgroundImage: imageProvider,
         child: imageProvider == null
-            ? const Icon(Icons.person, color: Colors.grey)
+            ? const Icon(Icons.person, color: Colors.white, size: 28.8)
             : null,
       );
     } else {
