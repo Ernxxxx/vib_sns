@@ -569,24 +569,42 @@
 @media (max-width: 900px) {
   .nav-container {
     flex-direction: column;
-    gap: 16px;
-    padding: 16px 20px;
+    gap: 14px;
+    padding: 14px 18px;
   }
 
   .nav-brand {
     width: 100%;
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .nav-actions {
     width: 100%;
-    justify-content: center;
+    justify-content: flex-start;
     flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .clock-status-group {
+    width: 100%;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .clock-display,
+  .system-status-card {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .refresh-control {
     width: 100%;
-    justify-content: center;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .refresh-actions {
+    width: 100%;
   }
 
   .button-text {
@@ -600,16 +618,21 @@
   .dropdown-label span:not(.label-icon) {
     display: none;
   }
-
 }
 
 @media (max-width: 600px) {
+  .nav-container {
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
   .nav-title {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .nav-subtitle {
-    font-size: 11px;
+    font-size: 10px;
+    flex-wrap: wrap;
   }
 
   .nav-status {
@@ -617,16 +640,99 @@
   }
 
   .nav-logo {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .logo-img {
+    width: 22px;
+    height: 22px;
   }
 
   .logo-icon {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .nav-actions {
-    gap: 8px;
+    gap: 6px;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .clock-status-group {
+    width: 100%;
+    justify-items: stretch;
+    gap: 4px;
+  }
+
+  .clock-display {
+    font-size: 10px;
+    padding: 6px 8px;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .clock-text {
+    font-size: 10px;
+  }
+
+  .system-status-card {
+    font-size: 10px;
+    padding: 6px 10px;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .system-status-text {
+    font-size: 11px;
+  }
+
+  .refresh-control {
+    width: 100%;
+    padding: 8px 10px;
+  }
+
+  .status-row {
+    font-size: 11px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .auto-label {
+    font-size: 10px;
+  }
+
+  .auto-refresh-status {
+    font-size: 9px;
+  }
+
+  .refresh-actions {
+    gap: 6px;
+    width: 100%;
+  }
+
+  .refresh-btn {
+    flex: 1;
+    min-width: 0;
+    height: 32px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .auto-interval-select {
+    min-width: 70px;
+    font-size: 10px;
+    padding: 4px 6px;
+    height: 32px;
+  }
+
+  .power-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .power-btn .button-icon {
+    font-size: 16px;
   }
 }
 
@@ -691,34 +797,6 @@
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.activity-range-switch {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.range-button {
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.range-button:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-.range-button--active {
-  background: rgba(255, 255, 255, 0.9);
-  color: #ff9800;
-  border-color: rgba(255, 255, 255, 0.9);
 }
 
 .user-count-badge {
@@ -898,6 +976,11 @@
     font-size: 20px;
   }
 
+  .dashboard-content-compact {
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
   .top-stats {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -911,10 +994,86 @@
 
   .chart-section,
   .users-section {
-    padding: 14px;
+    padding: 12px;
   }
   
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
   .section-header h2 {
-    font-size: 16px;
+    font-size: 15px;
+  }
+
+  .section-subtitle {
+    font-size: 11px;
+  }
+
+  .activity-range-switch {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .range-button {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+
+  .compact-chart-container {
+    height: 250px;
+  }
+
+  .activity-section .compact-chart-container {
+    min-height: 250px;
+  }
+
+  .activity-section {
+    max-height: 400px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-content-compact {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .chart-section,
+  .users-section {
+    padding: 10px;
+    border-radius: 10px;
+  }
+
+  .section-header h2 {
+    font-size: 14px;
+  }
+
+  .section-subtitle {
+    font-size: 10px;
+  }
+
+  .compact-chart-container {
+    height: 220px;
+  }
+
+  .activity-section .compact-chart-container {
+    min-height: 220px;
+  }
+
+  .activity-section {
+    max-height: 350px;
+  }
+
+  .range-button {
+    font-size: 10px;
+    padding: 5px 10px;
+  }
+
+  .user-count-badge {
+    font-size: 9px;
+    padding: 2px 8px;
   }
 }
