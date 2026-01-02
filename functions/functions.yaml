@@ -1,6 +1,0 @@
-specVersion: v1alpha1
-endpoints:
-  deleteUserProfile:
-    platform: gcfv1
-    entryPoint: deleteUserProfile
-    callableTrigger: {}

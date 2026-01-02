@@ -21,6 +21,7 @@ import 'services/firestore_profile_interaction_service.dart';
 import 'services/mock_ble_proximity_scanner.dart';
 import 'services/mock_profile_interaction_service.dart';
 import 'services/mock_streetpass_service.dart';
+import 'services/fcm_service.dart';
 import 'services/profile_interaction_service.dart';
 import 'services/streetpass_service.dart';
 import 'state/encounter_manager.dart';
@@ -96,6 +97,12 @@ Future<void> main() async {
       debugPrint('main: bootstrapProfile failed: $e');
       debugPrintStack(stackTrace: stackTrace);
       // Continue app startup even if bootstrap fails
+    }
+    // FCMの初期化（プロファイルのブートストラップ後に実行）
+    try {
+      await FCMService.initialize(localProfile.id);
+    } catch (e) {
+      debugPrint('main: FCM initialization failed: $e');
     }
   } else {
     debugPrint(

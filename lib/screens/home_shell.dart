@@ -35,6 +35,8 @@ import '../widgets/profile_stats_row.dart';
 import 'profile_follow_list_sheet.dart';
 import 'profile_view_screen.dart';
 import 'post_detail_screen.dart';
+import 'chat_screen.dart';
+import '../services/fcm_service.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -62,7 +64,82 @@ class _HomeShellState extends State<HomeShell> {
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _autoStartStreetPass();
+      _setupFCMHandlers();
     });
+  }
+
+  /// FCM通知タップ時のハンドラを設定
+  Future<void> _setupFCMHandlers() async {
+    // 終了状態から起動した場合の初期メッセージを処理
+    final initialData = await FCMService.getInitialMessage();
+    if (initialData != null && mounted) {
+      _handleFCMNavigation(initialData);
+    }
+
+    // バックグラウンドから復帰した場合のハンドラを設定
+    FCMService.setupInteractionHandler((data) {
+      if (mounted) {
+        _handleFCMNavigation(data);
+      }
+    });
+  }
+
+  /// FCM通知データに基づいて画面遷移を実行
+  void _handleFCMNavigation(Map<String, dynamic> data) {
+    final type = data['type'] as String?;
+    if (type == null) return;
+
+    switch (type) {
+      case 'follow':
+      case 'like':
+        final profileId = data['profileId'] as String?;
+        if (profileId != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProfileViewScreen(profileId: profileId),
+            ),
+          );
+        }
+        break;
+
+      case 'timelineLike':
+      case 'reply':
+        final postId = data['postId'] as String?;
+        if (postId != null) {
+          _navigateToPost(postId);
+        }
+        break;
+
+      case 'dm':
+        final conversationId = data['conversationId'] as String?;
+        if (conversationId != null) {
+          _navigateToChat(conversationId);
+        }
+        break;
+    }
+  }
+
+  /// 投稿詳細画面へ遷移
+  Future<void> _navigateToPost(String postId) async {
+    final timelineManager = context.read<TimelineManager>();
+    final post = await timelineManager.getPost(postId);
+    if (post != null && mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PostDetailScreen(post: post),
+        ),
+      );
+    }
+  }
+
+  /// チャット画面へ遷移
+  Future<void> _navigateToChat(String conversationId) async {
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(conversationId: conversationId),
+      ),
+    );
   }
 
   @override

@@ -79,6 +79,9 @@ service cloud.firestore {
         allow delete: if ownsProfile(profileId);
         allow update: if ownsProfile(profileId);
       }
+      match /fcmTokens/{tokenId} {
+        allow read, write: if ownsProfile(profileId);
+      }
     }
 
     match /usernames/{username} {
