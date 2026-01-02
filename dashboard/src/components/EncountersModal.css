@@ -1,0 +1,248 @@
+/* EncountersModal 特定的样式 */
+
+.encounters-loading,
+.encounters-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: #999;
+}
+
+.encounters-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.encounter-item {
+  background: #f9f9f9;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.2s;
+}
+
+.encounter-item:hover {
+  background: #f5f5f5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.encounter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 16px;
+}
+
+.encounter-pair {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.encounter-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.encounter-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  flex-shrink: 0;
+}
+
+.connector-icon {
+  font-size: 20px;
+}
+
+.connector-text {
+  font-size: 11px;
+  color: #666;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.encounter-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.encounter-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.encounter-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.encounter-user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.encounter-user-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.encounter-time-badge {
+  font-size: 12px;
+  color: #666;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.encounter-message {
+  color: #333;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: #f0f0f0;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.encounter-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.detail-label {
+  color: #666;
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.detail-value {
+  color: #333;
+  font-family: monospace;
+}
+
+.detail-value.address-loading {
+  color: #999;
+  font-style: italic;
+}
+
+/* 移动端响应式样式 */
+@media (max-width: 768px) {
+  .encounter-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .encounter-pair {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .encounter-user {
+    flex: 1 1 calc(50% - 20px);
+    min-width: 120px;
+  }
+
+  .encounter-connector {
+    width: 100%;
+    flex-direction: row;
+    justify-content: center;
+    padding: 8px 0;
+  }
+
+  .connector-text {
+    font-size: 10px;
+  }
+
+  .encounter-time-badge {
+    width: 100%;
+    text-align: right;
+  }
+
+  .encounter-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  .encounter-user-name {
+    font-size: 12px;
+  }
+
+  .encounters-list {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .encounter-item {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .encounter-pair {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .encounter-user {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+
+  .encounter-connector {
+    width: auto;
+    padding: 4px 0;
+  }
+
+  .connector-icon {
+    font-size: 18px;
+  }
+}
+

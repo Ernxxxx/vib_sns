@@ -1,8 +1,11 @@
 import React, { useState, useEffect, ChangeEvent, useRef, useCallback } from 'react';
 import { useOnlineUsers } from '../hooks/useOnlineUsers';
+import { useAllUsers } from '../hooks/useAllUsers';
 import { useActivityStats } from '../hooks/useActivityStats';
 import { useTodayPosts } from '../hooks/useTodayPosts';
+import { useAllPosts } from '../hooks/useAllPosts';
 import { useEmotionStats } from '../hooks/useEmotionStats';
+import { useTodayEncounters } from '../hooks/useTodayEncounters';
 import { useDashboardRefresh, RefreshFrequency } from '../hooks/useDashboardRefresh';
 import { StatsCard } from './StatsCard';
 import { ActivityChart, ActivityRange } from './ActivityChart';
@@ -10,6 +13,8 @@ import { EmotionChart } from './EmotionChart';
 import { StatsBarChart } from './StatsBarChart';
 import { OnlineUsersList } from './OnlineUsersList';
 import { PostsModal } from './PostsModal';
+import { UsersModal } from './UsersModal';
+import { EncountersModal } from './EncountersModal';
 import { logout } from '../services/auth';
 import './Dashboard.css';
 import vibLogo from '../vib_white.png';
@@ -27,11 +32,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     nextRefreshInSeconds,
   } = useDashboardRefresh();
   const { onlineCount, onlineUsers, loading: usersLoading, error: usersError } = useOnlineUsers(refreshKey);
+  const { allUsers, loading: allUsersLoading, error: allUsersError } = useAllUsers(refreshKey, onlineUsers);
   const { stats, loading: statsLoading, lastUpdated } = useActivityStats(refreshKey);
   const { emotionStats, loading: emotionLoading } = useEmotionStats(refreshKey);
   const { posts: todayPosts, loading: postsLoading } = useTodayPosts(50, refreshKey);
+  const { posts: allPosts, loading: allPostsLoading } = useAllPosts(100, refreshKey);
+  const { encounterPairs: todayEncounterPairs, loading: encountersLoading } = useTodayEncounters(refreshKey);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showPostsModal, setShowPostsModal] = useState(false);
+  const [showUsersModal, setShowUsersModal] = useState(false);
+  const [showEncountersModal, setShowEncountersModal] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activityRange, setActivityRange] = useState<ActivityRange>('24h');
   const [systemStatus, setSystemStatus] = useState<'active' | 'collecting' | 'future'>('active');
@@ -45,6 +55,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     { key: '30d', label: '30日' },
   ];
   const [currentTime, setCurrentTime] = useState(() => new Date());
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 600 : false
+  );
   const handleLogout = () => {
     logout();
     onLogout();
@@ -107,12 +120,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     : '自動モード待機中';
 
   const formatDateTime = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
     const seconds = String(date.getSeconds()).padStart(2, '0');
+    if (isMobile) {
+      return `${hours}:${minutes}:${seconds}`;
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
   };
 
@@ -167,6 +183,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     }, 1000);
     return () => {
       window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 600);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      handleResize(); // 初始化
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', handleResize);
+      }
     };
   }, []);
 
@@ -282,11 +313,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         <div className="top-stats" id="overview">
           <StatsCard
             title="ユーザー数"
-            value={`${onlineCount}/${stats.totalUsers}`}
+            value={`${onlineCount}/${allUsers.length}`}
             icon="👥"
             color="#FFD54F"
-            loading={usersLoading || statsLoading}
+            loading={usersLoading || allUsersLoading || statsLoading}
             subtitle="5分以内アクティブ · 総登録ユーザー"
+            onClick={() => setShowUsersModal(true)}
           />
           <StatsCard
             title="今日の投稿"
@@ -299,11 +331,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           />
           <StatsCard
             title="今日のすれ違い"
-            value={stats.encountersToday}
+            value={todayEncounterPairs.length}
             icon="🤝"
             color="#FF6F00"
-            loading={statsLoading}
-            subtitle="本日の出会い"
+            loading={statsLoading || encountersLoading}
+            subtitle="本日の出会い • クリックで詳細"
+            onClick={() => setShowEncountersModal(true)}
           />
         </div>
 
@@ -314,7 +347,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             <div className="section-header">
               <h2>📊 統計データ</h2>
             </div>
-            <StatsBarChart stats={stats} loading={statsLoading} onlineCount={onlineCount} />
+            <StatsBarChart stats={stats} loading={statsLoading || allUsersLoading} onlineCount={onlineCount} totalUsers={allUsers.length} />
           </section>
 
           {/* 右側: 感情分布 */}
@@ -367,9 +400,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       {/* 投稿モーダル */}
       {showPostsModal && (
         <PostsModal
-          posts={todayPosts}
-          loading={postsLoading}
+          posts={allPosts}
+          loading={allPostsLoading}
           onClose={() => setShowPostsModal(false)}
+        />
+      )}
+
+      {/* ユーザーリストモーダル */}
+      {showUsersModal && (
+        <UsersModal
+          users={allUsers}
+          loading={allUsersLoading || usersLoading}
+          error={allUsersError || usersError}
+          onClose={() => setShowUsersModal(false)}
+        />
+      )}
+
+      {/* すれ違いモーダル */}
+      {showEncountersModal && (
+        <EncountersModal
+          encounterPairs={todayEncounterPairs}
+          loading={encountersLoading}
+          onClose={() => setShowEncountersModal(false)}
         />
       )}
     </div>

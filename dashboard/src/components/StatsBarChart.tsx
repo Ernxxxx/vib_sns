@@ -7,9 +7,10 @@ interface StatsBarChartProps {
   stats: ActivityStats;
   loading: boolean;
   onlineCount: number;
+  totalUsers: number;
 }
 
-export const StatsBarChart: React.FC<StatsBarChartProps> = ({ stats, loading, onlineCount }) => {
+export const StatsBarChart: React.FC<StatsBarChartProps> = ({ stats, loading, onlineCount, totalUsers }) => {
 
   if (loading) {
     return (
@@ -27,7 +28,7 @@ export const StatsBarChart: React.FC<StatsBarChartProps> = ({ stats, loading, on
     },
     {
       name: '総ユーザー',
-      value: stats.totalUsers,
+      value: totalUsers,
       color: '#FFB74D',
     },
     {
