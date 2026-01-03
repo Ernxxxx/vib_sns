@@ -16,6 +16,7 @@ import '../state/profile_controller.dart';
 import '../utils/auth_helpers.dart';
 import '../utils/color_extensions.dart';
 import '../utils/profile_setup_helper.dart';
+import '../widgets/hashtag_picker.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key, required this.profile});
@@ -92,20 +93,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     if (value.trim().isEmpty) return '';
     if (value.trim() == '\u672a\u767b\u9332') return '';
     return value;
-  }
-
-  void _toggleHashtag(String tag) {
-    setState(() {
-      if (_selectedHashtags.contains(tag)) {
-        _selectedHashtags.remove(tag);
-      } else {
-        if (_selectedHashtags.length >= _maxHashtagSelection) {
-          _showSnack('ハッシュタグは$_maxHashtagSelection件まで選べます。');
-          return;
-        }
-        _selectedHashtags.add(tag);
-      }
-    });
   }
 
   Future<void> _pickAvatar() async {
@@ -358,38 +345,17 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   },
                 ),
                 const SizedBox(height: 20),
-                Text(
-                  '\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0 (\u9078\u629e$_minHashtagSelection\u301c$_maxHashtagSelection\u4ef6)',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _availableHashtags.map((tag) {
-                    final selected = _selectedHashtags.contains(tag);
-                    return FilterChip(
-                      showCheckmark: false,
-                      label: Text(tag),
-                      selected: selected,
-                      backgroundColor: Colors.white,
-                      selectedColor: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withValues(alpha: 0.25),
-                      side: BorderSide(
-                        color: selected
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.grey.shade300,
-                      ),
-                      labelStyle: TextStyle(
-                        color: selected
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.black87,
-                      ),
-                      onSelected: (_) => _toggleHashtag(tag),
-                    );
-                  }).toList(),
+                HashtagPicker(
+                  selectedTags: _selectedHashtags,
+                  onChanged: (newTags) {
+                    setState(() {
+                      _selectedHashtags.clear();
+                      _selectedHashtags.addAll(newTags);
+                    });
+                  },
+                  minSelection: _minHashtagSelection,
+                  maxSelection: _maxHashtagSelection,
+                  availableTags: _availableHashtags,
                 ),
                 const SizedBox(height: 32),
                 SizedBox(

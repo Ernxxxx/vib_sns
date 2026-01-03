@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-import '../data/preset_hashtags.dart';
 import '../models/profile.dart';
+import '../widgets/hashtag_picker.dart';
 
 Future<({String name, String? username, List<String> hashtags})?>
     showProfileSetupModal(
@@ -130,18 +130,6 @@ class _ProfileSetupPageState extends State<_ProfileSetupPage> {
     });
   }
 
-  void _toggleHashtag(String tag, bool enabled) {
-    setState(() {
-      if (enabled) {
-        if (_selected.length < widget.maxHashtags) {
-          _selected.add(tag);
-        }
-      } else {
-        _selected.remove(tag);
-      }
-    });
-  }
-
   void _submit() {
     if (!_canSubmit) return;
     final username = Profile.normalizeUsername(_usernameController.text);
@@ -214,36 +202,16 @@ class _ProfileSetupPageState extends State<_ProfileSetupPage> {
                 onChanged: _validateUsername,
               ),
               const SizedBox(height: 24),
-              Text(
-                '興味のあるハッシュタグを選択してください（${widget.minHashtags}～${widget.maxHashtags}件）。',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: presetHashtags.map((tag) {
-                  final isSelected = _selected.contains(tag);
-                  return FilterChip(
-                    showCheckmark: false,
-                    label: Text(tag),
-                    selected: isSelected,
-                    backgroundColor: Colors.white,
-                    selectedColor:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.25),
-                    side: BorderSide(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey.shade300,
-                    ),
-                    labelStyle: TextStyle(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.black87,
-                    ),
-                    onSelected: (value) => _toggleHashtag(tag, value),
-                  );
-                }).toList(),
+              HashtagPicker(
+                selectedTags: _selected,
+                onChanged: (newTags) {
+                  setState(() {
+                    _selected.clear();
+                    _selected.addAll(newTags);
+                  });
+                },
+                minSelection: widget.minHashtags,
+                maxSelection: widget.maxHashtags,
               ),
               const SizedBox(height: 32),
               SizedBox(

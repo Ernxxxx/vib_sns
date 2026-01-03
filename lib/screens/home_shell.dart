@@ -13,7 +13,7 @@ import '../services/firestore_dm_service.dart';
 import 'encounter_list_screen.dart';
 import 'conversation_list_screen.dart';
 import 'notifications_screen.dart';
-import '../data/preset_hashtags.dart';
+
 import '../services/streetpass_service.dart';
 import '../services/profile_interaction_service.dart';
 import '../state/encounter_manager.dart';
@@ -28,6 +28,7 @@ import '../widgets/full_screen_image_viewer.dart';
 import '../utils/color_extensions.dart';
 import 'package:vib_sns/models/timeline_post.dart';
 import '../widgets/app_logo.dart';
+import '../widgets/hashtag_picker.dart';
 import '../widgets/profile_avatar.dart';
 import '../utils/app_text_styles.dart';
 import '../widgets/profile_info_tile.dart';
@@ -218,18 +219,29 @@ class _HomeShellState extends State<HomeShell> {
       isScrollControlled: true,
       builder: (sheetContext) {
         final bottomPadding = MediaQuery.of(sheetContext).viewInsets.bottom;
+        final screenHeight = MediaQuery.of(sheetContext).size.height;
         return Padding(
           padding: EdgeInsets.only(bottom: bottomPadding),
           child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: screenHeight *
+                    0.55, // Leave 45% space at top per user request
+              ),
               child: Align(
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 640),
-                  child: _TimelineComposer(
-                    timelineManager: timelineManager,
-                    onPostSuccess: () => Navigator.of(sheetContext).pop(),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
+                    child: _TimelineComposer(
+                      timelineManager: timelineManager,
+                      onPostSuccess: () {
+                        if (Navigator.of(sheetContext).canPop()) {
+                          Navigator.of(sheetContext).pop();
+                        }
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -855,21 +867,6 @@ class _TimelineComposerState extends State<_TimelineComposer> {
     setState(() => _imageBytes = null);
   }
 
-  void _toggleHashtag(String tag) {
-    setState(() {
-      if (_selectedHashtags.contains(tag)) {
-        _selectedHashtags.remove(tag);
-      } else {
-        if (_selectedHashtags.length >= _maxHashtagSelection) {
-          _showSnack(
-              '\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0\u306f$_maxHashtagSelection\u500b\u307e\u3067\u9078\u3079\u307e\u3059\u3002');
-          return;
-        }
-        _selectedHashtags.add(tag);
-      }
-    });
-  }
-
   void _showSnack(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
@@ -877,7 +874,7 @@ class _TimelineComposerState extends State<_TimelineComposer> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // Compact Layout for 55% height modal
     return Container(
       decoration: BoxDecoration(
         color: Colors.transparent,
@@ -910,143 +907,138 @@ class _TimelineComposerState extends State<_TimelineComposer> {
                 ],
               ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Scrollable Content Area
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(
+                        16, 16, 16, 0), // Reduced Padding
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // Header
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color:
-                                const Color(0xFFF2B705).withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(
-                            Icons.auto_awesome,
-                            color: Color(0xFFF2B705),
-                            size: 20,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF2B705)
+                                      .withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.auto_awesome,
+                                  color: Color(0xFFF2B705),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                '今の瞬間をシェア',
+                                style: AppTextStyles.shareButtonTitle,
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Text(
-                          '今の瞬間をシェア',
-                          style: AppTextStyles.shareButtonTitle,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _controller,
-                    minLines: 3,
-                    maxLines: 5,
-                    style: const TextStyle(height: 1.5),
-                    decoration: InputDecoration(
-                      hintText: '今の気持ちや思い出を共有...',
-                      hintStyle:
-                          TextStyle(color: Colors.black.withValues(alpha: 0.4)),
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.5),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.all(16),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'ハッシュタグを選ぶ (最大$_maxHashtagSelection個)',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: Colors.black54,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 180,
-                    child: SingleChildScrollView(
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final tag in presetHashtags)
-                            FilterChip(
-                              showCheckmark: false,
-                              label: Text(tag),
-                              selected: _selectedHashtags.contains(tag),
-                              backgroundColor:
-                                  Colors.white.withValues(alpha: 0.6),
-                              selectedColor: const Color(0xFFF2B705)
-                                  .withValues(alpha: 0.2),
-                              side: BorderSide(
-                                color: _selectedHashtags.contains(tag)
-                                    ? const Color(0xFFF2B705)
-                                    : Colors.black.withValues(alpha: 0.05),
-                              ),
-                              labelStyle: TextStyle(
-                                color: _selectedHashtags.contains(tag)
-                                    ? Colors.black87
-                                    : Colors.black54,
-                                fontWeight: _selectedHashtags.contains(tag)
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              onSelected: (_) => _toggleHashtag(tag),
+                        const SizedBox(height: 12), // Compact Spacing
+
+                        // Text Field
+                        TextField(
+                          controller: _controller,
+                          minLines: 3,
+                          maxLines: 5,
+                          style: const TextStyle(height: 1.5),
+                          decoration: InputDecoration(
+                            hintText: '今の気持ちや思い出を共有...',
+                            hintStyle: TextStyle(
+                                color: Colors.black.withValues(alpha: 0.4)),
+                            filled: true,
+                            fillColor: Colors.white.withValues(alpha: 0.5),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
                             ),
+                            contentPadding: const EdgeInsets.all(16),
+                          ),
+                        ),
+                        const SizedBox(height: 12), // Compact Spacing
+
+                        // HashtagPicker (Expands naturally)
+                        HashtagPicker(
+                          selectedTags: _selectedHashtags,
+                          onChanged: (tags) {
+                            setState(() {
+                              _selectedHashtags.clear();
+                              _selectedHashtags.addAll(tags);
+                            });
+                          },
+                          maxSelection: _maxHashtagSelection,
+                        ),
+
+                        // Image Preview
+                        if (_imageBytes != null) ...[
+                          const SizedBox(height: 12),
+                          Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.memory(
+                                  _imageBytes!,
+                                  height:
+                                      150, // Reduced height for compact view
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  gaplessPlayback: true,
+                                ),
+                              ),
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: IconButton.filled(
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: Colors.black54,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  onPressed: _removeImage,
+                                  icon: const Icon(Icons.close, size: 20),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
+                        const SizedBox(height: 100), // Bottom spacer for FABs
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Sticky Bottom Actions
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        width: 1,
                       ),
                     ),
                   ),
-                  if (_imageBytes != null) ...[
-                    const SizedBox(height: 16),
-                    Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.memory(
-                            _imageBytes!,
-                            height: 200,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            gaplessPlayback: true,
-                          ),
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: IconButton.filled(
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.black54,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: _removeImage,
-                            icon: const Icon(Icons.close, size: 20),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  Row(
+                  child: Row(
                     children: [
                       TextButton.icon(
                         style: TextButton.styleFrom(
-                          backgroundColor: Colors.white.withValues(alpha: 0.5),
+                          backgroundColor: Colors.white.withValues(alpha: 0.7),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -1115,8 +1107,8 @@ class _TimelineComposerState extends State<_TimelineComposer> {
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
