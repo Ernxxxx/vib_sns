@@ -250,7 +250,7 @@ async function sendPushNotification(profileId, payload) {
 }
 
 /**
- * Get profile display name
+ * Get profile display name by profileId
  */
 async function getDisplayName(profileId) {
   try {
@@ -261,6 +261,57 @@ async function getDisplayName(profileId) {
   }
 }
 
+/**
+ * Get profile display name by authUid
+ * Searches for a profile where authUid matches
+ */
+async function getDisplayNameByAuthUid(authUid) {
+  try {
+    // First try to find profile by authUid field
+    const query = await db.collection('profiles')
+      .where('authUid', '==', authUid)
+      .limit(1)
+      .get();
+
+    if (!query.empty) {
+      const data = query.docs[0].data();
+      return data.displayName || 'ユーザー';
+    }
+
+    // Fallback: check if authUid is also the profileId
+    const doc = await db.collection('profiles').doc(authUid).get();
+    return doc.exists ? doc.data().displayName || 'ユーザー' : 'ユーザー';
+  } catch {
+    return 'ユーザー';
+  }
+}
+
+/**
+ * Get profile ID and display name from document data or by authUid lookup
+ */
+async function getProfileInfoFromDoc(docData, authUid) {
+  // Try to get info from embedded profile data first
+  const profileData = docData?.profile;
+  if (profileData) {
+    const displayName = profileData.displayName;
+    const profileId = docData.viewerProfileId || profileData.id || authUid;
+    if (displayName && displayName.trim() !== '' && displayName !== 'Unknown') {
+      return { displayName, profileId };
+    }
+  }
+
+  // Fall back to viewerProfileId if available
+  const viewerProfileId = docData?.viewerProfileId;
+  if (viewerProfileId) {
+    const name = await getDisplayName(viewerProfileId);
+    return { displayName: name, profileId: viewerProfileId };
+  }
+
+  // Last resort: search by authUid
+  const name = await getDisplayNameByAuthUid(authUid);
+  return { displayName: name, profileId: authUid };
+}
+
 // ============================================
 // FCM Triggers
 // ============================================
@@ -268,16 +319,19 @@ async function getDisplayName(profileId) {
 /**
  * Trigger: New follower
  * Path: profiles/{targetId}/followers/{followerId}
+ * Note: followerId is actually authUid (Firebase Auth UID)
  */
 exports.onFollow = functions.firestore
   .document('profiles/{targetId}/followers/{followerId}')
   .onCreate(async (snap, context) => {
     const { targetId, followerId } = context.params;
+    const data = snap.data();
+
+    // Get profile info from document data or by lookup
+    const { displayName: followerName, profileId } = await getProfileInfoFromDoc(data, followerId);
 
     // Don't notify yourself
-    if (targetId === followerId) return null;
-
-    const followerName = await getDisplayName(followerId);
+    if (targetId === profileId || targetId === followerId) return null;
 
     await sendPushNotification(targetId, {
       notification: {
@@ -286,7 +340,7 @@ exports.onFollow = functions.firestore
       },
       data: {
         type: 'follow',
-        profileId: followerId,
+        profileId: profileId,
         click_action: 'FLUTTER_NOTIFICATION_CLICK',
       },
     });
@@ -297,16 +351,19 @@ exports.onFollow = functions.firestore
 /**
  * Trigger: Profile like
  * Path: profiles/{targetId}/likes/{likerId}
+ * Note: likerId is actually authUid (Firebase Auth UID)
  */
 exports.onLike = functions.firestore
   .document('profiles/{targetId}/likes/{likerId}')
   .onCreate(async (snap, context) => {
     const { targetId, likerId } = context.params;
+    const data = snap.data();
+
+    // Get profile info from document data or by lookup
+    const { displayName: likerName, profileId } = await getProfileInfoFromDoc(data, likerId);
 
     // Don't notify yourself
-    if (targetId === likerId) return null;
-
-    const likerName = await getDisplayName(likerId);
+    if (targetId === profileId || targetId === likerId) return null;
 
     await sendPushNotification(targetId, {
       notification: {
@@ -315,7 +372,7 @@ exports.onLike = functions.firestore
       },
       data: {
         type: 'like',
-        profileId: likerId,
+        profileId: profileId,
         click_action: 'FLUTTER_NOTIFICATION_CLICK',
       },
     });
@@ -350,7 +407,11 @@ exports.onTimelineLike = functions.firestore
       // Don't notify yourself
       if (likerId === authorId) continue;
 
-      const likerName = await getDisplayName(likerId);
+      // likedBy contains profileId, so try that first, then fall back to authUid lookup
+      let likerName = await getDisplayName(likerId);
+      if (likerName === 'ユーザー') {
+        likerName = await getDisplayNameByAuthUid(likerId);
+      }
 
       await sendPushNotification(authorId, {
         notification: {
@@ -383,7 +444,8 @@ exports.onReplyNotification = functions.firestore
     // Only process reply notifications
     if (data.type !== 'reply') return null;
 
-    const replierName = data.replierName || 'ユーザー';
+    // Dart code saves as 'fromUserName', not 'replierName'
+    const replierName = data.fromUserName || data.replierName || 'ユーザー';
     const caption = data.caption || '返信';
     const snippet = caption.length > 30 ? caption.substring(0, 30) + '...' : caption;
 
@@ -396,7 +458,7 @@ exports.onReplyNotification = functions.firestore
         type: 'reply',
         postId: data.postId || '',
         replyId: data.replyId || '',
-        profileId: data.replierProfileId || '',
+        profileId: data.fromUserId || data.replierProfileId || '',
         click_action: 'FLUTTER_NOTIFICATION_CLICK',
       },
     });
@@ -419,7 +481,11 @@ exports.onDM = functions.firestore
     // Don't notify the sender
     if (!recipientId || senderId === recipientId) return null;
 
-    const senderName = await getDisplayName(senderId);
+    // senderId is profileId in DM messages
+    let senderName = await getDisplayName(senderId);
+    if (senderName === 'ユーザー') {
+      senderName = await getDisplayNameByAuthUid(senderId);
+    }
     const isImage = message.type === 'image';
     const bodyText = isImage ? '📷 画像を送信しました' : (message.text || 'メッセージを送信しました');
     const snippet = bodyText.length > 30 ? bodyText.substring(0, 30) + '...' : bodyText;
