@@ -506,3 +506,38 @@ exports.onDM = functions.firestore
 
     return null;
   });
+
+/**
+ * Trigger: Encounter notification (streetpass)
+ * Path: profiles/{targetId}/notifications/{notificationId}
+ * Only processes type='encounter'
+ */
+exports.onEncounterNotification = functions.firestore
+  .document('profiles/{targetId}/notifications/{notificationId}')
+  .onCreate(async (snap, context) => {
+    const { targetId } = context.params;
+    const data = snap.data();
+
+    // Only process encounter notifications
+    if (data.type !== 'encounter') return null;
+
+    const encounterName = data.fromUserName || 'ユーザー';
+    const isRepeat = data.isRepeat || false;
+
+    const title = isRepeat ? '再会しました' : 'すれ違いました';
+    const body = `${encounterName}さんと${isRepeat ? 'また' : ''}すれ違いました`;
+
+    await sendPushNotification(targetId, {
+      notification: {
+        title: title,
+        body: body,
+      },
+      data: {
+        type: 'encounter',
+        profileId: data.fromUserId || '',
+        click_action: 'FLUTTER_NOTIFICATION_CLICK',
+      },
+    });
+
+    return null;
+  });

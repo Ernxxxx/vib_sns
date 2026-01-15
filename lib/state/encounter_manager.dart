@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -316,6 +317,12 @@ class EncounterManager extends ChangeNotifier {
           message: data.message,
           isRepeat: isRepeatCandidate,
         );
+        // Send push notification to the other user
+        unawaited(_writeEncounterNotificationToFirestore(
+          targetProfileId: data.remoteId,
+          localProfile: _localProfile,
+          isRepeat: isRepeatCandidate,
+        ));
         _lastNotificationAt[data.remoteId] = now;
         countedAsRepeat = isRepeatCandidate;
       }
@@ -368,8 +375,7 @@ class EncounterManager extends ChangeNotifier {
         var updated = false;
         final profile = encounter.profile;
         final pendingLike = _pendingLikeStates[remoteId];
-        if (pendingLike == null ||
-            snapshot.isLikedByViewer == pendingLike) {
+        if (pendingLike == null || snapshot.isLikedByViewer == pendingLike) {
           if (profile.receivedLikes != snapshot.receivedLikes) {
             profile.receivedLikes = snapshot.receivedLikes;
             updated = true;
@@ -1112,6 +1118,36 @@ class EncounterManager extends ChangeNotifier {
         'EncounterManager.switchLocalProfile: local profile set to ${_localProfile.id}');
     if (!skipSync) {
       _subscribeToLocalProfile();
+    }
+  }
+
+  /// Writes an encounter notification to Firestore to trigger push notification
+  Future<void> _writeEncounterNotificationToFirestore({
+    required String targetProfileId,
+    required Profile localProfile,
+    required bool isRepeat,
+  }) async {
+    // Don't notify yourself
+    if (targetProfileId == localProfile.id) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('profiles')
+          .doc(targetProfileId)
+          .collection('notifications')
+          .add({
+        'type': 'encounter',
+        'fromUserId': localProfile.id,
+        'fromUserName': localProfile.displayName,
+        'fromUserUsername': localProfile.username,
+        'fromUserAvatarBase64': localProfile.avatarImageBase64,
+        'isRepeat': isRepeat,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      debugPrint(
+          'Encounter notification written for $targetProfileId (isRepeat: $isRepeat)');
+    } catch (e) {
+      debugPrint('Failed to write encounter notification: $e');
     }
   }
 }
