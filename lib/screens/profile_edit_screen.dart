@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,6 +20,14 @@ import '../utils/auth_helpers.dart';
 import '../utils/color_extensions.dart';
 import '../utils/profile_setup_helper.dart';
 import '../widgets/hashtag_picker.dart';
+
+// 別スレッドで実行する画像処理関数（トップレベルでないとcomputeが使えない）
+Uint8List? _processImage(Uint8List bytes) {
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) return null;
+  final resized = img.copyResize(decoded, width: 512, height: 512);
+  return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
+}
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key, required this.profile});
@@ -112,29 +121,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       final bytes = await file.readAsBytes();
       if (!mounted) return;
 
-      // 画像を正方形にパディングして全体が見えるようにする
-      final originalImage = img.decodeImage(bytes);
-      if (originalImage == null) {
-        _showSnack('画像の読み込みに失敗しました。');
-        return;
-      }
-      final maxSide = originalImage.width > originalImage.height
-          ? originalImage.width
-          : originalImage.height;
-      final squareImage = img.Image(width: maxSide, height: maxSide);
-      // 背景を黒で塗りつぶし
-      img.fill(squareImage, color: img.ColorRgba8(0, 0, 0, 255));
-      // 中央に元画像を配置
-      final offsetX = (maxSide - originalImage.width) ~/ 2;
-      final offsetY = (maxSide - originalImage.height) ~/ 2;
-      img.compositeImage(squareImage, originalImage,
-          dstX: offsetX, dstY: offsetY);
-      final paddedBytes = Uint8List.fromList(img.encodePng(squareImage));
-
       // カスタムクロップ画面へ遷移
       final Uint8List? croppedBytes = await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => _CropScreen(image: paddedBytes),
+          builder: (context) => _CropScreen(image: bytes),
         ),
       );
 
@@ -142,9 +132,17 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         return;
       }
 
+      // 画像処理を別スレッドで実行（UIブロック防止）
+      final jpegBytes = await compute(_processImage, croppedBytes);
+      if (jpegBytes == null) {
+        _showSnack('画像の処理に失敗しました。');
+        return;
+      }
+
+      if (!mounted) return;
       setState(() {
-        _avatarImageBytes = croppedBytes;
-        _avatarImageBase64 = base64Encode(croppedBytes);
+        _avatarImageBytes = jpegBytes;
+        _avatarImageBase64 = base64Encode(jpegBytes);
         _avatarRemoved = false;
       });
     } catch (e) {
@@ -291,13 +289,15 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                             false;
                     final hasAvatar = !_avatarRemoved &&
                         (_avatarImageBytes != null || hasInitialAvatar);
-                    return _AvatarEditor(
-                      imageBytes: _avatarImageBytes,
-                      fallbackColor: Colors.grey,
-                      displayName: displayNameForAvatar,
-                      onPickImage: _pickAvatar,
-                      onRemoveImage: hasAvatar ? _removeAvatar : null,
-                      isSaving: _saving,
+                    return Center(
+                      child: _AvatarEditor(
+                        imageBytes: _avatarImageBytes,
+                        fallbackColor: Colors.grey,
+                        displayName: displayNameForAvatar,
+                        onPickImage: _pickAvatar,
+                        onRemoveImage: hasAvatar ? _removeAvatar : null,
+                        isSaving: _saving,
+                      ),
                     );
                   },
                 ),
