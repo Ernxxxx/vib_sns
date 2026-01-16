@@ -165,6 +165,37 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _runPostSaveSync({
+    required Profile updated,
+    required bool wasRunning,
+    required ProfileInteractionService interactionService,
+    required EncounterManager encounterManager,
+    required ScaffoldMessengerState messenger,
+  }) async {
+    try {
+      await interactionService.bootstrapProfile(updated);
+    } catch (error) {
+      debugPrint('Failed to bootstrap profile: $error');
+      messenger.showSnackBar(
+        const SnackBar(content: Text('プロフィールの同期に失敗しました。')),
+      );
+    }
+
+    try {
+      await encounterManager.switchLocalProfile(updated);
+      if (wasRunning) {
+        await encounterManager.start();
+      }
+    } catch (error) {
+      debugPrint('Failed to restart encounter manager: $error');
+      messenger.showSnackBar(
+        SnackBar(
+            content: Text(
+                '\u3059\u308c\u9055\u3044\u3092\u518d\u8d77\u52d5\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f: $error')),
+      );
+    }
+  }
+
   Future<void> _handleSave() async {
     if (_saving) return;
     FocusScope.of(context).unfocus();
@@ -185,9 +216,15 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     final encounterManager = context.read<EncounterManager>();
     final interactionService = context.read<ProfileInteractionService>();
     final wasRunning = encounterManager.isRunning;
+    final messenger = ScaffoldMessenger.of(context);
+    final normalizedCurrentUsername =
+        Profile.normalizeUsername(widget.profile.username);
+    final shouldSyncUsername = username != null &&
+        username.isNotEmpty &&
+        username != normalizedCurrentUsername;
 
     try {
-      if (username != null && username.isNotEmpty) {
+      if (shouldSyncUsername) {
         try {
           final ensuredUser = await ensureAnonymousAuth();
           final currentUser = ensuredUser ?? FirebaseAuth.instance.currentUser;
@@ -218,22 +255,15 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         avatarImageBase64: _avatarRemoved ? null : _avatarImageBase64,
         removeAvatarImage: _avatarRemoved,
       );
-      await interactionService.bootstrapProfile(updated);
       profileController.updateProfile(updated, needsSetup: false);
-      await encounterManager.switchLocalProfile(updated);
-      if (wasRunning) {
-        try {
-          await encounterManager.start();
-        } catch (error) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text(
-                      '\u3059\u308c\u9055\u3044\u3092\u518d\u8d77\u52d5\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f: $error')),
-            );
-          }
-        }
-      }
+      // Run slower remote syncs in the background to keep save responsive.
+      unawaited(_runPostSaveSync(
+        updated: updated,
+        wasRunning: wasRunning,
+        interactionService: interactionService,
+        encounterManager: encounterManager,
+        messenger: messenger,
+      ));
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (error) {
