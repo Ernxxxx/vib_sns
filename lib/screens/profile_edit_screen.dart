@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:image/image.dart' as img;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:crop_your_image/crop_your_image.dart';
 
 import '../data/preset_hashtags.dart';
 import '../models/profile.dart';
@@ -97,29 +99,57 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
 
   Future<void> _pickAvatar() async {
     try {
+      // 画像を選択
       final file = await _picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 70,
+        maxWidth: 1024,
+        maxHeight: 1024,
       );
       if (file == null) {
         return;
       }
+
       final bytes = await file.readAsBytes();
-      if (bytes.isEmpty) {
-        _showSnack(
-            '\u9078\u629e\u3057\u305f\u753b\u50cf\u304c\u7121\u52b9\u3067\u3057\u305f\u3002');
+      if (!mounted) return;
+
+      // 画像を正方形にパディングして全体が見えるようにする
+      final originalImage = img.decodeImage(bytes);
+      if (originalImage == null) {
+        _showSnack('画像の読み込みに失敗しました。');
         return;
       }
+      final maxSide = originalImage.width > originalImage.height
+          ? originalImage.width
+          : originalImage.height;
+      final squareImage = img.Image(width: maxSide, height: maxSide);
+      // 背景を黒で塗りつぶし
+      img.fill(squareImage, color: img.ColorRgba8(0, 0, 0, 255));
+      // 中央に元画像を配置
+      final offsetX = (maxSide - originalImage.width) ~/ 2;
+      final offsetY = (maxSide - originalImage.height) ~/ 2;
+      img.compositeImage(squareImage, originalImage,
+          dstX: offsetX, dstY: offsetY);
+      final paddedBytes = Uint8List.fromList(img.encodePng(squareImage));
+
+      // カスタムクロップ画面へ遷移
+      final Uint8List? croppedBytes = await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => _CropScreen(image: paddedBytes),
+        ),
+      );
+
+      if (croppedBytes == null) {
+        return;
+      }
+
       setState(() {
-        _avatarImageBytes = bytes;
-        _avatarImageBase64 = base64Encode(bytes);
+        _avatarImageBytes = croppedBytes;
+        _avatarImageBase64 = base64Encode(croppedBytes);
         _avatarRemoved = false;
       });
-    } catch (_) {
-      _showSnack(
-          '\u753b\u50cf\u306e\u8aad\u307f\u8fbc\u307f\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002');
+    } catch (e) {
+      debugPrint('画像の読み込みに失敗: $e');
+      _showSnack('画像の読み込みに失敗しました。');
     }
   }
 
@@ -479,6 +509,105 @@ class _AvatarEditor extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _CropScreen extends StatefulWidget {
+  final Uint8List image;
+
+  const _CropScreen({required this.image});
+
+  @override
+  State<_CropScreen> createState() => _CropScreenState();
+}
+
+class _CropScreenState extends State<_CropScreen> {
+  final _controller = CropController();
+  bool _isCropping = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Crop(
+            image: widget.image,
+            controller: _controller,
+            onCropped: (image) {
+              Navigator.of(context).pop(image);
+            },
+            withCircleUi: true,
+            baseColor: Colors.black,
+            maskColor: Colors.black.withOpacity(0.8),
+            cornerDotBuilder: (size, edgeAlignment) => const SizedBox.shrink(),
+            initialSize: 1.0,
+            interactive: true,
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.only(
+                  left: 24, right: 24, bottom: 40, top: 20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.9),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+              child: SafeArea(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text(
+                        'キャンセル',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    if (_isCropping)
+                      const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    else
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _isCropping = true);
+                          _controller.crop();
+                        },
+                        child: const Text(
+                          '完了',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

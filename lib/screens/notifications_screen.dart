@@ -13,14 +13,110 @@ import '../widgets/app_logo.dart';
 import 'post_detail_screen.dart';
 import 'profile_view_screen.dart';
 
-class NotificationsScreen extends StatelessWidget {
+/// フィルターの種類を表す enum
+/// いいねは like と timelineLike をまとめて表示
+enum _NotificationFilter {
+  all,
+  encounter,
+  like, // like + timelineLike
+  follow,
+  reply,
+}
+
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  _NotificationFilter _selectedFilter = _NotificationFilter.all;
+
+  List<AppNotification> _filterNotifications(List<AppNotification> all) {
+    switch (_selectedFilter) {
+      case _NotificationFilter.all:
+        return all;
+      case _NotificationFilter.encounter:
+        return all
+            .where((n) => n.type == AppNotificationType.encounter)
+            .toList();
+      case _NotificationFilter.like:
+        return all
+            .where((n) =>
+                n.type == AppNotificationType.like ||
+                n.type == AppNotificationType.timelineLike)
+            .toList();
+      case _NotificationFilter.follow:
+        return all.where((n) => n.type == AppNotificationType.follow).toList();
+      case _NotificationFilter.reply:
+        return all.where((n) => n.type == AppNotificationType.reply).toList();
+    }
+  }
+
+  int _getUnreadCount(List<AppNotification> all, _NotificationFilter filter) {
+    switch (filter) {
+      case _NotificationFilter.all:
+        return 0; // 「すべて」にはバッジを表示しない
+      case _NotificationFilter.encounter:
+        return all
+            .where((n) => n.type == AppNotificationType.encounter && !n.read)
+            .length;
+      case _NotificationFilter.like:
+        return all
+            .where((n) =>
+                (n.type == AppNotificationType.like ||
+                    n.type == AppNotificationType.timelineLike) &&
+                !n.read)
+            .length;
+      case _NotificationFilter.follow:
+        return all
+            .where((n) => n.type == AppNotificationType.follow && !n.read)
+            .length;
+      case _NotificationFilter.reply:
+        return all
+            .where((n) => n.type == AppNotificationType.reply && !n.read)
+            .length;
+    }
+  }
+
+  String _filterLabel(_NotificationFilter filter) {
+    switch (filter) {
+      case _NotificationFilter.all:
+        return 'すべて';
+      case _NotificationFilter.encounter:
+        return 'すれ違い';
+      case _NotificationFilter.like:
+        return 'いいね';
+      case _NotificationFilter.follow:
+        return 'フォロー';
+      case _NotificationFilter.reply:
+        return 'リプライ';
+    }
+  }
+
+  IconData _filterIcon(_NotificationFilter filter) {
+    switch (filter) {
+      case _NotificationFilter.all:
+        return Icons.all_inbox;
+      case _NotificationFilter.encounter:
+        return Icons.sensors;
+      case _NotificationFilter.like:
+        return Icons.favorite;
+      case _NotificationFilter.follow:
+        return Icons.person_add;
+      case _NotificationFilter.reply:
+        return Icons.chat_bubble;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final manager = context.watch<NotificationManager>();
-    final notifications = manager.notifications;
+    final allNotifications = manager.notifications;
+    final notifications = _filterNotifications(allNotifications);
     final hasUnread = manager.unreadCount > 0;
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -28,33 +124,206 @@ class NotificationsScreen extends StatelessWidget {
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: '\u5168\u4ef6\u3092\u65e2\u8aad\u306b\u3059\u308b',
+            tooltip: '全件を既読にする',
             onPressed: hasUnread ? manager.markAllRead : null,
             icon: const Icon(Icons.done_all),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () => context.read<NotificationManager>().refresh(),
-        child: notifications.isEmpty
-            ? ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.3,
-                  ),
-                  const _EmptyNotificationsView(),
-                ],
-              )
-            : ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.zero,
-                itemCount: notifications.length,
-                itemBuilder: (context, index) {
-                  final notification = notifications[index];
-                  return _NotificationTile(notification: notification);
-                },
+      body: Column(
+        children: [
+          // フィルターチップ行
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: theme.scaffoldBackgroundColor,
+              border: Border(
+                bottom: BorderSide(
+                  color: theme.dividerColor.withOpacity(0.1),
+                  width: 1,
+                ),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: _NotificationFilter.values.map((filter) {
+                  final isSelected = _selectedFilter == filter;
+                  final unreadCount = _getUnreadCount(allNotifications, filter);
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 10),
+                    child: _FilterCategoryChip(
+                      label: _filterLabel(filter),
+                      icon: _filterIcon(filter),
+                      isSelected: isSelected,
+                      unreadCount: unreadCount,
+                      onTap: () {
+                        setState(() {
+                          _selectedFilter = filter;
+                        });
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          // 通知リスト
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () => context.read<NotificationManager>().refresh(),
+              child: notifications.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.25,
+                        ),
+                        _EmptyNotificationsView(
+                          filter: _selectedFilter,
+                        ),
+                      ],
+                    )
+                  : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: notifications.length,
+                      padding: EdgeInsets.zero,
+                      itemBuilder: (context, index) {
+                        final notification = notifications[index];
+                        return _NotificationTile(notification: notification);
+                      },
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterCategoryChip extends StatelessWidget {
+  const _FilterCategoryChip({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.unreadCount,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final int unreadCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? colorScheme.primary
+              : colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: colorScheme.primary.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // アイコンとバッジのスタック
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  icon,
+                  size: 18,
+                  color: isSelected
+                      ? colorScheme.onPrimary
+                      : colorScheme.onSurfaceVariant,
+                ),
+                if (unreadCount > 0)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? colorScheme.primary
+                              : colorScheme.surface,
+                          width: 1.5,
+                        ),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 10,
+                        minHeight: 10,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: isSelected
+                    ? colorScheme.onPrimary
+                    : colorScheme.onSurfaceVariant,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+              ),
+            ),
+            if (unreadCount > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withOpacity(0.2)
+                      : colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  unreadCount > 99 ? '99+' : '$unreadCount',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: isSelected
+                        ? colorScheme.onPrimary
+                        : colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -861,7 +1130,24 @@ class _NotificationIcon extends StatelessWidget {
 }
 
 class _EmptyNotificationsView extends StatelessWidget {
-  const _EmptyNotificationsView();
+  const _EmptyNotificationsView({this.filter = _NotificationFilter.all});
+
+  final _NotificationFilter filter;
+
+  String _getMessage() {
+    switch (filter) {
+      case _NotificationFilter.all:
+        return 'まだ通知がありません。\nすれ違いやインタラクションをまつりましょう。';
+      case _NotificationFilter.encounter:
+        return 'すれ違い通知はまだありません。';
+      case _NotificationFilter.like:
+        return 'いいね通知はまだありません。';
+      case _NotificationFilter.follow:
+        return 'フォロー通知はまだありません。';
+      case _NotificationFilter.reply:
+        return 'リプライ通知はまだありません。';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -876,7 +1162,7 @@ class _EmptyNotificationsView extends StatelessWidget {
                 size: 72, color: Color(0xFFFFC400)),
             const SizedBox(height: 18),
             Text(
-              '\u307e\u3060\u901a\u77e5\u304c\u3042\u308a\u307e\u305b\u3093\u3002\n\u3059\u308c\u9055\u3044\u3084\u30a4\u30f3\u30bf\u30fc\u30af\u30b7\u30e7\u30f3\u3092\u307e\u3064\u308a\u307e\u3057\u3087\u3046\u3002',
+              _getMessage(),
               style: theme.textTheme.bodyLarge,
               textAlign: TextAlign.center,
             ),
