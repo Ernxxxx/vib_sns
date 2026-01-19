@@ -536,6 +536,7 @@ exports.onEncounterNotification = functions.firestore
     if (data.type !== 'encounter') return null;
 
     const encounterName = data.fromUserName || 'ユーザー';
+    const fromUserId = data.fromUserId || '';
     const isRepeat = data.isRepeat === true;
     const isReunion = data.isReunion === true;
 
@@ -544,6 +545,10 @@ exports.onEncounterNotification = functions.firestore
       : (isRepeat ? 'またすれ違いました' : 'すれ違いました');
     const body = `${encounterName}さんと${isRepeat ? 'また' : ''}すれ違いました`;
 
+    // Use collapseKey to prevent duplicate notifications from the same person.
+    // When a new notification with the same collapseKey arrives, it replaces the old one.
+    const collapseKey = fromUserId ? `encounter_${fromUserId}` : undefined;
+
     await sendPushNotification(targetId, {
       notification: {
         title: title,
@@ -551,9 +556,17 @@ exports.onEncounterNotification = functions.firestore
       },
       data: {
         type: 'encounter',
-        profileId: data.fromUserId || '',
+        profileId: fromUserId,
         click_action: 'FLUTTER_NOTIFICATION_CLICK',
       },
+      android: collapseKey ? {
+        collapseKey: collapseKey,
+      } : undefined,
+      apns: collapseKey ? {
+        headers: {
+          'apns-collapse-id': collapseKey,
+        },
+      } : undefined,
     });
 
     return null;

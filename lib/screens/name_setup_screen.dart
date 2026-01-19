@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../utils/auth_helpers.dart';
 import '../utils/profile_setup_helper.dart';
 import '../utils/profile_setup_modal.dart';
@@ -20,15 +22,18 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
   final TextEditingController _loginEmailController = TextEditingController();
   final TextEditingController _loginPasswordController =
       TextEditingController();
+  final TextEditingController _idOnlyController = TextEditingController();
   bool _loginEmailSubmitting = false;
   bool _googleSubmitting = false;
   bool _quickLoginSubmitting = false;
+  bool _idOnlySubmitting = false;
   bool _obscurePassword = true;
 
   @override
   void dispose() {
     _loginEmailController.dispose();
     _loginPasswordController.dispose();
+    _idOnlyController.dispose();
     super.dispose();
   }
 
@@ -76,15 +81,51 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
   }
 
   Future<void> _handleLoginEmailAuth() async {
-    final email = _loginEmailController.text.trim();
+    final input = _loginEmailController.text.trim();
     final password = _loginPasswordController.text;
-    if (email.isEmpty || !email.contains('@')) {
-      _showSnack('正しいメールアドレスを入力してください。');
+    if (input.isEmpty) {
+      _showSnack('メールアドレスまたはユーザーIDを入力してください。');
       return;
     }
     if (password.length < 6) {
       _showSnack('パスワードは6文字以上で入力してください。');
       return;
+    }
+
+    // Determine if input is email or username
+    String email = input;
+    if (!input.contains('@')) {
+      // Assume it's a username, look up the email from Firestore
+      final username = input.startsWith('@') ? input.substring(1) : input;
+      try {
+        final usernameDoc = await FirebaseFirestore.instance
+            .collection('usernames')
+            .doc(username.toLowerCase())
+            .get();
+        if (!usernameDoc.exists) {
+          _showSnack('このユーザーIDは登録されていません。');
+          return;
+        }
+        final profileId = usernameDoc.data()?['profileId'] as String?;
+        if (profileId == null) {
+          _showSnack('ユーザー情報の取得に失敗しました。');
+          return;
+        }
+        // Get the profile to find the email
+        final profileDoc = await FirebaseFirestore.instance
+            .collection('profiles')
+            .doc(profileId)
+            .get();
+        final profileEmail = profileDoc.data()?['email'] as String?;
+        if (profileEmail == null || profileEmail.isEmpty) {
+          _showSnack('このアカウントにはメールアドレスが登録されていません。');
+          return;
+        }
+        email = profileEmail;
+      } catch (e) {
+        _showSnack('ユーザー情報の取得に失敗しました: $e');
+        return;
+      }
     }
     setState(() => _loginEmailSubmitting = true);
     try {
@@ -172,6 +213,78 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
     }
   }
 
+  /// ID-only login (no password required)
+  Future<void> _handleIdOnlyLogin() async {
+    final input = _idOnlyController.text.trim();
+    if (input.isEmpty) {
+      _showSnack('ユーザーIDを入力してください。');
+      return;
+    }
+    setState(() => _idOnlySubmitting = true);
+    try {
+      final username = input.startsWith('@') ? input.substring(1) : input;
+      // Look up the username in Firestore
+      final usernameDoc = await FirebaseFirestore.instance
+          .collection('usernames')
+          .doc(username.toLowerCase())
+          .get();
+      if (!usernameDoc.exists) {
+        _showSnack('このユーザーIDは登録されていません。');
+        return;
+      }
+      final profileId = usernameDoc.data()?['profileId'] as String?;
+      if (profileId == null) {
+        _showSnack('ユーザー情報の取得に失敗しました。');
+        return;
+      }
+      // Load the profile and login as that user (anonymous auth + profile switch)
+      final profileDoc = await FirebaseFirestore.instance
+          .collection('profiles')
+          .doc(profileId)
+          .get();
+      if (!profileDoc.exists) {
+        _showSnack('プロフィールが見つかりません。');
+        return;
+      }
+      if (!mounted) return;
+      // Use profile setup modal with the loaded data
+      final profileData = profileDoc.data()!;
+      final displayName = profileData['displayName'] as String? ?? '';
+      final existingUsername = profileData['username'] as String?;
+      final favoriteGames = (profileData['favoriteGames'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [];
+
+      // Complete profile setup with existing data
+      try {
+        await completeProfileSetup(
+          context,
+          displayName: displayName,
+          username: existingUsername,
+          hashtags: favoriteGames,
+          existingProfileId: profileId,
+        );
+      } on UsernameAlreadyTakenException catch (e) {
+        if (mounted) {
+          _showSnack(e.toString());
+        }
+        return;
+      } catch (error) {
+        if (mounted) {
+          _showSnack('ログインに失敗しました: $error');
+        }
+        return;
+      }
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (e) {
+      _showSnack('ログインに失敗しました: $e');
+    } finally {
+      if (mounted) setState(() => _idOnlySubmitting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFFF2B705);
@@ -244,12 +357,12 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                     ),
                     const SizedBox(height: 48),
 
-                    // メールアドレス入力
+                    // メールアドレスまたはID入力
                     _buildModernTextField(
                       controller: _loginEmailController,
-                      label: 'メールアドレス',
-                      hint: 'example@email.com',
-                      icon: Icons.email_outlined,
+                      label: 'メールアドレスまたはユーザーID',
+                      hint: 'example@email.com または @username',
+                      icon: Icons.person_outline,
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 16),
@@ -341,7 +454,7 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
 
                     const SizedBox(height: 32),
 
-                    // 簡単ログインセクション
+                    // IDでログイン（パスワード不要）セクション
                     Column(
                       children: [
                         Row(
@@ -352,7 +465,7 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
-                                'または',
+                                'IDでログイン（パスワード不要）',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
                                   fontSize: 13,
@@ -365,13 +478,19 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
+                        _buildModernTextField(
+                          controller: _idOnlyController,
+                          label: 'ユーザーID',
+                          hint: '@username',
+                          icon: Icons.alternate_email,
+                        ),
+                        const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
                           height: 52,
                           child: OutlinedButton(
-                            onPressed: _quickLoginSubmitting
-                                ? null
-                                : _handleQuickLogin,
+                            onPressed:
+                                _idOnlySubmitting ? null : _handleIdOnlyLogin,
                             style: OutlinedButton.styleFrom(
                               foregroundColor: primaryColor,
                               side: BorderSide(
@@ -382,7 +501,7 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                            child: _quickLoginSubmitting
+                            child: _idOnlySubmitting
                                 ? SizedBox(
                                     width: 22,
                                     height: 22,
@@ -392,7 +511,7 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                                     ),
                                   )
                                 : const Text(
-                                    'アカウントなしで始める',
+                                    'IDでログイン',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
@@ -431,7 +550,49 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 24),
+
+                    // アカウントなしで始める（一番下に配置）
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: TextButton(
+                        onPressed:
+                            _quickLoginSubmitting ? null : _handleQuickLogin,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.grey.shade600,
+                        ),
+                        child: _quickLoginSubmitting
+                            ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.grey.shade600,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'アカウントなしで始める',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '※デモ版のため「アカウントなしで始める」をおすすめします。',
+                      style: TextStyle(
+                        color: Colors.red.shade400,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),

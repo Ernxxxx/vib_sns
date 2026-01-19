@@ -48,8 +48,7 @@ Future<void> syncUsernameReservation({
       .where('username', isEqualTo: normalizedNext)
       .limit(1)
       .get();
-  if (legacyQuery.docs.isNotEmpty &&
-      legacyQuery.docs.first.id != profileId) {
+  if (legacyQuery.docs.isNotEmpty && legacyQuery.docs.first.id != profileId) {
     throw UsernameAlreadyTakenException(normalizedNext);
   }
 
@@ -93,30 +92,78 @@ Future<void> completeProfileSetup(
   required String displayName,
   String? username,
   List<String>? hashtags,
+  String? existingProfileId,
 }) async {
   debugPrint(
-      'completeProfileSetup: displayName=$displayName username=$username hashtags=$hashtags');
+      'completeProfileSetup: displayName=$displayName username=$username hashtags=$hashtags existingProfileId=$existingProfileId');
 
   final normalizedUsername = Profile.normalizeUsername(username);
-  final existingProfile = await LocalProfileLoader.loadOrCreate();
+  Profile existingProfile;
+
+  // If existingProfileId is provided, we're logging in as an existing user
+  if (existingProfileId != null) {
+    // Load profile from Firestore and switch to it
+    final profileDoc = await FirebaseFirestore.instance
+        .collection('profiles')
+        .doc(existingProfileId)
+        .get();
+    if (!profileDoc.exists) {
+      throw StateError('プロフィールが見つかりません。');
+    }
+    final data = profileDoc.data()!;
+    existingProfile = Profile(
+      id: existingProfileId,
+      beaconId: data['beaconId'] as String? ?? existingProfileId,
+      displayName: data['displayName'] as String? ?? displayName,
+      username: data['username'] as String?,
+      bio: data['bio'] as String? ?? '',
+      homeTown: data['homeTown'] as String? ?? '',
+      favoriteGames: (data['favoriteGames'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      avatarColor: Color((data['avatarColor'] as num?)?.toInt() ?? 0xFF1E88E5),
+      avatarImageBase64: data['avatarImageBase64'] as String?,
+    );
+    // Save to local storage
+    await LocalProfileLoader.updateLocalProfile(
+      displayName: existingProfile.displayName,
+      username: existingProfile.username,
+      bio: existingProfile.bio,
+      homeTown: existingProfile.homeTown,
+      favoriteGames: existingProfile.favoriteGames,
+      avatarImageBase64: existingProfile.avatarImageBase64,
+    );
+  } else {
+    existingProfile = await LocalProfileLoader.loadOrCreate();
+  }
 
   final ensuredUser = await ensureAnonymousAuth();
   final currentUser = ensuredUser ?? FirebaseAuth.instance.currentUser;
   if (currentUser == null) {
     throw StateError('認証情報を取得できませんでした。もう一度お試しください。');
   }
-  await syncUsernameReservation(
-    profileId: existingProfile.id,
-    authUid: currentUser.uid,
-    currentUsername: existingProfile.username,
-    nextUsername: normalizedUsername,
-  );
 
-  final updated = await LocalProfileLoader.updateLocalProfile(
-    displayName: displayName,
-    username: normalizedUsername,
-    favoriteGames: hashtags,
-  );
+  // Only sync username if we're not using an existing profile
+  if (existingProfileId == null) {
+    await syncUsernameReservation(
+      profileId: existingProfile.id,
+      authUid: currentUser.uid,
+      currentUsername: existingProfile.username,
+      nextUsername: normalizedUsername,
+    );
+  }
+
+  Profile updated;
+  if (existingProfileId != null) {
+    updated = existingProfile;
+  } else {
+    updated = await LocalProfileLoader.updateLocalProfile(
+      displayName: displayName,
+      username: normalizedUsername,
+      favoriteGames: hashtags,
+    );
+  }
   debugPrint(
       'completeProfileSetup: updated profile username=${updated.username}');
 
