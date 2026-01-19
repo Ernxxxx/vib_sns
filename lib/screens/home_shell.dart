@@ -226,7 +226,7 @@ class _HomeShellState extends State<HomeShell> {
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxHeight: screenHeight *
-                    0.55, // Leave 45% space at top per user request
+                    0.8, // Show modal at ~80% of screen height per user request
               ),
               child: Align(
                 alignment: Alignment.topCenter,
