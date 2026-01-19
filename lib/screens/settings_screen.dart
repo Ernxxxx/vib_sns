@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -261,6 +263,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (_) {}
   }
 
+  Uint8List? _decodeAvatarBytes(String? base64) {
+    if (base64 == null || base64.trim().isEmpty) {
+      return null;
+    }
+    try {
+      final bytes = base64Decode(base64.trim());
+      return bytes.isEmpty ? null : bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -299,17 +313,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           CircleAvatar(
                             radius: 30,
                             backgroundColor: Colors.grey,
-                            backgroundImage: profile.avatarImageBase64 != null
-                                ? MemoryImage(
-                                    Uri.parse(profile.avatarImageBase64!)
-                                        .data!
-                                        .contentAsBytes(),
-                                  )
-                                : null,
-                            child: profile.avatarImageBase64 == null
-                                ? const Icon(Icons.person,
-                                    color: Colors.white, size: 30)
-                                : null,
+                            backgroundImage:
+                                _decodeAvatarBytes(profile.avatarImageBase64) !=
+                                        null
+                                    ? MemoryImage(
+                                        _decodeAvatarBytes(
+                                            profile.avatarImageBase64)!,
+                                      )
+                                    : null,
+                            child:
+                                _decodeAvatarBytes(profile.avatarImageBase64) ==
+                                        null
+                                    ? const Icon(Icons.person,
+                                        color: Colors.white, size: 30)
+                                    : null,
                           ),
                           const SizedBox(width: 16),
                           Expanded(
