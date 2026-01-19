@@ -20,7 +20,6 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
   final TextEditingController _loginEmailController = TextEditingController();
   final TextEditingController _loginPasswordController =
       TextEditingController();
-  final TextEditingController _quickNameController = TextEditingController();
   bool _loginEmailSubmitting = false;
   bool _googleSubmitting = false;
   bool _quickLoginSubmitting = false;
@@ -30,7 +29,6 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
   void dispose() {
     _loginEmailController.dispose();
     _loginPasswordController.dispose();
-    _quickNameController.dispose();
     super.dispose();
   }
 
@@ -139,22 +137,9 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
   }
 
   Future<void> _handleQuickLogin() async {
-    final name = _quickNameController.text.trim();
-    if (name.isEmpty) {
-      _showSnack('表示名を入力してください。');
-      return;
-    }
-    if (name.length > 24) {
-      _showSnack('表示名は24文字以内で入力してください。');
-      return;
-    }
     setState(() => _quickLoginSubmitting = true);
     try {
-      final setup = await showProfileSetupModal(
-        context,
-        initialName: name,
-        lockName: true,
-      );
+      final setup = await showProfileSetupModal(context);
       if (setup == null) {
         if (mounted) {
           _showSnack('表示名と最低2件のハッシュタグを選択してください。');
@@ -367,7 +352,7 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
-                                'または簡単ログイン',
+                                'または',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
                                   fontSize: 13,
@@ -380,21 +365,6 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          'アカウントなしで今すぐ始める',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildModernTextField(
-                          controller: _quickNameController,
-                          label: '表示名',
-                          hint: '表示名を入力',
-                          icon: Icons.person_outline,
-                        ),
-                        const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
                           height: 52,
@@ -422,7 +392,7 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                                     ),
                                   )
                                 : const Text(
-                                    '表示名で始める',
+                                    'アカウントなしで始める',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
