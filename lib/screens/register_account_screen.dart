@@ -500,44 +500,6 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
                 ],
               ),
 
-              const SizedBox(height: 16),
-              // その他の方法
-              Center(
-                child: TextButton(
-                  onPressed: () async {
-                    final result = await showProfileSetupModal(
-                      context,
-                      lockName: false,
-                    );
-                    if (result == null || !mounted) {
-                      return;
-                    }
-                    try {
-                      await completeProfileSetup(
-                        context,
-                        displayName: result.name,
-                        username: result.username,
-                        hashtags: result.hashtags,
-                      );
-                      if (!mounted) return;
-                      Navigator.of(context).popUntil((route) => route.isFirst);
-                    } on UsernameAlreadyTakenException catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(e.toString())),
-                        );
-                      }
-                    }
-                  },
-                  child: Text(
-                    '表示名のみでログイン',
-                    style: TextStyle(
-                      color: Colors.grey.shade500,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
               const SizedBox(height: 24),
             ],
           ),

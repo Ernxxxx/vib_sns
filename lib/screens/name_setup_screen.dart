@@ -20,14 +20,17 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
   final TextEditingController _loginEmailController = TextEditingController();
   final TextEditingController _loginPasswordController =
       TextEditingController();
+  final TextEditingController _quickNameController = TextEditingController();
   bool _loginEmailSubmitting = false;
   bool _googleSubmitting = false;
+  bool _quickLoginSubmitting = false;
   bool _obscurePassword = true;
 
   @override
   void dispose() {
     _loginEmailController.dispose();
     _loginPasswordController.dispose();
+    _quickNameController.dispose();
     super.dispose();
   }
 
@@ -132,6 +135,55 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
         return 'このアカウントは無効になっています。';
       default:
         return 'メール認証エラー: ${error.message ?? error.code}';
+    }
+  }
+
+  Future<void> _handleQuickLogin() async {
+    final name = _quickNameController.text.trim();
+    if (name.isEmpty) {
+      _showSnack('表示名を入力してください。');
+      return;
+    }
+    if (name.length > 24) {
+      _showSnack('表示名は24文字以内で入力してください。');
+      return;
+    }
+    setState(() => _quickLoginSubmitting = true);
+    try {
+      final setup = await showProfileSetupModal(
+        context,
+        initialName: name,
+        lockName: true,
+      );
+      if (setup == null) {
+        if (mounted) {
+          _showSnack('表示名と最低2件のハッシュタグを選択してください。');
+        }
+        return;
+      }
+      if (!mounted) return;
+      try {
+        await completeProfileSetup(
+          context,
+          displayName: setup.name,
+          username: setup.username,
+          hashtags: setup.hashtags,
+        );
+      } on UsernameAlreadyTakenException catch (e) {
+        if (mounted) {
+          _showSnack(e.toString());
+        }
+        return;
+      } catch (error) {
+        if (mounted) {
+          _showSnack('プロフィールの設定に失敗しました: $error');
+        }
+        return;
+      }
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } finally {
+      if (mounted) setState(() => _quickLoginSubmitting = false);
     }
   }
 
@@ -302,7 +354,117 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                       // Note: GoogleAuthButtonの内部実装に依存するが、ここでは配置のみ
                     ),
 
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 40),
+
+                    // 簡単ログインセクション
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            primaryColor.withOpacity(0.08),
+                            primaryColor.withOpacity(0.15),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: primaryColor.withOpacity(0.3),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '簡単ログイン',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'アカウントなしで今すぐ始める',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: TextField(
+                              controller: _quickNameController,
+                              textCapitalization: TextCapitalization.words,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w500),
+                              decoration: InputDecoration(
+                                hintText: '表示名を入力',
+                                hintStyle:
+                                    TextStyle(color: Colors.grey.shade400),
+                                prefixIcon: Icon(
+                                  Icons.person_outline,
+                                  color: Colors.grey.shade400,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: _quickLoginSubmitting
+                                  ? null
+                                  : _handleQuickLogin,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: _quickLoginSubmitting
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2.5,
+                                      ),
+                                    )
+                                  : const Text(
+                                      '始める',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
 
                     // 新規登録リンク
                     Row(
