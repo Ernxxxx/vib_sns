@@ -718,15 +718,24 @@ class EncounterManager extends ChangeNotifier {
       return;
     }
     final didResonate = _shouldRecordResonance(encounter, shouldResonate);
-    final shouldRecordReunion =
-        _shouldRecordReunion(remoteId, encounter.encounteredAt, countedAsRepeat);
+    final shouldRecordReunion = _shouldRecordReunion(
+        remoteId, encounter.encounteredAt, countedAsRepeat);
     if (didResonate) {
+      // Check if this is a NEW resonance (not already in the list)
+      final isNewResonance = !_resonanceHighlights.containsKey(remoteId);
+
       final entry = EncounterHighlightEntry(
         profile: encounter.profile,
         occurredAt: encounter.encounteredAt,
       );
       _resonanceHighlights[remoteId] = entry;
       _lastResonanceAt[remoteId] = encounter.encounteredAt;
+
+      // Write resonance notification to Firestore for NEW resonances
+      if (isNewResonance) {
+        unawaited(_writeResonanceNotification(remoteId, encounter.profile));
+      }
+
       if (shouldRecordReunion) {
         _reunionHighlights[remoteId] = entry;
         _lastReunionAt[remoteId] = encounter.encounteredAt;
@@ -739,6 +748,33 @@ class EncounterManager extends ChangeNotifier {
         occurredAt: encounter.encounteredAt,
       );
       _lastReunionAt[remoteId] = encounter.encounteredAt;
+    }
+  }
+
+  /// Write a resonance notification to Firestore for the remote user
+  Future<void> _writeResonanceNotification(
+      String remoteId, Profile remoteProfile) async {
+    try {
+      final db = FirebaseFirestore.instance;
+
+      // Write notification to the REMOTE user's notifications collection
+      // (they should be notified that local user resonated with them)
+      await db
+          .collection('profiles')
+          .doc(remoteId)
+          .collection('notifications')
+          .add({
+        'type': 'resonance',
+        'fromUserId': _localProfile.id,
+        'fromUserName': _localProfile.displayName,
+        'fromUserUsername': _localProfile.username,
+        'fromUserAvatarBase64': _localProfile.avatarImageBase64,
+        'message': '',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      debugPrint('共鳴通知をFirestoreに書き込みました: remoteId=$remoteId');
+    } catch (error) {
+      debugPrint('共鳴通知の書き込みに失敗: $error');
     }
   }
 

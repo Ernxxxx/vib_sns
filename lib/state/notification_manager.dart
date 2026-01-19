@@ -39,6 +39,8 @@ class NotificationManager extends ChangeNotifier {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _timelineLikesSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
       _replyNotificationsSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+      _resonanceNotificationsSub;
   bool _followersInitialized = false;
   bool _likesInitialized = false;
   bool _timelineLikesInitialized = false;
@@ -46,6 +48,7 @@ class NotificationManager extends ChangeNotifier {
   Set<String> _knownLikeIds = const {};
   final Map<String, Set<String>> _knownTimelineLikes = {};
   Set<String> _knownReplyNotificationIds = const {};
+  Set<String> _knownResonanceNotificationIds = const {};
   bool _paused;
   StreamSubscription<User?>? _authSubscription;
 
@@ -214,6 +217,8 @@ class NotificationManager extends ChangeNotifier {
     _followersSub?.cancel();
     _likesSub?.cancel();
     _timelineLikesSub?.cancel();
+    _replyNotificationsSub?.cancel();
+    _resonanceNotificationsSub?.cancel();
     super.dispose();
   }
 
@@ -222,15 +227,21 @@ class NotificationManager extends ChangeNotifier {
     _followersSub?.cancel();
     _likesSub?.cancel();
     _timelineLikesSub?.cancel();
+    _replyNotificationsSub?.cancel();
+    _resonanceNotificationsSub?.cancel();
     _followersSub = null;
     _likesSub = null;
     _timelineLikesSub = null;
+    _replyNotificationsSub = null;
+    _resonanceNotificationsSub = null;
     _followersInitialized = false;
     _likesInitialized = false;
     _timelineLikesInitialized = false;
     _knownFollowerIds = const {};
     _knownLikeIds = const {};
     _knownTimelineLikes.clear();
+    _knownReplyNotificationIds = const {};
+    _knownResonanceNotificationIds = const {};
     _notifications.clear();
     notifyListeners();
   }
@@ -283,6 +294,7 @@ class NotificationManager extends ChangeNotifier {
 
     _startTimelineLikeSubscription();
     _startReplyNotificationSubscription();
+    _startResonanceNotificationSubscription();
   }
 
   void _startTimelineLikeSubscription() {
@@ -390,11 +402,91 @@ class NotificationManager extends ChangeNotifier {
     _knownReplyNotificationIds = currentIds;
   }
 
+  void _startResonanceNotificationSubscription() {
+    if (_paused || !_hasAuthUser) {
+      return;
+    }
+    _resonanceNotificationsSub?.cancel();
+    final profileId = _localProfile.id;
+    if (profileId.isEmpty) {
+      return;
+    }
+    _resonanceNotificationsSub = FirebaseFirestore.instance
+        .collection('profiles')
+        .doc(profileId)
+        .collection('notifications')
+        .where('type', isEqualTo: 'resonance')
+        .limit(50)
+        .snapshots()
+        .listen(
+      (snapshot) => unawaited(_handleResonanceNotifications(snapshot)),
+      onError: (error, stackTrace) {
+        debugPrint('共鳴通知の監視に失敗: $error');
+      },
+    );
+  }
+
+  Future<void> _handleResonanceNotifications(
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) async {
+    debugPrint('共鳴通知: ${snapshot.docs.length}件のドキュメントを受信');
+    final currentIds = snapshot.docs.map((doc) => doc.id).toSet();
+
+    // 初回ロード時も含めて全ての通知を処理する
+    // (リプライ通知とは異なり、共鳴通知は既存のものも表示する)
+    final isFirstLoad = _knownResonanceNotificationIds.isEmpty;
+    final idsToProcess = isFirstLoad
+        ? currentIds
+        : currentIds.difference(_knownResonanceNotificationIds);
+
+    debugPrint(
+        '共鳴通知: ${isFirstLoad ? "初回ロード" : "新規"}${idsToProcess.length}件を処理');
+
+    for (final id in idsToProcess) {
+      final doc = snapshot.docs.firstWhere((d) => d.id == id);
+      final data = doc.data();
+      final fromUserId = data['fromUserId'] as String? ?? '';
+      final fromUserName = data['fromUserName'] as String? ?? 'Unknown';
+      final message = data['message'] as String? ?? '';
+      final createdAt = data['createdAt'] as Timestamp?;
+
+      debugPrint('共鳴通知: fromUserId=$fromUserId');
+
+      if (fromUserId.isEmpty || fromUserId == _localProfile.id) continue;
+
+      final profile = Profile(
+        id: fromUserId,
+        beaconId: fromUserId,
+        displayName: fromUserName,
+        username: data['fromUserUsername'] as String?,
+        bio: '',
+        homeTown: '',
+        favoriteGames: const [],
+        avatarColor: Colors.grey,
+        avatarImageBase64: data['fromUserAvatarBase64'] as String?,
+      );
+
+      _appendNotification(
+        AppNotification(
+          id: _uuid.v4(),
+          type: AppNotificationType.resonance,
+          title: '${profile.displayName}さんと共鳴しました',
+          message: message,
+          createdAt: createdAt?.toDate() ?? DateTime.now(),
+          profile: profile,
+          read: false,
+        ),
+      );
+    }
+    _knownResonanceNotificationIds = currentIds;
+  }
+
   void _restartSubscriptions() {
     _followersSub?.cancel();
     _likesSub?.cancel();
     _timelineLikesSub?.cancel();
     _replyNotificationsSub?.cancel();
+    _resonanceNotificationsSub?.cancel();
     _followersInitialized = false;
     _likesInitialized = false;
     _timelineLikesInitialized = false;
@@ -402,6 +494,7 @@ class NotificationManager extends ChangeNotifier {
     _knownLikeIds = const {};
     _knownTimelineLikes.clear();
     _knownReplyNotificationIds = const {};
+    _knownResonanceNotificationIds = const {};
     if (_paused) {
       return;
     }
@@ -520,6 +613,10 @@ class NotificationManager extends ChangeNotifier {
       if (n.type == AppNotificationType.timelineLike) {
         return n.profile?.id == notification.profile?.id &&
             n.title == notification.title;
+      }
+      // For resonance, check based on profile ID
+      if (n.type == AppNotificationType.resonance) {
+        return n.profile?.id == notification.profile?.id;
       }
       return false;
     });

@@ -21,6 +21,7 @@ enum _NotificationFilter {
   like, // like + timelineLike
   follow,
   reply,
+  resonance,
 }
 
 class NotificationsScreen extends StatefulWidget {
@@ -51,6 +52,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return all.where((n) => n.type == AppNotificationType.follow).toList();
       case _NotificationFilter.reply:
         return all.where((n) => n.type == AppNotificationType.reply).toList();
+      case _NotificationFilter.resonance:
+        return all
+            .where((n) => n.type == AppNotificationType.resonance)
+            .toList();
     }
   }
 
@@ -77,6 +82,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return all
             .where((n) => n.type == AppNotificationType.reply && !n.read)
             .length;
+      case _NotificationFilter.resonance:
+        return all
+            .where((n) => n.type == AppNotificationType.resonance && !n.read)
+            .length;
     }
   }
 
@@ -92,6 +101,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return 'フォロー';
       case _NotificationFilter.reply:
         return 'リプライ';
+      case _NotificationFilter.resonance:
+        return '共鳴';
     }
   }
 
@@ -107,6 +118,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.person_add;
       case _NotificationFilter.reply:
         return Icons.chat_bubble;
+      case _NotificationFilter.resonance:
+        return Icons.auto_awesome;
     }
   }
 
@@ -360,6 +373,8 @@ class _NotificationTileState extends State<_NotificationTile> {
         return Colors.blueAccent;
       case AppNotificationType.encounter:
         return Colors.purpleAccent;
+      case AppNotificationType.resonance:
+        return Colors.teal;
     }
   }
 
@@ -374,6 +389,8 @@ class _NotificationTileState extends State<_NotificationTile> {
         return Icons.person_add;
       case AppNotificationType.encounter:
         return Icons.sensors;
+      case AppNotificationType.resonance:
+        return Icons.auto_awesome;
     }
   }
 
@@ -747,6 +764,11 @@ class _NotificationTileState extends State<_NotificationTile> {
             : notification.message;
         actionIcon = Icons.sensors;
         break;
+      case AppNotificationType.resonance:
+        actionText =
+            notification.message.isEmpty ? '共鳴が発生しました！' : notification.message;
+        actionIcon = Icons.auto_awesome;
+        break;
       default:
         actionText = notification.message;
         actionIcon = null;
@@ -885,6 +907,19 @@ class _NotificationTileState extends State<_NotificationTile> {
           }
         } else {
           notificationManager.markNotificationRead(notification.id);
+        }
+        break;
+      case AppNotificationType.resonance:
+        notificationManager.markNotificationRead(notification.id);
+        if (notification.profile != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProfileViewScreen(
+                profileId: notification.profile!.id,
+                initialProfile: notification.profile!,
+              ),
+            ),
+          );
         }
         break;
       default:
@@ -1146,6 +1181,8 @@ class _EmptyNotificationsView extends StatelessWidget {
         return 'フォロー通知はまだありません。';
       case _NotificationFilter.reply:
         return 'リプライ通知はまだありません。';
+      case _NotificationFilter.resonance:
+        return '共鳴通知はまだありません。';
     }
   }
 

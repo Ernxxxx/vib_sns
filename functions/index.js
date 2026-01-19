@@ -571,3 +571,40 @@ exports.onEncounterNotification = functions.firestore
 
     return null;
   });
+
+/**
+ * Trigger: Resonance notification
+ * Path: profiles/{targetId}/notifications/{notificationId}
+ * Only processes type='resonance'
+ */
+exports.onResonanceNotification = functions.firestore
+  .document('profiles/{targetId}/notifications/{notificationId}')
+  .onCreate(async (snap, context) => {
+    const { targetId } = context.params;
+    const data = snap.data();
+
+    // Only process resonance notifications
+    if (data.type !== 'resonance') return null;
+
+    const fromUserName = data.fromUserName || 'ユーザー';
+    const fromUserId = data.fromUserId || '';
+    const message = data.message || '';
+
+    const title = '共鳴しました！';
+    const body = message ? `${fromUserName}さんと共鳴しました: ${message}` : `${fromUserName}さんと共鳴しました`;
+    const snippet = body.length > 50 ? body.substring(0, 50) + '...' : body;
+
+    await sendPushNotification(targetId, {
+      notification: {
+        title: title,
+        body: snippet,
+      },
+      data: {
+        type: 'resonance',
+        profileId: fromUserId,
+        click_action: 'FLUTTER_NOTIFICATION_CLICK',
+      },
+    });
+
+    return null;
+  });
