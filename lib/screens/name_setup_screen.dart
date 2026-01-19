@@ -354,114 +354,83 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                       // Note: GoogleAuthButtonの内部実装に依存するが、ここでは配置のみ
                     ),
 
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 32),
 
                     // 簡単ログインセクション
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            primaryColor.withOpacity(0.08),
-                            primaryColor.withOpacity(0.15),
+                    Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                                child: Divider(color: Colors.grey.shade300)),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                'または簡単ログイン',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                                child: Divider(color: Colors.grey.shade300)),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: primaryColor.withOpacity(0.3),
-                          width: 1.5,
+                        const SizedBox(height: 16),
+                        Text(
+                          'アカウントなしで今すぐ始める',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade500,
+                          ),
                         ),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            '簡単ログイン',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade800,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'アカウントなしで今すぐ始める',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: TextField(
-                              controller: _quickNameController,
-                              textCapitalization: TextCapitalization.words,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w500),
-                              decoration: InputDecoration(
-                                hintText: '表示名を入力',
-                                hintStyle:
-                                    TextStyle(color: Colors.grey.shade400),
-                                prefixIcon: Icon(
-                                  Icons.person_outline,
-                                  color: Colors.grey.shade400,
-                                ),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
-                                ),
+                        const SizedBox(height: 12),
+                        _buildModernTextField(
+                          controller: _quickNameController,
+                          label: '表示名',
+                          hint: '表示名を入力',
+                          icon: Icons.person_outline,
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: OutlinedButton(
+                            onPressed: _quickLoginSubmitting
+                                ? null
+                                : _handleQuickLogin,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: primaryColor,
+                              side: BorderSide(
+                                color: primaryColor.withOpacity(0.5),
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 14),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 48,
-                            child: ElevatedButton(
-                              onPressed: _quickLoginSubmitting
-                                  ? null
-                                  : _handleQuickLogin,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryColor,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              child: _quickLoginSubmitting
-                                  ? const SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2.5,
-                                      ),
-                                    )
-                                  : const Text(
-                                      '始める',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                            child: _quickLoginSubmitting
+                                ? SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      color: primaryColor,
+                                      strokeWidth: 2.5,
                                     ),
-                            ),
+                                  )
+                                : const Text(
+                                    '表示名で始める',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
 
                     const SizedBox(height: 32),
