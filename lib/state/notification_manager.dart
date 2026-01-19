@@ -618,6 +618,10 @@ class NotificationManager extends ChangeNotifier {
       if (n.type == AppNotificationType.resonance) {
         return n.profile?.id == notification.profile?.id;
       }
+      // For encounter, check based on profile ID
+      if (n.type == AppNotificationType.encounter) {
+        return n.profile?.id == notification.profile?.id;
+      }
       return false;
     });
 

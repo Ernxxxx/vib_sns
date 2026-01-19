@@ -992,13 +992,16 @@ class _TimelineComposerState extends State<_TimelineComposer> {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(16),
-                                child: Image.memory(
-                                  _imageBytes!,
-                                  height:
-                                      150, // Reduced height for compact view
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                  gaplessPlayback: true,
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 300,
+                                  ),
+                                  child: Image.memory(
+                                    _imageBytes!,
+                                    width: double.infinity,
+                                    fit: BoxFit.contain,
+                                    gaplessPlayback: true,
+                                  ),
                                 ),
                               ),
                               Positioned(
