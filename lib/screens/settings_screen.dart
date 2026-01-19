@@ -310,23 +310,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       padding: const EdgeInsets.all(20),
                       child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 30,
-                            backgroundColor: Colors.grey,
-                            backgroundImage:
-                                _decodeAvatarBytes(profile.avatarImageBase64) !=
-                                        null
-                                    ? MemoryImage(
-                                        _decodeAvatarBytes(
-                                            profile.avatarImageBase64)!,
-                                      )
+                          Builder(
+                            builder: (context) {
+                              final avatarBytes =
+                                  _decodeAvatarBytes(profile.avatarImageBase64);
+                              return CircleAvatar(
+                                radius: 30,
+                                backgroundColor: Colors.grey,
+                                backgroundImage: avatarBytes != null
+                                    ? MemoryImage(avatarBytes)
                                     : null,
-                            child:
-                                _decodeAvatarBytes(profile.avatarImageBase64) ==
-                                        null
+                                child: avatarBytes == null
                                     ? const Icon(Icons.person,
                                         color: Colors.white, size: 30)
                                     : null,
+                              );
+                            },
                           ),
                           const SizedBox(width: 16),
                           Expanded(
