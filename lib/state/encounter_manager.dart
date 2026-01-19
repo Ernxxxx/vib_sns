@@ -752,10 +752,14 @@ class EncounterManager extends ChangeNotifier {
   }
 
   /// Write a resonance notification to Firestore for the remote user
+  /// Uses a deterministic document ID based on fromUserId to prevent duplicates
   Future<void> _writeResonanceNotification(
       String remoteId, Profile remoteProfile) async {
     try {
       final db = FirebaseFirestore.instance;
+
+      // Use fromUserId as document ID to prevent duplicate notifications
+      final docId = 'resonance_${_localProfile.id}';
 
       // Write notification to the REMOTE user's notifications collection
       // (they should be notified that local user resonated with them)
@@ -763,7 +767,8 @@ class EncounterManager extends ChangeNotifier {
           .collection('profiles')
           .doc(remoteId)
           .collection('notifications')
-          .add({
+          .doc(docId)
+          .set({
         'type': 'resonance',
         'fromUserId': _localProfile.id,
         'fromUserName': _localProfile.displayName,
@@ -1176,6 +1181,7 @@ class EncounterManager extends ChangeNotifier {
   }
 
   /// Writes an encounter notification to Firestore to trigger push notification
+  /// Uses a deterministic document ID based on fromUserId to prevent duplicates
   Future<void> _writeEncounterNotificationToFirestore({
     required String targetProfileId,
     required Profile localProfile,
@@ -1186,11 +1192,16 @@ class EncounterManager extends ChangeNotifier {
     if (targetProfileId == localProfile.id) return;
 
     try {
+      // Use fromUserId as document ID to prevent duplicate notifications
+      // from the same user. New encounters will update the existing doc.
+      final docId = 'encounter_${localProfile.id}';
+
       await FirebaseFirestore.instance
           .collection('profiles')
           .doc(targetProfileId)
           .collection('notifications')
-          .add({
+          .doc(docId)
+          .set({
         'type': 'encounter',
         'fromUserId': localProfile.id,
         'fromUserName': localProfile.displayName,
