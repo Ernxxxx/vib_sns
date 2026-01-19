@@ -1,8 +1,22 @@
 const functions = require('firebase-functions/v1');
-const admin = require('firebase-admin');
 
-admin.initializeApp();
-const db = admin.firestore();
+let admin;
+let db;
+
+function getAdmin() {
+  if (!admin) {
+    admin = require('firebase-admin');
+    admin.initializeApp();
+  }
+  return admin;
+}
+
+function getDb() {
+  if (!db) {
+    db = getAdmin().firestore();
+  }
+  return db;
+}
 
 // Helper: delete collection in batches
 async function deleteCollection(colRef, batchSize = 500) {
@@ -11,7 +25,7 @@ async function deleteCollection(colRef, batchSize = 500) {
   do {
     const snapshot = await query.get();
     if (snapshot.empty) break;
-    const batch = db.batch();
+    const batch = getDb().batch();
     snapshot.docs.forEach((d) => batch.delete(d.ref));
     await batch.commit();
     deleted = snapshot.size;
@@ -20,7 +34,7 @@ async function deleteCollection(colRef, batchSize = 500) {
 }
 
 async function deleteProfileAndReferences(profileId, beaconId = null) {
-  const profiles = db.collection('profiles');
+  const profiles = getDb().collection('profiles');
   const myRef = profiles.doc(profileId);
 
   // Get the profile data to retrieve username before deletion
@@ -52,26 +66,26 @@ async function deleteProfileAndReferences(profileId, beaconId = null) {
 
   // Delete streetpass_presences referencing deviceId or beaconId
   try {
-    const presencesByDevice = await db.collection('streetpass_presences').where('deviceId', '==', profileId).get();
+    const presencesByDevice = await getDb().collection('streetpass_presences').where('deviceId', '==', profileId).get();
     for (const p of presencesByDevice.docs) { await p.ref.delete(); }
   } catch (e) { /* ignore */ }
   if (beaconId) {
     try {
-      const presencesByBeacon = await db.collection('streetpass_presences').where('beaconId', '==', beaconId).get();
+      const presencesByBeacon = await getDb().collection('streetpass_presences').where('beaconId', '==', beaconId).get();
       for (const p of presencesByBeacon.docs) { await p.ref.delete(); }
     } catch (e) { /* ignore */ }
   }
 
   // Delete notifications where actorId == profileId (if notifications collection exists)
   try {
-    const notifs = await db.collection('notifications').where('actorId', '==', profileId).get();
+    const notifs = await getDb().collection('notifications').where('actorId', '==', profileId).get();
     for (const n of notifs.docs) { await n.ref.delete(); }
   } catch (e) { /* ignore */ }
 
   // Delete the username from usernames collection
   if (username) {
     try {
-      await db.collection('usernames').doc(username.toLowerCase()).delete();
+      await getDb().collection('usernames').doc(username.toLowerCase()).delete();
       console.log(`Deleted username reservation: ${username}`);
     } catch (e) {
       console.warn('Failed to delete username reservation:', e.message);
@@ -97,7 +111,7 @@ exports.deleteUserProfile = functions.https.onCall(async (data, context) => {
 
   if (!targetProfileId) {
     // Try to find a profile document that has authUid == uid
-    const profiles = db.collection('profiles');
+    const profiles = getDb().collection('profiles');
     const q = await profiles.where('authUid', '==', uid).limit(1).get();
     if (!q.empty) {
       targetProfileId = q.docs[0].id;
@@ -106,7 +120,7 @@ exports.deleteUserProfile = functions.https.onCall(async (data, context) => {
 
   if (!targetProfileId) {
     // As a last resort, allow deletion if a profile doc has id == uid
-    const maybe = await db.collection('profiles').doc(uid).get();
+    const maybe = await getDb().collection('profiles').doc(uid).get();
     if (maybe.exists) {
       targetProfileId = uid;
     }
@@ -118,7 +132,7 @@ exports.deleteUserProfile = functions.https.onCall(async (data, context) => {
 
   // Verify ownership: ensure profile.authUid == uid if authUid field exists
   try {
-    const profileSnapshot = await db.collection('profiles').doc(targetProfileId).get();
+    const profileSnapshot = await getDb().collection('profiles').doc(targetProfileId).get();
     if (profileSnapshot.exists) {
       const dataSnap = profileSnapshot.data() || {};
       if (dataSnap.authUid && dataSnap.authUid !== uid) {
@@ -139,7 +153,7 @@ exports.deleteUserProfile = functions.https.onCall(async (data, context) => {
 
     // Delete the Firebase Authentication user account
     try {
-      await admin.auth().deleteUser(uid);
+      await getAdmin().auth().deleteUser(uid);
       console.log(`Successfully deleted Firebase Auth user: ${uid}`);
     } catch (authError) {
       // Log but don't fail the entire operation if Auth deletion fails
@@ -164,7 +178,7 @@ exports.deleteUserProfile = functions.https.onCall(async (data, context) => {
  * @returns {Promise<string[]>}
  */
 async function getFcmTokens(profileId) {
-  const tokensSnapshot = await db
+  const tokensSnapshot = await getDb()
     .collection('profiles')
     .doc(profileId)
     .collection('fcmTokens')
@@ -180,7 +194,7 @@ async function getFcmTokens(profileId) {
  */
 async function isPushEnabled(profileId) {
   try {
-    const profileDoc = await db.collection('profiles').doc(profileId).get();
+    const profileDoc = await getDb().collection('profiles').doc(profileId).get();
     if (!profileDoc.exists) return false;
     const data = profileDoc.data();
     // Default to enabled if field doesn't exist
@@ -210,7 +224,7 @@ async function sendPushNotification(profileId, payload) {
     return;
   }
 
-  const messaging = admin.messaging();
+  const messaging = getAdmin().messaging();
   const invalidTokens = [];
 
   for (const token of tokens) {
@@ -236,7 +250,7 @@ async function sendPushNotification(profileId, payload) {
   for (const invalidToken of invalidTokens) {
     const tokenHash = Math.abs(invalidToken.hashCode?.() || invalidToken.split('').reduce((a, b) => ((a << 5) - a + b.charCodeAt(0)) | 0, 0)).toString();
     try {
-      await db
+      await getDb()
         .collection('profiles')
         .doc(profileId)
         .collection('fcmTokens')
@@ -254,7 +268,7 @@ async function sendPushNotification(profileId, payload) {
  */
 async function getDisplayName(profileId) {
   try {
-    const doc = await db.collection('profiles').doc(profileId).get();
+    const doc = await getDb().collection('profiles').doc(profileId).get();
     return doc.exists ? doc.data().displayName || 'ユーザー' : 'ユーザー';
   } catch {
     return 'ユーザー';
@@ -268,7 +282,7 @@ async function getDisplayName(profileId) {
 async function getDisplayNameByAuthUid(authUid) {
   try {
     // First try to find profile by authUid field
-    const query = await db.collection('profiles')
+    const query = await getDb().collection('profiles')
       .where('authUid', '==', authUid)
       .limit(1)
       .get();
@@ -279,7 +293,7 @@ async function getDisplayNameByAuthUid(authUid) {
     }
 
     // Fallback: check if authUid is also the profileId
-    const doc = await db.collection('profiles').doc(authUid).get();
+    const doc = await getDb().collection('profiles').doc(authUid).get();
     return doc.exists ? doc.data().displayName || 'ユーザー' : 'ユーザー';
   } catch {
     return 'ユーザー';
@@ -522,9 +536,12 @@ exports.onEncounterNotification = functions.firestore
     if (data.type !== 'encounter') return null;
 
     const encounterName = data.fromUserName || 'ユーザー';
-    const isRepeat = data.isRepeat || false;
+    const isRepeat = data.isRepeat === true;
+    const isReunion = data.isReunion === true;
 
-    const title = isRepeat ? '再会しました' : 'すれ違いました';
+    const title = isReunion
+      ? '再会しました'
+      : (isRepeat ? 'またすれ違いました' : 'すれ違いました');
     const body = `${encounterName}さんと${isRepeat ? 'また' : ''}すれ違いました`;
 
     await sendPushNotification(targetId, {

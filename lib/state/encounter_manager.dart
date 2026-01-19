@@ -310,21 +310,28 @@ class EncounterManager extends ChangeNotifier {
             fallbackNow: now,
           );
       if (shouldNotify) {
+        final isRepeat = isRepeatCandidate;
+        final isReunion = _shouldRecordReunion(
+          encounter.profile.id,
+          encounter.encounteredAt,
+          isRepeat,
+        );
         _notificationManager?.registerEncounter(
           profile: encounter.profile,
           encounteredAt: encounter.encounteredAt,
           encounterId: encounter.id,
           message: data.message,
-          isRepeat: isRepeatCandidate,
+          isRepeat: isRepeat,
         );
         // Send push notification to the other user
         unawaited(_writeEncounterNotificationToFirestore(
           targetProfileId: data.remoteId,
           localProfile: _localProfile,
-          isRepeat: isRepeatCandidate,
+          isRepeat: isRepeat,
+          isReunion: isReunion,
         ));
         _lastNotificationAt[data.remoteId] = now;
-        countedAsRepeat = isRepeatCandidate;
+        countedAsRepeat = isRepeat;
       }
     }
     final hasSharedHashtag = _hasSharedHashtag(data.remoteId, data.profile);
@@ -710,8 +717,9 @@ class EncounterManager extends ChangeNotifier {
     if (remoteId.isEmpty) {
       return;
     }
-    final hadResonated = _resonanceHighlights.containsKey(remoteId);
     final didResonate = _shouldRecordResonance(encounter, shouldResonate);
+    final shouldRecordReunion =
+        _shouldRecordReunion(remoteId, encounter.encounteredAt, countedAsRepeat);
     if (didResonate) {
       final entry = EncounterHighlightEntry(
         profile: encounter.profile,
@@ -719,23 +727,33 @@ class EncounterManager extends ChangeNotifier {
       );
       _resonanceHighlights[remoteId] = entry;
       _lastResonanceAt[remoteId] = encounter.encounteredAt;
-      if (hadResonated &&
-          countedAsRepeat &&
-          _canRecordReunion(remoteId, encounter.encounteredAt)) {
+      if (shouldRecordReunion) {
         _reunionHighlights[remoteId] = entry;
         _lastReunionAt[remoteId] = encounter.encounteredAt;
       }
       return;
     }
-    if (hadResonated &&
-        countedAsRepeat &&
-        _canRecordReunion(remoteId, encounter.encounteredAt)) {
+    if (shouldRecordReunion) {
       _reunionHighlights[remoteId] = EncounterHighlightEntry(
         profile: encounter.profile,
         occurredAt: encounter.encounteredAt,
       );
       _lastReunionAt[remoteId] = encounter.encounteredAt;
     }
+  }
+
+  bool _shouldRecordReunion(
+    String remoteId,
+    DateTime encounteredAt,
+    bool countedAsRepeat,
+  ) {
+    if (!countedAsRepeat) {
+      return false;
+    }
+    if (!_resonanceHighlights.containsKey(remoteId)) {
+      return false;
+    }
+    return _canRecordReunion(remoteId, encounteredAt);
   }
 
   bool _canRecordReunion(String remoteId, DateTime at) {
@@ -1126,6 +1144,7 @@ class EncounterManager extends ChangeNotifier {
     required String targetProfileId,
     required Profile localProfile,
     required bool isRepeat,
+    required bool isReunion,
   }) async {
     // Don't notify yourself
     if (targetProfileId == localProfile.id) return;
@@ -1142,6 +1161,7 @@ class EncounterManager extends ChangeNotifier {
         'fromUserUsername': localProfile.username,
         'fromUserAvatarBase64': localProfile.avatarImageBase64,
         'isRepeat': isRepeat,
+        'isReunion': isReunion,
         'createdAt': FieldValue.serverTimestamp(),
       });
       debugPrint(
