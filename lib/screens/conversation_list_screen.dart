@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import '../models/conversation.dart';
 import '../models/profile.dart';
@@ -107,9 +108,10 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
     Profile? profile,
   ) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final isPinned = conversation.isPinnedFor(userId);
     final isMuted = conversation.isMutedFor(userId);
-    final displayName = profile?.displayName ?? '相手';
+    final displayName = profile?.displayName ?? l10n?.chatPartner ?? '相手';
 
     showModalBottomSheet(
       context: context,
@@ -164,7 +166,9 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                 icon: isPinned ? Icons.push_pin : Icons.push_pin_outlined,
                 iconColor:
                     isPinned ? theme.colorScheme.primary : Colors.grey[700]!,
-                label: isPinned ? 'ピン留めを解除' : 'ピン留め',
+                label: isPinned
+                    ? (l10n?.unpin ?? 'ピン留めを解除')
+                    : (l10n?.pin ?? 'ピン留め'),
                 onTap: () async {
                   Navigator.pop(context);
                   // Optimistic update
@@ -181,7 +185,9 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                     ? Icons.notifications_off
                     : Icons.notifications_off_outlined,
                 iconColor: isMuted ? Colors.orange : Colors.grey[700]!,
-                label: isMuted ? 'ミュート解除' : '通知をミュート',
+                label: isMuted
+                    ? (l10n?.unmute ?? 'ミュート解除')
+                    : (l10n?.muteNotifications ?? '通知をミュート'),
                 onTap: () async {
                   Navigator.pop(context);
                   // Optimistic update
@@ -196,7 +202,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
               _buildOptionTile(
                 icon: Icons.delete_outline,
                 iconColor: Colors.red,
-                label: '会話を削除',
+                label: l10n?.deleteConversation ?? '会話を削除',
                 isDestructive: true,
                 onTap: () {
                   Navigator.pop(context);
@@ -233,15 +239,17 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
 
   void _confirmDelete(
       BuildContext context, Conversation conversation, String displayName) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('会話を削除'),
-        content: Text('$displayNameとの会話を削除しますか？\nこの操作は取り消せません。'),
+        title: Text(l10n?.deleteConversation ?? '会話を削除'),
+        content: Text(l10n?.deleteConversationConfirm(displayName) ??
+            '$displayNameとの会話を削除しますか？\nこの操作は取り消せません。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('キャンセル'),
+            child: Text(l10n?.cancel ?? 'キャンセル'),
           ),
           TextButton(
             onPressed: () async {
@@ -253,9 +261,9 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
               // Then delete from Firestore
               await _dmService.deleteConversation(conversation.id);
             },
-            child: const Text(
-              '削除',
-              style: TextStyle(color: Colors.red),
+            child: Text(
+              l10n?.delete ?? '削除',
+              style: const TextStyle(color: Colors.red),
             ),
           ),
         ],
@@ -273,6 +281,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final userId = context.watch<ProfileController>().profile.id;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -280,7 +289,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
         elevation: 0,
         backgroundColor: Colors.white,
         title: Text(
-          'メッセージ',
+          l10n?.messagesTitle ?? 'メッセージ',
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w800,
             letterSpacing: 0.5,
@@ -354,7 +363,8 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                     ),
                     const SizedBox(height: 32),
                     Text(
-                      'メッセージはまだありません',
+                      AppLocalizations.of(context)?.noMessages ??
+                          'メッセージはまだありません',
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
@@ -362,7 +372,8 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'すれ違ったユーザーと\n会話を始めてみましょう',
+                      AppLocalizations.of(context)?.startConversationHint ??
+                          'すれ違ったユーザーと\n会話を始めてみましょう',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: Colors.grey[600],
@@ -413,7 +424,7 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
                   Icon(Icons.push_pin, size: 14, color: Colors.grey[500]),
                   const SizedBox(width: 4),
                   Text(
-                    'ピン留め',
+                    AppLocalizations.of(context)?.pin ?? 'ピン留め',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: Colors.grey[500],
                       fontWeight: FontWeight.w600,
@@ -490,7 +501,9 @@ class _VibCardConversationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final displayName = profile?.displayName ?? '読み込み中...';
+    final displayName = profile?.displayName ??
+        AppLocalizations.of(context)?.loading ??
+        '読み込み中...';
     final lastMessage = conversation.lastMessage ?? '';
     final lastMessageAt = conversation.lastMessageAt;
     final hasUnread = unreadCount > 0;
@@ -614,7 +627,7 @@ class _VibCardConversationTile extends StatelessWidget {
                           ),
                           if (lastMessageAt != null)
                             Text(
-                              _formatTime(lastMessageAt),
+                              _formatTime(context, lastMessageAt),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: hasUnread
                                     ? theme.colorScheme.primary
@@ -631,7 +644,8 @@ class _VibCardConversationTile extends StatelessWidget {
                           Expanded(
                             child: Text(
                               lastMessage.isEmpty
-                                  ? 'メッセージはまだありません'
+                                  ? (AppLocalizations.of(context)?.noMessages ??
+                                      'メッセージはまだありません')
                                   : lastMessage,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -684,17 +698,20 @@ class _VibCardConversationTile extends StatelessWidget {
     );
   }
 
-  String _formatTime(DateTime time) {
+  String _formatTime(BuildContext context, DateTime time) {
+    final l10n = AppLocalizations.of(context);
     final now = DateTime.now();
     final diff = now.difference(time);
     final isSameDay =
         now.year == time.year && now.month == time.month && now.day == time.day;
 
-    if (diff.inMinutes < 1) return '今';
-    if (diff.inHours < 1) return '${diff.inMinutes}分前';
+    if (diff.inMinutes < 1) return l10n?.now ?? '今';
+    if (diff.inHours < 1)
+      return l10n?.minutesAgo(diff.inMinutes) ?? '${diff.inMinutes}分前';
     if (isSameDay)
       return '${time.hour}:${time.minute.toString().padLeft(2, '0')}';
-    if (diff.inDays < 7) return '${diff.inDays}日前';
+    if (diff.inDays < 7)
+      return l10n?.daysAgo(diff.inDays) ?? '${diff.inDays}日前';
     return '${time.month}/${time.day}';
   }
 }

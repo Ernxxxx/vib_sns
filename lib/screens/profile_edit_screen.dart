@@ -20,6 +20,7 @@ import '../utils/auth_helpers.dart';
 import '../utils/color_extensions.dart';
 import '../utils/profile_setup_helper.dart';
 import '../widgets/hashtag_picker.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 // 別スレッドで実行する画像処理関数（トップレベルでないとcomputeが使えない）
 Uint8List? _processImage(Uint8List bytes) {
@@ -135,7 +136,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       // 画像処理を別スレッドで実行（UIブロック防止）
       final jpegBytes = await compute(_processImage, croppedBytes);
       if (jpegBytes == null) {
-        _showSnack('画像の処理に失敗しました。');
+        final l10n = AppLocalizations.of(context);
+        _showSnack(l10n?.imageProcessingFailed ?? '画像の処理に失敗しました。');
         return;
       }
 
@@ -147,7 +149,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       });
     } catch (e) {
       debugPrint('画像の読み込みに失敗: $e');
-      _showSnack('画像の読み込みに失敗しました。');
+      final l10n = AppLocalizations.of(context);
+      _showSnack(l10n?.imageLoadFailed ?? '画像の読み込みに失敗しました。');
     }
   }
 
@@ -176,8 +179,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       await interactionService.bootstrapProfile(updated);
     } catch (error) {
       debugPrint('Failed to bootstrap profile: $error');
+      final l10n = AppLocalizations.of(messenger.context);
       messenger.showSnackBar(
-        const SnackBar(content: Text('プロフィールの同期に失敗しました。')),
+        SnackBar(content: Text(l10n?.profileSyncFailed ?? 'プロフィールの同期に失敗しました。')),
       );
     }
 
@@ -200,8 +204,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     if (_saving) return;
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
+    final l10n = AppLocalizations.of(context);
     if (_selectedHashtags.length < _minHashtagSelection) {
-      _showSnack('ハッシュタグを$_minHashtagSelection件以上選択してください。');
+      _showSnack(l10n?.minHashtagsRequired(_minHashtagSelection) ??
+          'ハッシュタグを$_minHashtagSelection件以上選択してください。');
       return;
     }
 
@@ -229,7 +235,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           final ensuredUser = await ensureAnonymousAuth();
           final currentUser = ensuredUser ?? FirebaseAuth.instance.currentUser;
           if (currentUser == null) {
-            _showSnack('認証情報を取得できませんでした。もう一度お試しください。');
+            _showSnack(l10n?.authFetchFailed ?? '認証情報を取得できませんでした。もう一度お試しください。');
             setState(() => _saving = false);
             return;
           }
@@ -240,7 +246,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             nextUsername: username,
           );
         } on UsernameAlreadyTakenException {
-          _showSnack('ユーザーID「@$username」は既に使用されています。');
+          _showSnack(l10n?.usernameAlreadyTaken(username) ??
+              'ユーザーID「@$username」は既に使用されています。');
           setState(() => _saving = false);
           return;
         }
@@ -271,7 +278,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text(
-                '\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb\u306e\u4fdd\u5b58\u306b\u5931\u6557\u3057\u307e\u3057\u305f: $error')),
+                '${l10n?.profileSaveFailed ?? 'プロフィールの保存に失敗しました'}: $error')),
       );
     } finally {
       if (mounted) {
@@ -283,10 +290,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   @override
   Widget build(BuildContext context) {
     final viewInsets = MediaQuery.of(context).viewInsets.bottom;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-            '\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb\u3092\u7de8\u96c6'),
+        title: Text(l10n?.editProfile ?? 'プロフィールを編集'),
         actions: [
           TextButton(
             onPressed: _saving ? null : _handleSave,
@@ -296,7 +303,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('\u4fdd\u5b58'),
+                : Text(l10n?.save ?? '保存'),
           ),
         ],
       ),
@@ -336,18 +343,18 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
                   decoration: InputDecoration(
-                    labelText: '\u8868\u793a\u540d',
-                    hintText: '\u4f8b: \u3072\u306a\u305f',
+                    labelText: l10n?.displayName ?? '表示名',
+                    hintText: l10n?.displayNameHintExample ?? '例: ひなた',
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16)),
                   ),
                   validator: (value) {
                     final trimmed = value?.trim() ?? '';
                     if (trimmed.isEmpty) {
-                      return '\u540d\u524d\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044';
+                      return l10n?.enterName ?? '名前を入力してください';
                     }
                     if (trimmed.length > 24) {
-                      return '24\u6587\u5b57\u4ee5\u5185\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044';
+                      return l10n?.maxChars24 ?? '24文字以内で入力してください';
                     }
                     return null;
                   },
@@ -356,10 +363,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 TextFormField(
                   controller: _usernameController,
                   decoration: InputDecoration(
-                    labelText: 'ユーザーID',
+                    labelText: l10n?.username ?? 'ユーザーID',
                     hintText: '@username',
                     prefixText: '@',
-                    helperText: '英数字とアンダースコア、3〜20文字',
+                    helperText:
+                        l10n?.usernameHelperText ?? '英数字とアンダースコア、3〜20文字',
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16)),
                   ),
@@ -371,9 +379,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 TextFormField(
                   controller: _bioController,
                   decoration: InputDecoration(
-                    labelText: '\u4e00\u8a00\u30b3\u30e1\u30f3\u30c8',
-                    hintText:
-                        '\u3042\u306a\u305f\u306e\u30b9\u30c6\u30fc\u30bf\u30b9\u3084\u30b7\u30f3\u30d7\u30eb\u306a\u81ea\u5df1\u7d39\u4ecb',
+                    labelText: l10n?.bio ?? '一言コメント',
+                    hintText: l10n?.bioHint ?? 'あなたのステータスやシンプルな自己紹介',
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16)),
                   ),
@@ -381,7 +388,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   validator: (value) {
                     final trimmed = value?.trim() ?? '';
                     if (trimmed.length > 120) {
-                      return '120\u6587\u5b57\u4ee5\u5185\u306b\u3057\u3066\u304f\u3060\u3055\u3044';
+                      return l10n?.maxChars120 ?? '120文字以内にしてください';
                     }
                     return null;
                   },
@@ -390,16 +397,15 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 TextFormField(
                   controller: _homeTownController,
                   decoration: InputDecoration(
-                    labelText: '\u6d3b\u52d5\u30a8\u30ea\u30a2',
-                    hintText:
-                        '\u4f8b: \u6771\u4eac\u30a8\u30ea\u30a2 / \u95a2\u897f',
+                    labelText: l10n?.homeTown ?? '活動エリア',
+                    hintText: l10n?.homeTownHintExample ?? '例: 東京エリア / 関西',
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16)),
                   ),
                   validator: (value) {
                     final trimmed = value?.trim() ?? '';
                     if (trimmed.length > 24) {
-                      return '24\u6587\u5b57\u4ee5\u5185\u306b\u3057\u3066\u304f\u3060\u3055\u3044';
+                      return l10n?.maxChars24 ?? '24文字以内にしてください';
                     }
                     return null;
                   },
@@ -429,7 +435,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('\u4fdd\u5b58\u3057\u3066\u623b\u308b'),
+                        : Text(l10n?.saveAndReturn ?? '保存して戻る'),
                   ),
                 ),
               ],
@@ -461,6 +467,7 @@ class _AvatarEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final hasImage = imageBytes != null;
     return Column(
       children: [
@@ -525,7 +532,7 @@ class _AvatarEditor extends StatelessWidget {
               ),
               onPressed: isSaving ? null : onPickImage,
               icon: const Icon(Icons.photo_camera_outlined),
-              label: const Text('\u753b\u50cf\u3092\u9078\u3076'),
+              label: Text(l10n?.selectImage ?? '画像を選ぶ'),
             ),
             if (onRemoveImage != null)
               TextButton.icon(
@@ -534,7 +541,7 @@ class _AvatarEditor extends StatelessWidget {
                 ),
                 onPressed: isSaving ? null : onRemoveImage,
                 icon: const Icon(Icons.delete_outline),
-                label: const Text('\u753b\u50cf\u3092\u524a\u9664'),
+                label: Text(l10n?.removeImage ?? '画像を削除'),
               ),
           ],
         ),
@@ -558,6 +565,7 @@ class _CropScreenState extends State<_CropScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -598,9 +606,9 @@ class _CropScreenState extends State<_CropScreen> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text(
-                        'キャンセル',
-                        style: TextStyle(
+                      child: Text(
+                        l10n?.cropCancel ?? 'キャンセル',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
@@ -622,9 +630,9 @@ class _CropScreenState extends State<_CropScreen> {
                           setState(() => _isCropping = true);
                           _controller.crop();
                         },
-                        child: const Text(
-                          '完了',
-                          style: TextStyle(
+                        child: Text(
+                          l10n?.cropDone ?? '完了',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 16,

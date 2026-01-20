@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
@@ -55,15 +56,16 @@ class PrivacyPolicyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('プライバシーポリシー'),
+        title: Text(l10n?.privacyPolicyTitle ?? 'プライバシーポリシー'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: SelectableText(
-            _policyText,
+            l10n?.privacyPolicyBody ?? _policyText,
             style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
           ),
         ),

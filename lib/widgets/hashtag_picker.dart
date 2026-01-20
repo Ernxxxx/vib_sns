@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import '../data/preset_hashtags.dart';
 
@@ -72,7 +73,9 @@ class _HashtagPickerState extends State<HashtagPicker> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('ハッシュタグは${widget.maxSelection}件まで選べます'),
+        content: Text(AppLocalizations.of(context)
+                ?.hashtagSelectionLimit(widget.maxSelection) ??
+            'ハッシュタグは${widget.maxSelection}件まで選べます'),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -140,7 +143,7 @@ class _HashtagPickerState extends State<HashtagPicker> {
         ),
         const SizedBox(width: 10),
         Text(
-          'ハッシュタグを選択',
+          AppLocalizations.of(context)?.selectHashtagsTitle ?? 'ハッシュタグを選択',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
             letterSpacing: 0.5,
@@ -271,7 +274,8 @@ class _HashtagPickerState extends State<HashtagPicker> {
         controller: _searchController,
         style: TextStyle(color: colorScheme.onSurface),
         decoration: InputDecoration(
-          hintText: 'SEARCH KEYWORD...',
+          hintText: AppLocalizations.of(context)?.searchKeyword ??
+              'SEARCH KEYWORD...',
           hintStyle: TextStyle(
             color: colorScheme.onSurface.withOpacity(0.3),
             fontSize: 13,
@@ -443,7 +447,8 @@ class _HashtagPickerState extends State<HashtagPicker> {
             ),
             const SizedBox(height: 16),
             Text(
-              'No matches found',
+              AppLocalizations.of(context)?.noMatchesFound ??
+                  'No matches found',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
                 letterSpacing: 1.0,

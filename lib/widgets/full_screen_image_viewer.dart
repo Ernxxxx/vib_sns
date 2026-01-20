@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
@@ -90,7 +91,8 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('画像を保存しました'),
+            content:
+                Text(AppLocalizations.of(context)?.imageSaved ?? '画像を保存しました'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),
@@ -104,7 +106,8 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('画像の保存に失敗しました'),
+            content: Text(AppLocalizations.of(context)?.imageSaveFailed ??
+                '画像の保存に失敗しました'),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),

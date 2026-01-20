@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import '../models/profile.dart';
 
@@ -17,6 +18,7 @@ class ProfileStatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       child: Row(
@@ -24,7 +26,7 @@ class ProfileStatsRow extends StatelessWidget {
           Expanded(
             child: ProfileStatBadge(
               icon: Icons.people_alt,
-              label: '\u30d5\u30a9\u30ed\u30ef\u30fc',
+              label: l10n?.followers ?? 'フォロワー',
               value: profile.followersCount,
               accentColor: theme.colorScheme.primary,
               onTap: onFollowersTap,
@@ -34,7 +36,7 @@ class ProfileStatsRow extends StatelessWidget {
           Expanded(
             child: ProfileStatBadge(
               icon: Icons.person_add_alt_1,
-              label: '\u30d5\u30a9\u30ed\u30fc',
+              label: l10n?.following ?? 'フォロー',
               value: profile.followingCount,
               accentColor: theme.colorScheme.secondary,
               onTap: onFollowingTap,
@@ -44,7 +46,7 @@ class ProfileStatsRow extends StatelessWidget {
           Expanded(
             child: ProfileStatBadge(
               icon: Icons.favorite,
-              label: '\u3082\u3089\u3063\u305f\u3044\u3044\u306d',
+              label: l10n?.likes ?? 'もらったいいね',
               value: profile.receivedLikes,
               accentColor: const Color(0xFFFF5F8F),
             ),

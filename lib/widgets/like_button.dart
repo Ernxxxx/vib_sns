@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import '../utils/color_extensions.dart';
 
@@ -204,8 +205,10 @@ class _HeroLikeButton extends StatelessWidget {
                     SizedBox(width: height * 0.22),
                     Text(
                       isLiked
-                          ? '\u3044\u3044\u306d\u6e08\u307f'
-                          : '\u3044\u3044\u306d\u3059\u308b',
+                          ? (AppLocalizations.of(context)?.liked ??
+                              '\u3044\u3044\u306d\u6e08\u307f')
+                          : (AppLocalizations.of(context)?.like ??
+                              '\u3044\u3044\u306d\u3059\u308b'),
                       style: theme.textTheme.titleSmall?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -334,8 +337,10 @@ class _ChipLikeButton extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         isLiked
-                            ? '\u3044\u3044\u306d\u6e08\u307f'
-                            : '\u3044\u3044\u306d',
+                            ? (AppLocalizations.of(context)?.liked ??
+                                '\u3044\u3044\u306d\u6e08\u307f')
+                            : (AppLocalizations.of(context)?.like ??
+                                '\u3044\u3044\u306d'),
                         style: theme.textTheme.labelMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: isLiked ? textColor : Colors.black87,
@@ -566,8 +571,10 @@ class _HeroFollowButton extends StatelessWidget {
                     SizedBox(width: height * 0.2),
                     Text(
                       isFollowing
-                          ? '\u30d5\u30a9\u30ed\u30fc\u4e2d'
-                          : '\u30d5\u30a9\u30ed\u30fc\u3059\u308b',
+                          ? (AppLocalizations.of(context)?.following ??
+                              '\u30d5\u30a9\u30ed\u30fc\u4e2d')
+                          : (AppLocalizations.of(context)?.follow ??
+                              '\u30d5\u30a9\u30ed\u30fc\u3059\u308b'),
                       style: theme.textTheme.titleSmall?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -669,8 +676,10 @@ class _ChipFollowButton extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         isFollowing
-                            ? '\u30d5\u30a9\u30ed\u30fc\u4e2d'
-                            : '\u30d5\u30a9\u30ed\u30fc',
+                            ? (AppLocalizations.of(context)?.following ??
+                                '\u30d5\u30a9\u30ed\u30fc\u4e2d')
+                            : (AppLocalizations.of(context)?.follow ??
+                                '\u30d5\u30a9\u30ed\u30fc'),
                         style: theme.textTheme.labelMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: isFollowing ? Colors.white : Colors.black87,

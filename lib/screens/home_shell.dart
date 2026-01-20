@@ -270,8 +270,8 @@ class _HomeShellState extends State<HomeShell> {
       _showStreetPassSnack(error.message);
     } catch (_) {
       if (!mounted) return;
-      _showStreetPassSnack(
-          '\u3059\u308c\u9055\u3044\u901a\u4fe1\u306e\u8d77\u52d5\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002\u8a2d\u5b9a\u3092\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\u3002');
+      _showStreetPassSnack(AppLocalizations.of(context)?.streetPassStartError ??
+          'すれ違い通信の起動に失敗しました。設定を確認してください。');
     }
   }
 
@@ -349,7 +349,7 @@ class _TimelineScreenState extends State<_TimelineScreen> {
                       );
                     },
                     icon: const Icon(Icons.chat_bubble_outline),
-                    tooltip: 'メッセージ',
+                    tooltip: AppLocalizations.of(context)?.messages ?? 'メッセージ',
                   ),
                   if (unreadCount > 0)
                     Positioned(
@@ -430,7 +430,9 @@ class _TimelineScreenState extends State<_TimelineScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'ユーザーIDを設定しよう！',
+                                        AppLocalizations.of(context)
+                                                ?.setUsernameBannerTitle ??
+                                            'ユーザーIDを設定しよう！',
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: Colors.amber.shade900,
@@ -438,7 +440,9 @@ class _TimelineScreenState extends State<_TimelineScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        '@usernameでプロフィールを検索できるようになります',
+                                        AppLocalizations.of(context)
+                                                ?.setUsernameBannerDescription ??
+                                            '@usernameでプロフィールを検索できるようになります',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: Colors.amber.shade800,
@@ -638,24 +642,25 @@ class _HighlightsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final tiles = <Widget>[
       _HighlightMetric(
         icon: Icons.people_alt_outlined,
-        label: '\u3059\u308c\u9055\u3044',
+        label: l10n?.encounter ?? 'すれ違い',
         value: '${metrics.todaysEncounters}',
         color: Colors.black87,
         onTap: onEncounterTap,
       ),
       _HighlightMetric(
         icon: Icons.repeat,
-        label: '\u518d\u4f1a',
+        label: l10n?.reunion ?? '再会',
         value: '${metrics.reencounters}',
         color: Colors.black87,
         onTap: onReunionTap,
       ),
       _HighlightMetric(
         icon: Icons.favorite,
-        label: '\u5171\u9cf4',
+        label: l10n?.resonance ?? '共鳴',
         value: metrics.resonance.toString(),
         color: Colors.black87,
         onTap: onResonanceTap,
@@ -819,22 +824,22 @@ class _TimelineComposerState extends State<_TimelineComposer> {
       setState(() => _imageBytes = bytes);
     } catch (_) {
       if (!mounted) return;
-      _showSnack(
-          '\u753b\u50cf\u3092\u8aad\u307f\u8fbc\u3081\u307e\u305b\u3093\u3067\u3057\u305f\u3002');
+      final l10n = AppLocalizations.of(context);
+      _showSnack(l10n?.imageLoadError ?? '画像を読み込めませんでした。');
     }
   }
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context);
     final caption = _controller.text.trim();
     final hasImage = _imageBytes != null && _imageBytes!.isNotEmpty;
     if (caption.isEmpty && !hasImage) {
-      _showSnack(
-          '\u30c6\u30ad\u30b9\u30c8\u304b\u753b\u50cf\u3092\u8ffd\u52a0\u3057\u3066\u304f\u3060\u3055\u3044\u3002');
+      _showSnack(l10n?.postValidationEmpty ?? 'テキストか画像を追加してください。');
       return;
     }
     if (_selectedHashtags.isEmpty) {
-      _showSnack(
-          '\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0\u30921\u3064\u4ee5\u4e0a\u9078\u3093\u3067\u304f\u3060\u3055\u3044\u3002');
+      // Use existing minHashtagsRequired if available, passing count 1
+      _showSnack(l10n?.minHashtagsRequired(1) ?? 'ハッシュタグを1つ以上選んでください。');
       return;
     }
     final hashtags = Profile.sanitizeHashtags(_selectedHashtags).toList();
@@ -852,11 +857,13 @@ class _TimelineComposerState extends State<_TimelineComposer> {
         _selectedHashtags.clear();
       });
       FocusScope.of(context).unfocus();
-      _showSnack('投稿しました。');
+      final l10n = AppLocalizations.of(context);
+      _showSnack(l10n?.postSuccess ?? '投稿しました。');
       widget.onPostSuccess?.call();
     } catch (_) {
       if (!mounted) return;
-      _showSnack('投稿に失敗しました。');
+      final l10n = AppLocalizations.of(context);
+      _showSnack(l10n?.postFailed ?? '投稿に失敗しました。');
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -944,34 +951,39 @@ class _TimelineComposerState extends State<_TimelineComposer> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              Text(
-                                '今の瞬間をシェア',
-                                style: AppTextStyles.shareButtonTitle,
-                              ),
+                              Builder(builder: (context) {
+                                final l10n = AppLocalizations.of(context);
+                                return Text(
+                                  l10n?.shareThisMoment ?? '今の瞬間をシェア',
+                                  style: AppTextStyles.shareButtonTitle,
+                                );
+                              }),
                             ],
                           ),
                         ),
                         const SizedBox(height: 12), // Compact Spacing
 
-                        // Text Field
-                        TextField(
-                          controller: _controller,
-                          minLines: 3,
-                          maxLines: 5,
-                          style: const TextStyle(height: 1.5),
-                          decoration: InputDecoration(
-                            hintText: '今の気持ちや思い出を共有...',
-                            hintStyle: TextStyle(
-                                color: Colors.black.withValues(alpha: 0.4)),
-                            filled: true,
-                            fillColor: Colors.white.withValues(alpha: 0.5),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
+                        Builder(builder: (context) {
+                          final l10n = AppLocalizations.of(context);
+                          return TextField(
+                            controller: _controller,
+                            minLines: 3,
+                            maxLines: 5,
+                            style: const TextStyle(height: 1.5),
+                            decoration: InputDecoration(
+                              hintText: l10n?.shareHint ?? '今の気持ちや思い出を共有...',
+                              hintStyle: TextStyle(
+                                  color: Colors.black.withValues(alpha: 0.4)),
+                              filled: true,
+                              fillColor: Colors.white.withValues(alpha: 0.5),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.all(16),
                             ),
-                            contentPadding: const EdgeInsets.all(16),
-                          ),
-                        ),
+                          );
+                        }),
                         const SizedBox(height: 12), // Compact Spacing
 
                         // HashtagPicker (Expands naturally)
@@ -1105,9 +1117,9 @@ class _TimelineComposerState extends State<_TimelineComposer> {
                                         Colors.black87),
                                   ),
                                 )
-                              : const Text(
-                                  'シェア',
-                                  style: TextStyle(
+                              : Text(
+                                  AppLocalizations.of(context)?.share ?? 'シェア',
+                                  style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                   ),
@@ -1179,7 +1191,9 @@ class _UserPostCard extends StatelessWidget {
                                   Flexible(
                                     child: Text(
                                       post.authorName.isEmpty
-                                          ? '匿名'
+                                          ? (AppLocalizations.of(context)
+                                                  ?.anonymous ??
+                                              '匿名')
                                           : post.authorName,
                                       style:
                                           theme.textTheme.titleSmall?.copyWith(
@@ -1209,7 +1223,7 @@ class _UserPostCard extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                _relativeTime(post.createdAt),
+                                _relativeTime(context, post.createdAt),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
@@ -1700,12 +1714,15 @@ class _EmptyTimelineMessage extends StatelessWidget {
   }
 }
 
-String _relativeTime(DateTime time) {
+String _relativeTime(BuildContext context, DateTime time) {
+  final l10n = AppLocalizations.of(context);
   final diff = DateTime.now().difference(time);
-  if (diff.inMinutes < 1) return '\u305f\u3063\u305f\u4eca';
-  if (diff.inHours < 1) return '${diff.inMinutes}\u5206\u524d';
-  if (diff.inHours < 24) return '${diff.inHours}\u6642\u9593\u524d';
-  return '${diff.inDays}\u65e5\u524d';
+  if (diff.inMinutes < 1) return l10n?.justNow ?? 'たった今';
+  if (diff.inHours < 1)
+    return l10n?.minutesAgo(diff.inMinutes) ?? '${diff.inMinutes}分前';
+  if (diff.inHours < 24)
+    return l10n?.hoursAgo(diff.inHours) ?? '${diff.inHours}時間前';
+  return l10n?.daysAgo(diff.inDays) ?? '${diff.inDays}日前';
 }
 
 class _ProfileScreen extends StatefulWidget {
@@ -1802,6 +1819,7 @@ class _ProfileScreenState extends State<_ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final profile = context.watch<ProfileController>().profile;
     final timelineManager = context.watch<TimelineManager>();
     final postLikesTotal = timelineManager.getPostLikesForUser(profile.id);
@@ -1817,7 +1835,7 @@ class _ProfileScreenState extends State<_ProfileScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: '設定',
+            tooltip: AppLocalizations.of(context)?.settings ?? '設定',
             icon: const Icon(Icons.settings_outlined),
             onPressed: () {
               Navigator.of(context).push(
@@ -1928,28 +1946,28 @@ class _ProfileScreenState extends State<_ProfileScreen> {
                         ),
                         const SizedBox(height: 28),
                         Text(
-                          '\u30b9\u30c6\u30fc\u30bf\u30b9',
+                          l10n?.status ?? 'ステータス',
                           style: theme.textTheme.titleMedium,
                         ),
                         const SizedBox(height: 10),
                         ProfileInfoTile(
                           icon: Icons.mood,
-                          title: '\u4e00\u8a00\u30b3\u30e1\u30f3\u30c8',
+                          title: l10n?.bio ?? '一言コメント',
                           value: bio,
                         ),
                         ProfileInfoTile(
                           icon: Icons.place_outlined,
-                          title: '\u6d3b\u52d5\u30a8\u30ea\u30a2',
+                          title: l10n?.activeArea ?? '活動エリア',
                           value: homeTown,
                         ),
                         ProfileInfoTile(
                           icon: Icons.tag,
-                          title: '\u30cf\u30c3\u30b7\u30e5\u30bf\u30b0',
+                          title: l10n?.hashtags ?? 'ハッシュタグ',
                           value: hashtags,
                         ),
                         const SizedBox(height: 28),
                         Text(
-                          'タイムライン',
+                          AppLocalizations.of(context)?.timeline ?? 'タイムライン',
                           style: theme.textTheme.titleMedium,
                         ),
                         const SizedBox(height: 10),
@@ -2029,9 +2047,9 @@ class _ProfileTimelineTabsState extends State<_ProfileTimelineTabs>
           labelColor: theme.colorScheme.onSurface,
           unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
           indicatorColor: theme.colorScheme.primary,
-          tabs: const [
-            Tab(text: '投稿'),
-            Tab(text: 'メディア'),
+          tabs: [
+            Tab(text: AppLocalizations.of(context)?.posts ?? '投稿'),
+            Tab(text: AppLocalizations.of(context)?.media ?? 'メディア'),
           ],
         ),
         SizedBox(
@@ -2069,7 +2087,7 @@ class _PostsTabContent extends StatelessWidget {
     if (posts.isEmpty) {
       return Center(
         child: Text(
-          'まだ投稿がありません',
+          AppLocalizations.of(context)?.noPostsYet ?? 'まだ投稿がありません',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -2101,7 +2119,7 @@ class _MediaTabContent extends StatelessWidget {
     if (posts.isEmpty) {
       return Center(
         child: Text(
-          'メディアがありません',
+          AppLocalizations.of(context)?.noMedia ?? 'メディアがありません',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),

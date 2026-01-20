@@ -356,14 +356,19 @@ class _FuturisticButtonState extends State<_FuturisticButton>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
-                'はじめよう',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                  letterSpacing: 1.2,
-                ),
+              Builder(
+                builder: (context) {
+                  final l10n = AppLocalizations.of(context);
+                  return Text(
+                    l10n?.getStarted ?? 'はじめよう',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      letterSpacing: 1.2,
+                    ),
+                  );
+                },
               ),
               const SizedBox(width: 8),
               const Icon(Icons.arrow_forward_rounded, color: Colors.black87),

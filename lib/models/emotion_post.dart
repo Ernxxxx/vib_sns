@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 enum EmotionType {
   happy,
@@ -41,6 +42,24 @@ extension EmotionTypeX on EmotionType {
         return 'びっくり';
       case EmotionType.tired:
         return 'つかれた';
+    }
+  }
+
+  String localizedLabel(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    switch (this) {
+      case EmotionType.happy:
+        return l10n?.emotionHappy ?? 'うれしい';
+      case EmotionType.sad:
+        return l10n?.emotionSad ?? 'かなしい';
+      case EmotionType.excited:
+        return l10n?.emotionExcited ?? 'ワクワク';
+      case EmotionType.calm:
+        return l10n?.emotionCalm ?? 'おだやか';
+      case EmotionType.surprised:
+        return l10n?.emotionSurprised ?? 'びっくり';
+      case EmotionType.tired:
+        return l10n?.emotionTired ?? 'つかれた';
     }
   }
 

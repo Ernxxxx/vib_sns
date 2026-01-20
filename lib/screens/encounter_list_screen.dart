@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import '../models/encounter.dart';
 import '../services/streetpass_service.dart';
 import '../state/encounter_manager.dart';
 import '../state/runtime_config.dart';
-import '../state/timeline_manager.dart';
 import '../utils/color_extensions.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/emotion_map.dart';
@@ -67,8 +67,9 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
       if (mounted) {
         setState(() => _scanAttempted = true);
       }
+      final l10n = AppLocalizations.of(context);
       _showSnack(
-          '\u3059\u308c\u9055\u3044\u901a\u4fe1\u3092\u958b\u59cb\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f\u3002\u8a2d\u5b9a\u3092\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\u3002');
+          l10n?.encounterStartFailed ?? 'すれ違い通信を開始できませんでした。設定を確認してください。');
     }
   }
 
@@ -78,13 +79,13 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
     try {
       await manager.reset();
       await manager.start();
-      _showSnack(
-          '\u8fd1\u304f\u306e\u30d7\u30ec\u30a4\u30e4\u30fc\u3092\u30b9\u30ad\u30e3\u30f3\u3057\u3066\u3044\u307e\u3059...');
+      final l10n = AppLocalizations.of(context);
+      _showSnack(l10n?.scanningNearby ?? '近くのプレイヤーをスキャンしています...');
     } on StreetPassException catch (error) {
       _showSnack(error.message);
     } catch (_) {
-      _showSnack(
-          '\u901a\u4fe1\u306e\u521d\u671f\u5316\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002');
+      final l10n = AppLocalizations.of(context);
+      _showSnack(l10n?.initFailed ?? '通信の初期化に失敗しました。');
     }
   }
 
@@ -97,6 +98,7 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
   @override
   Widget build(BuildContext context) {
     final runtimeConfig = context.watch<StreetPassRuntimeConfig>();
+    final l10n = AppLocalizations.of(context);
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -105,20 +107,20 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
           centerTitle: true,
           actions: [
             IconButton(
-              tooltip: '\u518d\u8aad\u307f\u8fbc\u307f',
+              tooltip: l10n?.rescan ?? '再読み込み',
               icon: const Icon(Icons.refresh),
               onPressed: _handleScanPressed,
             ),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
             tabs: [
               Tab(
-                icon: Icon(Icons.list_alt),
-                text: '\u30ea\u30b9\u30c8',
+                icon: const Icon(Icons.list_alt),
+                text: l10n?.listTab ?? 'リスト',
               ),
               Tab(
-                icon: Icon(Icons.map_outlined),
-                text: '\u30de\u30c3\u30d7',
+                icon: const Icon(Icons.map_outlined),
+                text: l10n?.mapTab ?? 'マップ',
               ),
             ],
           ),
@@ -142,16 +144,16 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
             List<Widget> buildBanners() {
               return [
                 if (runtimeConfig.usesMockService)
-                  const _BannerMessage(
+                  _BannerMessage(
                     icon: Icons.info_outline,
-                    text:
-                        '\u73fe\u5728\u306f\u30c7\u30e2\u30e2\u30fc\u30c9\u3067\u52d5\u4f5c\u3057\u3066\u3044\u307e\u3059\u3002Firebase\u9023\u643a\u5f8c\u306b\u5b9f\u969b\u306e\u3059\u308c\u9055\u3044\u304c\u53ef\u80fd\u306b\u306a\u308a\u307e\u3059\u3002',
+                    text: l10n?.demoModeMessage ??
+                        '現在はデモモードで動作しています。Firebase連携後に実際のすれ違いが可能になります。',
                   ),
                 if (runtimeConfig.usesMockBle)
-                  const _BannerMessage(
+                  _BannerMessage(
                     icon: Icons.bluetooth_disabled_outlined,
-                    text:
-                        'BLE\u8fd1\u63a5\u691c\u77e5\u306f\u73fe\u5728\u30c7\u30e2\u30c7\u30fc\u30bf\u3067\u52d5\u4f5c\u4e2d\u3067\u3059\u3002\u5b9f\u6a5f\u3067\u306fBluetooth\u3092\u6709\u52b9\u306b\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
+                    text: l10n?.demoBleMessage ??
+                        'BLE近接検知は現在デモデータで動作中です。実機ではBluetoothを有効にしてください。',
                   ),
               ];
             }
@@ -202,11 +204,10 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
                     onRefresh: _handleRefresh,
                     child: ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      children: const [
-                        SizedBox(height: 120),
+                      children: [
+                        const SizedBox(height: 120),
                         Center(
-                          child: Text(
-                              '\u307e\u3060\u8a18\u9332\u304c\u3042\u308a\u307e\u305b\u3093\u3002'),
+                          child: Text(l10n?.noRecordsYet ?? 'まだ記録がありません。'),
                         ),
                       ],
                     ),
@@ -234,21 +235,21 @@ class _EncounterListScreenState extends State<EncounterListScreen> {
             final filterRow = Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: SegmentedButton<EncounterListFilter>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: EncounterListFilter.encounter,
-                    label: Text('すれ違い'),
-                    icon: Icon(Icons.people_alt_outlined),
+                    label: Text(l10n?.encounter ?? 'すれ違い'),
+                    icon: const Icon(Icons.people_alt_outlined),
                   ),
                   ButtonSegment(
                     value: EncounterListFilter.reunion,
-                    label: Text('再会'),
-                    icon: Icon(Icons.repeat),
+                    label: Text(l10n?.reunion ?? '再会'),
+                    icon: const Icon(Icons.repeat),
                   ),
                   ButtonSegment(
                     value: EncounterListFilter.resonance,
-                    label: Text('共鳴'),
-                    icon: Icon(Icons.favorite_border),
+                    label: Text(l10n?.resonance ?? '共鳴'),
+                    icon: const Icon(Icons.favorite_border),
                   ),
                 ],
                 selected: {_selectedFilter},
@@ -298,13 +299,9 @@ class _EncounterTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final timelineManager = context.watch<TimelineManager>();
+    final l10n = AppLocalizations.of(context);
     final distance = encounter.displayDistance;
     final accent = theme.colorScheme.primary;
-    final postLikesTotal =
-        timelineManager.getPostLikesForUser(encounter.profile.id);
-    final totalLikes =
-        (encounter.profile.receivedLikes + postLikesTotal).clamp(0, 999999);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -405,8 +402,12 @@ class _EncounterTile extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 6),
                         child: Text(
                           encounter.proximityVerified
-                              ? 'BLE\u8fd1\u63a5 約${distance.toStringAsFixed(2)}m'
-                              : 'GPS\u63a8\u5b9a 約${distance.round()}m',
+                              ? (l10n?.bleProximity(
+                                      distance.toStringAsFixed(2)) ??
+                                  'BLE近接 約${distance.toStringAsFixed(2)}m')
+                              : (l10n?.gpsEstimated(
+                                      distance.round().toString()) ??
+                                  'GPS推定 約${distance.round()}m'),
                           style: theme.textTheme.bodySmall
                               ?.copyWith(color: Colors.black54),
                         ),
@@ -420,9 +421,6 @@ class _EncounterTile extends StatelessWidget {
                             rawWidth.isFinite && rawWidth > 0
                                 ? rawWidth
                                 : availableWidth / 2;
-                        final int displayLikeCount = encounter.liked
-                            ? (totalLikes > 0 ? totalLikes : 1)
-                            : 0; // Hide counter until the viewer likes to avoid phantom "1" states.
                         return Row(
                           children: [
                             SizedBox(
@@ -433,7 +431,7 @@ class _EncounterTile extends StatelessWidget {
                                 child: LikeButton(
                                   variant: LikeButtonVariant.chip,
                                   isLiked: encounter.liked,
-                                  likeCount: displayLikeCount,
+                                  likeCount: 0,
                                   onPressed: () {
                                     context
                                         .read<EncounterManager>()
@@ -598,8 +596,12 @@ class _HighlightEntryTile extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 6),
                         child: Text(
                           matchedEncounter!.proximityVerified
-                              ? 'BLE\u8fd1\u63a5 約${distance.toStringAsFixed(2)}m'
-                              : 'GPS\u63a8\u5b9a 約${distance.round()}m',
+                              ? (AppLocalizations.of(context)?.bleProximity(
+                                      distance.toStringAsFixed(2)) ??
+                                  'BLE近接 約${distance.toStringAsFixed(2)}m')
+                              : (AppLocalizations.of(context)?.gpsEstimated(
+                                      distance.round().toString()) ??
+                                  'GPS推定 約${distance.round()}m'),
                           style: theme.textTheme.bodySmall
                               ?.copyWith(color: Colors.black54),
                         ),
@@ -616,17 +618,6 @@ class _HighlightEntryTile extends StatelessWidget {
                         if (matchedEncounter == null) {
                           return const SizedBox.shrink();
                         }
-                        final timelineManager =
-                            context.watch<TimelineManager>();
-                        final postLikesTotal = timelineManager
-                            .getPostLikesForUser(matchedEncounter.profile.id);
-                        final totalLikes =
-                            (matchedEncounter.profile.receivedLikes +
-                                    postLikesTotal)
-                                .clamp(0, 999999);
-                        final displayLikeCount = matchedEncounter.liked
-                            ? (totalLikes > 0 ? totalLikes : 1)
-                            : 0;
                         return Row(
                           children: [
                             SizedBox(
@@ -637,7 +628,7 @@ class _HighlightEntryTile extends StatelessWidget {
                                 child: LikeButton(
                                   variant: LikeButtonVariant.chip,
                                   isLiked: matchedEncounter.liked,
-                                  likeCount: displayLikeCount,
+                                  likeCount: 0,
                                   onPressed: () {
                                     context
                                         .read<EncounterManager>()
@@ -694,6 +685,7 @@ class _EmptyEncountersMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -702,8 +694,10 @@ class _EmptyEncountersMessage extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             scanAttempted
-                ? '\u4eca\u56de\u306f\u3059\u308c\u9055\u3044\u304c\u3042\u308a\u307e\u305b\u3093\u3067\u3057\u305f\u3002\n\u5916\u51fa\u3057\u3066\u518d\u5ea6\u30b9\u30ad\u30e3\u30f3\u3057\u3066\u307f\u307e\u3057\u3087\u3046\u3002'
-                : '\u307e\u3060\u3059\u308c\u9055\u3044\u304c\u3042\u308a\u307e\u305b\u3093\u3002\u8fd1\u304f\u306e\u30d7\u30ec\u30a4\u30e4\u30fc\u3092\u63a2\u3057\u3066\u307f\u307e\u3057\u3087\u3046\u3002',
+                ? (l10n?.noEncountersAfterScan ??
+                    '今回はすれ違いがありませんでした。\n外出して再度スキャンしてみましょう。')
+                : (l10n?.noEncountersInitial ??
+                    'まだすれ違いがありません。近くのプレイヤーを探してみましょう。'),
             textAlign: TextAlign.center,
           ),
         ],
@@ -748,6 +742,7 @@ class _LoadingMessage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -756,8 +751,8 @@ class _LoadingMessage extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             attempted
-                ? '\u73fe\u5728\u521d\u671f\u5316\u4e2d\u3067\u3059...\u5909\u5316\u304c\u306a\u3044\u5834\u5408\u306f\u518d\u8a66\u884c\u3057\u3066\u304f\u3060\u3055\u3044\u3002'
-                : '\u521d\u56de\u8d77\u52d5\u4e2d\u3067\u3059\u3002\u3057\u3070\u3089\u304f\u304a\u5f85\u3061\u304f\u3060\u3055\u3044\u3002',
+                ? (l10n?.initializingRetry ?? '現在初期化中です...変化がない場合は再試行してください。')
+                : (l10n?.initializingPlsWait ?? '初回起動中です。しばらくお待ちください。'),
             style: theme.textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),
@@ -765,7 +760,7 @@ class _LoadingMessage extends StatelessWidget {
           TextButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh),
-            label: const Text('\u518d\u30b9\u30ad\u30e3\u30f3'),
+            label: Text(l10n?.rescanButton ?? '再スキャン'),
           ),
         ],
       ),

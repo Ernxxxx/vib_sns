@@ -90,20 +90,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  String _filterLabel(_NotificationFilter filter) {
+  String _filterLabel(_NotificationFilter filter, AppLocalizations? l10n) {
     switch (filter) {
       case _NotificationFilter.all:
-        return 'すべて';
+        return l10n?.all ?? 'すべて';
       case _NotificationFilter.encounter:
-        return 'すれ違い';
+        return l10n?.encounter ?? 'すれ違い';
       case _NotificationFilter.like:
-        return 'いいね';
+        return l10n?.like ?? 'いいね';
       case _NotificationFilter.follow:
-        return 'フォロー';
+        return l10n?.follow ?? 'フォロー';
       case _NotificationFilter.reply:
-        return 'リプライ';
+        return l10n?.reply ?? 'リプライ';
       case _NotificationFilter.resonance:
-        return '共鳴';
+        return l10n?.resonance ?? '共鳴';
     }
   }
 
@@ -131,6 +131,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final notifications = _filterNotifications(allNotifications);
     final hasUnread = manager.unreadCount > 0;
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -138,7 +139,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: '全件を既読にする',
+            tooltip: l10n?.markAllRead ?? '全件を既読にする',
             onPressed: hasUnread ? manager.markAllRead : null,
             icon: const Icon(Icons.done_all),
           ),
@@ -177,7 +178,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   return Padding(
                     padding: const EdgeInsets.only(right: 10),
                     child: _FilterCategoryChip(
-                      label: _filterLabel(filter),
+                      label: _filterLabel(filter, l10n),
                       icon: _filterIcon(filter),
                       isSelected: isSelected,
                       unreadCount: unreadCount,
@@ -398,6 +399,7 @@ class _NotificationTileState extends State<_NotificationTile> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final isUnread = !notification.read;
     final typeColor = _getNotificationColor(theme);
 
@@ -486,7 +488,7 @@ class _NotificationTileState extends State<_NotificationTile> {
                           ),
                           // 時間表示（右端）
                           Text(
-                            _relativeTime(notification.createdAt),
+                            _relativeTime(context, notification.createdAt),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                               fontSize: 12,
@@ -515,7 +517,8 @@ class _NotificationTileState extends State<_NotificationTile> {
                         _buildReplyActions(context, theme),
                       ] else ...[
                         // その他の通知テキスト
-                        _buildNotificationContent(context, theme, typeColor),
+                        _buildNotificationContent(
+                            context, theme, typeColor, l10n),
                       ],
                     ],
                   ),
@@ -641,8 +644,8 @@ class _NotificationTileState extends State<_NotificationTile> {
     }
   }
 
-  Widget _buildNotificationContent(
-      BuildContext context, ThemeData theme, Color typeColor) {
+  Widget _buildNotificationContent(BuildContext context, ThemeData theme,
+      Color typeColor, AppLocalizations? l10n) {
     if (notification.type == AppNotificationType.reply) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,26 +751,27 @@ class _NotificationTileState extends State<_NotificationTile> {
 
     switch (notification.type) {
       case AppNotificationType.like:
-        actionText = 'あなたにいいねしました';
+        actionText = l10n?.actionLikedYou ?? 'あなたにいいねしました';
         actionIcon = Icons.favorite;
         break;
       case AppNotificationType.timelineLike:
-        actionText = 'あなたの投稿にいいねしました';
+        actionText = l10n?.actionLikedYourPost ?? 'あなたの投稿にいいねしました';
         actionIcon = Icons.favorite;
         break;
       case AppNotificationType.follow:
-        actionText = 'あなたをフォローしました';
+        actionText = l10n?.actionFollowedYou ?? 'あなたをフォローしました';
         actionIcon = Icons.person_add;
         break;
       case AppNotificationType.encounter:
         actionText = notification.message.isEmpty
-            ? 'すれちがいが発生しました！'
+            ? (l10n?.actionEncountered ?? 'すれちがいが発生しました！')
             : notification.message;
         actionIcon = Icons.sensors;
         break;
       case AppNotificationType.resonance:
-        actionText =
-            notification.message.isEmpty ? '共鳴が発生しました！' : notification.message;
+        actionText = notification.message.isEmpty
+            ? (l10n?.actionResonated ?? '共鳴が発生しました！')
+            : notification.message;
         actionIcon = Icons.auto_awesome;
         break;
       default:
@@ -940,6 +944,7 @@ class _NotificationTileState extends State<_NotificationTile> {
 
   void _showReplySheet(BuildContext context) {
     _replyController.clear();
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1023,7 +1028,7 @@ class _NotificationTileState extends State<_NotificationTile> {
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.grey,
                     ),
-                    child: const Text('キャンセル'),
+                    child: Text(l10n?.cancelButton ?? 'キャンセル'),
                   ),
                   const SizedBox(width: 8),
                   FilledButton.icon(
@@ -1043,19 +1048,22 @@ class _NotificationTileState extends State<_NotificationTile> {
                                     notification.profile?.displayName,
                               );
                           if (context.mounted) {
+                            final l10n2 = AppLocalizations.of(context);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('返信しました'),
+                              SnackBar(
+                                content: Text(l10n2?.replySent ?? '返信しました'),
                                 behavior: SnackBarBehavior.floating,
-                                duration: Duration(seconds: 2),
+                                duration: const Duration(seconds: 2),
                               ),
                             );
                           }
                         } catch (e) {
                           if (context.mounted) {
+                            final l10n2 = AppLocalizations.of(context);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('エラーが発生しました: $e'),
+                                content: Text(
+                                    '${l10n2?.errorOccurred ?? 'エラーが発生しました'}: $e'),
                                 backgroundColor: Colors.redAccent,
                               ),
                             );
@@ -1064,7 +1072,7 @@ class _NotificationTileState extends State<_NotificationTile> {
                       }
                     },
                     icon: const Icon(Icons.send, size: 16),
-                    label: const Text('送信'),
+                    label: Text(l10n?.sendButton ?? '送信'),
                     style: FilledButton.styleFrom(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
@@ -1170,26 +1178,28 @@ class _EmptyNotificationsView extends StatelessWidget {
 
   final _NotificationFilter filter;
 
-  String _getMessage() {
+  String _getMessage(AppLocalizations? l10n) {
     switch (filter) {
       case _NotificationFilter.all:
-        return 'まだ通知がありません。\nすれ違いやインタラクションをまつりましょう。';
+        return l10n?.noNotificationsYet ??
+            'まだ通知がありません。\nすれ違いやインタラクションをまつりましょう。';
       case _NotificationFilter.encounter:
-        return 'すれ違い通知はまだありません。';
+        return l10n?.noEncounterNotifications ?? 'すれ違い通知はまだありません。';
       case _NotificationFilter.like:
-        return 'いいね通知はまだありません。';
+        return l10n?.noLikeNotifications ?? 'いいね通知はまだありません。';
       case _NotificationFilter.follow:
-        return 'フォロー通知はまだありません。';
+        return l10n?.noFollowNotifications ?? 'フォロー通知はまだありません。';
       case _NotificationFilter.reply:
-        return 'リプライ通知はまだありません。';
+        return l10n?.noReplyNotifications ?? 'リプライ通知はまだありません。';
       case _NotificationFilter.resonance:
-        return '共鳴通知はまだありません。';
+        return l10n?.noResonanceNotifications ?? '共鳴通知はまだありません。';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -1200,7 +1210,7 @@ class _EmptyNotificationsView extends StatelessWidget {
                 size: 72, color: Color(0xFFFFC400)),
             const SizedBox(height: 18),
             Text(
-              _getMessage(),
+              _getMessage(l10n),
               style: theme.textTheme.bodyLarge,
               textAlign: TextAlign.center,
             ),
@@ -1211,10 +1221,13 @@ class _EmptyNotificationsView extends StatelessWidget {
   }
 }
 
-String _relativeTime(DateTime time) {
+String _relativeTime(BuildContext context, DateTime time) {
+  final l10n = AppLocalizations.of(context);
   final diff = DateTime.now().difference(time);
-  if (diff.inMinutes < 1) return '\u305f\u3063\u305f\u4eca';
-  if (diff.inHours < 1) return '${diff.inMinutes}\u5206\u524d';
-  if (diff.inHours < 24) return '${diff.inHours}\u6642\u9593\u524d';
-  return '${diff.inDays}\u65e5\u524d';
+  if (diff.inMinutes < 1) return l10n?.justNow ?? 'たった今';
+  if (diff.inHours < 1)
+    return l10n?.minutesAgo(diff.inMinutes) ?? '${diff.inMinutes}分前';
+  if (diff.inHours < 24)
+    return l10n?.hoursAgo(diff.inHours) ?? '${diff.inHours}時間前';
+  return l10n?.daysAgo(diff.inDays) ?? '${diff.inDays}日前';
 }

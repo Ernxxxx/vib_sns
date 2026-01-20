@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../models/profile.dart';
 import '../widgets/hashtag_picker.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 Future<({String name, String? username, List<String> hashtags})?>
     showProfileSetupModal(
@@ -112,10 +113,12 @@ class _ProfileSetupPageState extends State<_ProfileSetupPage> {
             .limit(1)
             .get();
         if (!mounted) return;
+        final l10n = AppLocalizations.of(context);
         setState(() {
           _checkingUsername = false;
           if (query.docs.isNotEmpty) {
-            _usernameError = 'このユーザーIDは既に使用されています';
+            _usernameError = l10n?.usernameAlreadyTaken(normalizedUsername) ??
+                'このユーザーIDは既に使用されています';
           } else {
             _usernameError = null;
           }
@@ -142,10 +145,11 @@ class _ProfileSetupPageState extends State<_ProfileSetupPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('プロフィール設定'),
+        title: Text(l10n?.profileSetupTitle ?? 'プロフィール設定'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -155,7 +159,7 @@ class _ProfileSetupPageState extends State<_ProfileSetupPage> {
             children: [
               if (widget.lockName) ...[
                 Text(
-                  '表示名',
+                  l10n?.displayName ?? '表示名',
                   style: Theme.of(context)
                       .textTheme
                       .labelLarge
@@ -180,9 +184,9 @@ class _ProfileSetupPageState extends State<_ProfileSetupPage> {
                 TextField(
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: '表示名',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n?.displayName ?? '表示名',
+                    border: const OutlineInputBorder(),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
@@ -192,12 +196,12 @@ class _ProfileSetupPageState extends State<_ProfileSetupPage> {
               TextField(
                 controller: _usernameController,
                 decoration: InputDecoration(
-                  labelText: 'ユーザーID（必須）',
+                  labelText: l10n?.userIdRequiredLabel ?? 'ユーザーID（必須）',
                   hintText: '@username',
                   prefixText: '@',
                   border: const OutlineInputBorder(),
                   errorText: _usernameError,
-                  helperText: '英数字とアンダースコア、3〜20文字',
+                  helperText: l10n?.usernameHelperText ?? '英数字とアンダースコア、3〜20文字',
                 ),
                 onChanged: _validateUsername,
               ),
@@ -218,7 +222,7 @@ class _ProfileSetupPageState extends State<_ProfileSetupPage> {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: _canSubmit ? _submit : null,
-                  child: const Text('保存して続ける'),
+                  child: Text(l10n?.saveAndContinue ?? '保存して続ける'),
                 ),
               ),
             ],

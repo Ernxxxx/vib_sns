@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import '../utils/auth_helpers.dart';
 import '../utils/profile_setup_helper.dart';
@@ -322,6 +323,7 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFFF2B705);
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     // バリデーションエラーなどでスナックバーを表示するためにScaffoldが必要
     // 既存のScaffoldMessengerロジックは _showSnack で context を使うため問題なし
@@ -329,7 +331,7 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('新規登録'),
+        title: Text(l10n?.registerTitle ?? '新規登録'),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black87,
@@ -344,7 +346,7 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
               const SizedBox(height: 16),
               // ヘッダーテキスト
               Text(
-                'はじめましょう！',
+                l10n?.letsGetStarted ?? 'はじめましょう！',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
@@ -355,7 +357,7 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'アカウントを作成して、近くの人とつながりましょう。',
+                l10n?.createAccountPrompt ?? 'アカウントを作成して、近くの人とつながりましょう。',
                 style: TextStyle(
                   fontSize: 15,
                   color: Colors.grey.shade600,
@@ -368,7 +370,7 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
               // メールアドレス
               _buildModernTextField(
                 controller: _emailController,
-                label: 'メールアドレス',
+                label: l10n?.emailLabel ?? 'メールアドレス',
                 hint: 'example@email.com',
                 icon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
@@ -378,8 +380,8 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
               // パスワード
               _buildModernTextField(
                 controller: _passwordController,
-                label: 'パスワード',
-                hint: '6文字以上',
+                label: l10n?.passwordLabel ?? 'パスワード',
+                hint: l10n?.passwordHelperText ?? '6文字以上',
                 icon: Icons.lock_outline,
                 isPassword: true,
                 obscureText: _obscurePassword,
@@ -391,8 +393,8 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
               // パスワード確認
               _buildModernTextField(
                 controller: _passwordConfirmController,
-                label: 'パスワード（確認）',
-                hint: 'パスワードを再入力',
+                label: l10n?.confirmPasswordLabel ?? 'パスワード（確認）',
+                hint: l10n?.passwordLabel ?? 'パスワードを再入力',
                 icon: Icons.lock_outline,
                 isPassword: true,
                 obscureText: _obscurePasswordConfirm,
@@ -402,7 +404,8 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
 
               const SizedBox(height: 12),
               Text(
-                '使用可能な記号: ~ ! @ # \$ % ^ & * ( ) _ + { } [ ] \\ ? : " ; \' , . / = -',
+                l10n?.allowedSymbols ??
+                    '使用可能な記号: ~ ! @ # \$ % ^ & * ( ) _ + { } [ ] \\ ? : " ; \' , . / = -',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: Colors.grey.shade500,
                   fontSize: 11,
@@ -435,9 +438,9 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
                             strokeWidth: 2.5,
                           ),
                         )
-                      : const Text(
-                          '登録する',
-                          style: TextStyle(
+                      : Text(
+                          l10n?.registerButton ?? '登録する',
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 1.0,
@@ -455,7 +458,7 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
-                      'または',
+                      l10n?.or ?? 'または',
                       style: TextStyle(
                           color: Colors.grey.shade500,
                           fontSize: 13,
@@ -470,7 +473,7 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
 
               // Google登録
               GoogleAuthButton(
-                label: 'Googleで登録',
+                label: l10n?.googleRegister ?? 'Googleで登録',
                 loading: _googleSubmitting,
                 onPressed: _googleSubmitting ? null : _handleGoogleRegister,
               ),
@@ -482,16 +485,16 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "すでにアカウントをお持ちですか？ ",
+                    l10n?.alreadyHaveAccountQuestion ?? "すでにアカウントをお持ちですか？ ",
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                   GestureDetector(
                     onTap: () {
                       Navigator.of(context).pop(); // 基本的にpopで戻ればLogin画面のはず
                     },
-                    child: const Text(
-                      'ログイン',
-                      style: TextStyle(
+                    child: Text(
+                      l10n?.loginLink ?? 'ログイン',
+                      style: const TextStyle(
                         color: primaryColor,
                         fontWeight: FontWeight.bold,
                       ),
@@ -582,6 +585,16 @@ class _RegisterAccountScreenState extends State<RegisterAccountScreen> {
   }
 
   String _describeAuthError(FirebaseAuthException error) {
+    // You might want to localize these error messages too
+    // For now, keeping as is or mapping common ones if l10n keys exist
+    // Using a new helper method or just simple switching here if we had context
+    // Since this method doesn't receive context easily without change,
+    // we'll leave strict localization of these specific firebase errors for now
+    // or you can retrieve l10n in the calling method and pass the localized string.
+
+    // NOTE: To properly localize this, we should pass context or l10n to this method.
+    // However, for this task, the main UI elements were the request.
+
     switch (error.code) {
       case 'email-already-in-use':
         return 'このメールアドレスは既に登録されています。ログインしてください。';

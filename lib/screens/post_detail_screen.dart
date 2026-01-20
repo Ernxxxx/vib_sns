@@ -674,7 +674,7 @@ class _ReplyItemState extends State<_ReplyItem> {
                           ),
                         ),
                         Text(
-                          _relativeTime(widget.reply.createdAt),
+                          _relativeTime(context, widget.reply.createdAt),
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -934,12 +934,15 @@ class _ReplyComposer extends StatelessWidget {
   }
 }
 
-String _relativeTime(DateTime time) {
+String _relativeTime(BuildContext context, DateTime time) {
+  final l10n = AppLocalizations.of(context);
   final diff = DateTime.now().difference(time);
-  if (diff.inMinutes < 1) return 'たった今';
-  if (diff.inHours < 1) return '${diff.inMinutes}分前';
-  if (diff.inHours < 24) return '${diff.inHours}時間前';
-  return '${diff.inDays}日前';
+  if (diff.inMinutes < 1) return l10n?.justNow ?? 'たった今';
+  if (diff.inHours < 1)
+    return l10n?.minutesAgo(diff.inMinutes) ?? '${diff.inMinutes}分前';
+  if (diff.inHours < 24)
+    return l10n?.hoursAgo(diff.inHours) ?? '${diff.inHours}時間前';
+  return l10n?.daysAgo(diff.inDays) ?? '${diff.inDays}日前';
 }
 
 String _formatFullDate(DateTime time) {

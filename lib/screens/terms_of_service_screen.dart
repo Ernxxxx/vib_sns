@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class TermsOfServiceScreen extends StatelessWidget {
   const TermsOfServiceScreen({super.key});
@@ -69,15 +70,16 @@ class TermsOfServiceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('利用規約'),
+        title: Text(l10n?.termsOfServiceTitle ?? '利用規約'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: SelectableText(
-            _termsText,
+            l10n?.termsOfServiceBody ?? _termsText,
             style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
           ),
         ),

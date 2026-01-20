@@ -10,6 +10,7 @@ import '../utils/profile_setup_helper.dart';
 import '../utils/profile_setup_modal.dart';
 import '../widgets/google_auth_button.dart';
 import 'register_account_screen.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class NameSetupScreen extends StatefulWidget {
   const NameSetupScreen({super.key});
@@ -43,7 +44,8 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
       final credential = await signInWithGoogle();
       final user = credential?.user;
       if (user == null) {
-        _showSnack('Googleアカウントでのログインがキャンセルされました。');
+        _showSnack(AppLocalizations.of(context)?.googleLoginCancelled ??
+            'Googleアカウントでのログインがキャンセルされました。');
         return;
       }
       await persistAuthUid(user);
@@ -53,7 +55,8 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
         initialName: user.displayName?.trim(),
       );
       if (result == null || !mounted) {
-        _showSnack('表示名とハッシュタグの設定を完了してください。');
+        _showSnack(AppLocalizations.of(context)?.completeProfileSetupWarning ??
+            '表示名とハッシュタグの設定を完了してください。');
         return;
       }
       try {
@@ -72,7 +75,9 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
     } on FirebaseAuthException catch (error) {
       _showSnack(_describeAuthError(error));
     } catch (error) {
-      _showSnack('Google認証でエラーが発生しました: $error');
+      if (mounted)
+        _showSnack(
+            '${AppLocalizations.of(context)?.googleAuthError ?? 'Google認証でエラーが発生しました'}: $error');
     } finally {
       if (mounted) {
         setState(() => _googleSubmitting = false);
@@ -84,11 +89,13 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
     final input = _loginEmailController.text.trim();
     final password = _loginPasswordController.text;
     if (input.isEmpty) {
-      _showSnack('メールアドレスまたはユーザーIDを入力してください。');
+      _showSnack(AppLocalizations.of(context)?.enterEmailOrId ??
+          'メールアドレスまたはユーザーIDを入力してください。');
       return;
     }
     if (password.length < 6) {
-      _showSnack('パスワードは6文字以上で入力してください。');
+      _showSnack(AppLocalizations.of(context)?.passwordTooShort ??
+          'パスワードは6文字以上で入力してください。');
       return;
     }
 
@@ -103,12 +110,14 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
             .doc(username.toLowerCase())
             .get();
         if (!usernameDoc.exists) {
-          _showSnack('このユーザーIDは登録されていません。');
+          _showSnack(AppLocalizations.of(context)?.usernameNotRegistered ??
+              'このユーザーIDは登録されていません。');
           return;
         }
         final profileId = usernameDoc.data()?['profileId'] as String?;
         if (profileId == null) {
-          _showSnack('ユーザー情報の取得に失敗しました。');
+          _showSnack(AppLocalizations.of(context)?.userInfoFetchFailed ??
+              'ユーザー情報の取得に失敗しました。');
           return;
         }
         // Get the profile to find the email
@@ -118,12 +127,14 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
             .get();
         final profileEmail = profileDoc.data()?['email'] as String?;
         if (profileEmail == null || profileEmail.isEmpty) {
-          _showSnack('このアカウントにはメールアドレスが登録されていません。');
+          _showSnack(AppLocalizations.of(context)?.noEmailRegistered ??
+              'このアカウントにはメールアドレスが登録されていません。');
           return;
         }
         email = profileEmail;
       } catch (e) {
-        _showSnack('ユーザー情報の取得に失敗しました: $e');
+        _showSnack(
+            '${AppLocalizations.of(context)?.userInfoFetchFailed ?? 'ユーザー情報の取得に失敗しました'}: $e');
         return;
       }
     }
@@ -141,12 +152,14 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
       final user = credential.user;
       if (user != null) {
         await persistAuthUid(user);
-        _showSnack('メールアドレスでログインしました。');
+        _showSnack(AppLocalizations.of(context)?.loggedInWithEmail ??
+            'メールアドレスでログインしました。');
       }
     } on FirebaseAuthException catch (error) {
       _showSnack(_describeAuthError(error));
     } catch (error) {
-      _showSnack('メールログインでエラーが発生しました: $error');
+      _showSnack(
+          '${AppLocalizations.of(context)?.emailLoginError ?? 'メールログインでエラーが発生しました'}: $error');
     } finally {
       if (mounted) {
         setState(() => _loginEmailSubmitting = false);
@@ -161,19 +174,21 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
   }
 
   String _describeAuthError(FirebaseAuthException error) {
+    final l10n = AppLocalizations.of(context);
     switch (error.code) {
       case 'email-already-in-use':
-        return 'このメールアドレスは既に登録されています。パスワードを入力してログインしてください。';
+        return l10n?.emailAlreadyInUse ??
+            'このメールアドレスは既に登録されています。パスワードを入力してログインしてください。';
       case 'invalid-email':
-        return 'メールアドレスの形式が正しくありません。';
+        return l10n?.invalidEmail ?? 'メールアドレスの形式が正しくありません。';
       case 'weak-password':
-        return 'パスワードは6文字以上にしてください。';
+        return l10n?.passwordTooShort ?? 'パスワードは6文字以上にしてください。';
       case 'wrong-password':
-        return 'パスワードが間違っています。';
+        return l10n?.wrongPassword ?? 'パスワードが間違っています。';
       case 'user-disabled':
-        return 'このアカウントは無効になっています。';
+        return l10n?.accountDisabled ?? 'このアカウントは無効になっています。';
       default:
-        return 'メール認証エラー: ${error.message ?? error.code}';
+        return '${l10n?.emailAuthError ?? 'メール認証エラー'}: ${error.message ?? error.code}';
     }
   }
 
@@ -183,7 +198,8 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
       final setup = await showProfileSetupModal(context);
       if (setup == null) {
         if (mounted) {
-          _showSnack('表示名と最低2件のハッシュタグを選択してください。');
+          _showSnack(AppLocalizations.of(context)?.nameAndTagsRequired ??
+              '表示名と最低2件のハッシュタグを選択してください。');
         }
         return;
       }
@@ -202,7 +218,8 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
         return;
       } catch (error) {
         if (mounted) {
-          _showSnack('プロフィールの設定に失敗しました: $error');
+          _showSnack(
+              '${AppLocalizations.of(context)?.profileSetupFailed ?? 'プロフィールの設定に失敗しました'}: $error');
         }
         return;
       }
@@ -217,7 +234,8 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
   Future<void> _handleIdOnlyLogin() async {
     final input = _idOnlyController.text.trim();
     if (input.isEmpty) {
-      _showSnack('ユーザーIDを入力してください。');
+      _showSnack(
+          AppLocalizations.of(context)?.enterUsername ?? 'ユーザーIDを入力してください。');
       return;
     }
     setState(() => _idOnlySubmitting = true);
@@ -229,12 +247,14 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
           .doc(username.toLowerCase())
           .get();
       if (!usernameDoc.exists) {
-        _showSnack('このユーザーIDは登録されていません。');
+        _showSnack(AppLocalizations.of(context)?.usernameNotRegistered ??
+            'このユーザーIDは登録されていません。');
         return;
       }
       final profileId = usernameDoc.data()?['profileId'] as String?;
       if (profileId == null) {
-        _showSnack('ユーザー情報の取得に失敗しました。');
+        _showSnack(AppLocalizations.of(context)?.userInfoFetchFailed ??
+            'ユーザー情報の取得に失敗しました。');
         return;
       }
       // Load the profile and login as that user (anonymous auth + profile switch)
@@ -243,7 +263,8 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
           .doc(profileId)
           .get();
       if (!profileDoc.exists) {
-        _showSnack('プロフィールが見つかりません。');
+        _showSnack(
+            AppLocalizations.of(context)?.profileNotFound ?? 'プロフィールが見つかりません。');
         return;
       }
       if (!mounted) return;
@@ -272,14 +293,16 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
         return;
       } catch (error) {
         if (mounted) {
-          _showSnack('ログインに失敗しました: $error');
+          _showSnack(
+              '${AppLocalizations.of(context)?.loginFailed ?? 'ログインに失敗しました'}: $error');
         }
         return;
       }
       if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
-      _showSnack('ログインに失敗しました: $e');
+      _showSnack(
+          '${AppLocalizations.of(context)?.loginFailed ?? 'ログインに失敗しました'}: $e');
     } finally {
       if (mounted) setState(() => _idOnlySubmitting = false);
     }
@@ -335,9 +358,10 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        const Text(
-                          'おかえりなさい',
-                          style: TextStyle(
+                        Text(
+                          AppLocalizations.of(context)?.welcomeBack ??
+                              'おかえりなさい',
+                          style: const TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.w900,
                             color: Colors.black87,
@@ -346,7 +370,8 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'ログインして続ける',
+                          AppLocalizations.of(context)?.loginToContinue ??
+                              'ログインして続ける',
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.grey.shade600,
@@ -360,8 +385,10 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                     // メールアドレスまたはID入力
                     _buildModernTextField(
                       controller: _loginEmailController,
-                      label: 'メールアドレスまたはユーザーID',
-                      hint: 'example@email.com または @username',
+                      label: AppLocalizations.of(context)?.emailOrId ??
+                          'メールアドレスまたはユーザーID',
+                      hint: AppLocalizations.of(context)?.emailOrIdHint ??
+                          'example@email.com または @username',
                       icon: Icons.person_outline,
                       keyboardType: TextInputType.emailAddress,
                     ),
@@ -370,8 +397,9 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                     // パスワード入力
                     _buildModernTextField(
                       controller: _loginPasswordController,
-                      label: 'パスワード',
-                      hint: 'パスワードを入力',
+                      label: AppLocalizations.of(context)?.password ?? 'パスワード',
+                      hint: AppLocalizations.of(context)?.enterPassword ??
+                          'パスワードを入力',
                       icon: Icons.lock_outline,
                       isPassword: true,
                       obscureText: _obscurePassword,
@@ -409,9 +437,9 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                                   strokeWidth: 2.5,
                                 ),
                               )
-                            : const Text(
-                                'ログイン',
-                                style: TextStyle(
+                            : Text(
+                                AppLocalizations.of(context)?.login ?? 'ログイン',
+                                style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 1.0,
@@ -429,7 +457,7 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
-                            'または',
+                            AppLocalizations.of(context)?.or ?? 'または',
                             style: TextStyle(
                                 color: Colors.grey.shade500,
                                 fontSize: 13,
@@ -446,7 +474,8 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                     // GoogleAuthButtonのスタイルを上書きするか、ラップして似せる
                     // ここではGoogleAuthButtonをそのまま使いつつ、周りのレイアウトで調整
                     GoogleAuthButton(
-                      label: 'Googleでログイン',
+                      label: AppLocalizations.of(context)?.loginWithGoogle ??
+                          'Googleでログイン',
                       loading: _googleSubmitting,
                       onPressed: _googleSubmitting ? null : _handleGoogleAuth,
                       // Note: GoogleAuthButtonの内部実装に依存するが、ここでは配置のみ
@@ -465,7 +494,9 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
-                                'IDでログイン（パスワード不要）',
+                                AppLocalizations.of(context)
+                                        ?.loginWithIdNoPassword ??
+                                    'IDでログイン（パスワード不要）',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
                                   fontSize: 13,
@@ -480,7 +511,8 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                         const SizedBox(height: 16),
                         _buildModernTextField(
                           controller: _idOnlyController,
-                          label: 'ユーザーID',
+                          label: AppLocalizations.of(context)?.userIdLabel ??
+                              'ユーザーID',
                           hint: '@username',
                           icon: Icons.alternate_email,
                         ),
@@ -510,9 +542,10 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                                       strokeWidth: 2.5,
                                     ),
                                   )
-                                : const Text(
-                                    'IDでログイン',
-                                    style: TextStyle(
+                                : Text(
+                                    AppLocalizations.of(context)?.loginWithId ??
+                                        'IDでログイン',
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -529,7 +562,8 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          "アカウントをお持ちでないですか？ ",
+                          AppLocalizations.of(context)?.noAccountQuestion ??
+                              "アカウントをお持ちでないですか？ ",
                           style: TextStyle(color: Colors.grey.shade600),
                         ),
                         GestureDetector(
@@ -540,9 +574,9 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                               ),
                             );
                           },
-                          child: const Text(
-                            '新規登録',
-                            style: TextStyle(
+                          child: Text(
+                            AppLocalizations.of(context)?.register ?? '新規登録',
+                            style: const TextStyle(
                               color: primaryColor,
                               fontWeight: FontWeight.bold,
                             ),
@@ -572,9 +606,11 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Text(
-                                'アカウントなしで始める',
-                                style: TextStyle(
+                            : Text(
+                                AppLocalizations.of(context)
+                                        ?.startWithoutAccount ??
+                                    'アカウントなしで始める',
+                                style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                   decoration: TextDecoration.underline,
@@ -584,7 +620,8 @@ class _NameSetupScreenState extends State<NameSetupScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '※デモ版のため「アカウントなしで始める」をおすすめします。',
+                      AppLocalizations.of(context)?.demoVersionRecommendation ??
+                          '※デモ版のため「アカウントなしで始める」をおすすめします。',
                       style: TextStyle(
                         color: Colors.red.shade400,
                         fontSize: 12,

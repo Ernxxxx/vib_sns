@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' hide Path;
@@ -918,7 +919,9 @@ class _EmotionMapState extends State<EmotionMap> {
                                   ),
                                 const SizedBox(width: 10),
                                 Text(
-                                  '今の瞬間をシェア',
+                                  AppLocalizations.of(context)
+                                          ?.shareThisMoment ??
+                                      '今の瞬間をシェア',
                                   style: AppTextStyles.mapShareButtonTitle,
                                 ),
                               ],
@@ -1135,7 +1138,8 @@ class _EmotionMapState extends State<EmotionMap> {
     );
     if (!mounted) return;
     if (location == null) {
-      _showSnack('現在地を取得してから投稿してください。');
+      _showSnack(AppLocalizations.of(context)?.locationRequiredToPost ??
+          '現在地を取得してから投稿してください。');
       return;
     }
     final result = await showModalBottomSheet<_EmotionFormResult>(
@@ -1168,12 +1172,18 @@ class _EmotionMapState extends State<EmotionMap> {
       );
       if (!mounted) return;
       messenger.showSnackBar(
-        const SnackBar(content: Text('気持ちを投稿しました。')),
+        SnackBar(
+          content: Text(
+              AppLocalizations.of(context)?.emotionPosted ?? '気持ちを投稿しました。'),
+        ),
       );
     } catch (_) {
       if (!mounted) return;
       messenger.showSnackBar(
-        const SnackBar(content: Text('投稿に失敗しました。もう一度お試しください。')),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)?.emotionPostFailed ??
+              '投稿に失敗しました。もう一度お試しください。'),
+        ),
       );
     } finally {
       if (mounted) {
@@ -1207,14 +1217,16 @@ class _EmotionMapState extends State<EmotionMap> {
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         if (showPromptOnError || !initial) {
-          _showSnack('位置情報へのアクセスを許可してください。');
+          _showSnack(AppLocalizations.of(context)?.locationPermissionRequired ??
+              '位置情報へのアクセスを許可してください。');
         }
         return null;
       }
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (showPromptOnError || !initial) {
-          _showSnack('位置サービスを有効にしてください。');
+          _showSnack(AppLocalizations.of(context)?.locationServiceRequired ??
+              '位置サービスを有効にしてください。');
         }
         return null;
       }
@@ -1242,7 +1254,8 @@ class _EmotionMapState extends State<EmotionMap> {
       return latLng;
     } catch (_) {
       if (showPromptOnError || !initial) {
-        _showSnack('現在地を取得できませんでした。');
+        _showSnack(AppLocalizations.of(context)?.locationFetchFailed ??
+            '現在地を取得できませんでした。');
       }
       return null;
     } finally {
@@ -1313,7 +1326,8 @@ class _EmotionMapState extends State<EmotionMap> {
               ? () {
                   context.read<EmotionMapManager>().removePost(post.id);
                   Navigator.of(context).pop();
-                  _showSnack('投稿を削除しました。');
+                  _showSnack(AppLocalizations.of(context)?.postDeleted ??
+                      '投稿を削除しました。');
                 }
               : null,
         );
@@ -2138,7 +2152,7 @@ class _EmotionPostSheetState extends State<_EmotionPostSheet> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  '今の気持ちは？',
+                  AppLocalizations.of(context)?.whatIsYourFeeling ?? '今の気持ちは？',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
@@ -2158,7 +2172,7 @@ class _EmotionPostSheetState extends State<_EmotionPostSheet> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 4, vertical: 8),
                           child: Text(
-                            '${emotion.emoji} ${emotion.label}',
+                            '${emotion.emoji} ${emotion.localizedLabel(context)}',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: selected
@@ -2184,7 +2198,8 @@ class _EmotionPostSheetState extends State<_EmotionPostSheet> {
                   maxLength: 60,
                   maxLines: 3,
                   decoration: InputDecoration(
-                    labelText: 'ひとことメモ（任意）',
+                    labelText: AppLocalizations.of(context)?.optionalMemo ??
+                        'ひとことメモ（任意）',
                     alignLabelWithHint: true,
                     filled: true,
                     fillColor: Colors.grey.withValues(alpha: 0.1),
@@ -2217,9 +2232,10 @@ class _EmotionPostSheetState extends State<_EmotionPostSheet> {
                     ),
                   ),
                   icon: const Icon(Icons.send_rounded),
-                  label: const Text('投稿する',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  label: Text(
+                      AppLocalizations.of(context)?.postButton ?? '投稿する',
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -2295,7 +2311,7 @@ class _EmotionPostDetailSheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            emotion.label,
+                            emotion.localizedLabel(context),
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
@@ -2469,7 +2485,7 @@ class _ClusterDetailSheet extends StatelessWidget {
                             .isBot;
                         final emotion = post.emotion;
                         final formattedTime =
-                            _formatRelativeTime(post.createdAt);
+                            _formatRelativeTime(context, post.createdAt);
 
                         return ListTile(
                           onTap: () => onPostTap(post, isBot),
@@ -2521,18 +2537,19 @@ class _ClusterDetailSheet extends StatelessWidget {
     );
   }
 
-  String _formatRelativeTime(DateTime time) {
+  String _formatRelativeTime(BuildContext context, DateTime time) {
+    final l10n = AppLocalizations.of(context);
     final now = DateTime.now();
     final diff = now.difference(time);
 
     if (diff.inMinutes < 1) {
-      return 'たった今';
+      return l10n?.justNow ?? 'たった今';
     } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}分前';
+      return l10n?.minutesAgo(diff.inMinutes) ?? '${diff.inMinutes}分前';
     } else if (diff.inHours < 24) {
-      return '${diff.inHours}時間前';
+      return l10n?.hoursAgo(diff.inHours) ?? '${diff.inHours}時間前';
     } else if (diff.inDays < 7) {
-      return '${diff.inDays}日前';
+      return l10n?.daysAgo(diff.inDays) ?? '${diff.inDays}日前';
     } else {
       final local = time.toLocal();
       return '${local.month}/${local.day}';

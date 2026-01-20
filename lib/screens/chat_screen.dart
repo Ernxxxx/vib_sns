@@ -11,6 +11,7 @@ import '../services/firestore_dm_service.dart';
 import '../state/profile_controller.dart';
 import '../widgets/profile_avatar.dart';
 import '../widgets/full_screen_image_viewer.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({
@@ -94,8 +95,9 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       debugPrint('Error picking image: $e');
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('画像の選択に失敗しました')),
+          SnackBar(content: Text(l10n?.imageSelectFailed ?? '画像の選択に失敗しました')),
         );
       }
     }
@@ -129,9 +131,10 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (error) {
       debugPrint('Send message error: $error');
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('送信に失敗しました'),
+          SnackBar(
+            content: Text(l10n?.sendFailed ?? '送信に失敗しました'),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -162,7 +165,9 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final displayName = widget.otherProfile?.displayName ?? 'チャット';
+    final l10n = AppLocalizations.of(context);
+    final displayName =
+        widget.otherProfile?.displayName ?? l10n?.chat ?? 'チャット';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -248,7 +253,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            '会話を始めましょう',
+            AppLocalizations.of(context)?.startConversation ?? '会話を始めましょう',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -302,7 +307,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final now = DateTime.now();
     final isSameDay =
         now.year == date.year && now.month == date.month && now.day == date.day;
-    final text = isSameDay ? '今日' : '${date.month}/${date.day}';
+    final l10n = AppLocalizations.of(context);
+    final text =
+        isSameDay ? (l10n?.today ?? '今日') : '${date.month}/${date.day}';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
@@ -411,9 +418,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     maxLines: 5,
                     minLines: 1,
                     style: const TextStyle(fontSize: 16),
-                    decoration: const InputDecoration(
-                      hintText: 'メッセージを入力...',
-                      hintStyle: TextStyle(color: Colors.black38, fontSize: 15),
+                    decoration: InputDecoration(
+                      hintText:
+                          AppLocalizations.of(context)?.messageInputHint ??
+                              'メッセージを入力...',
+                      hintStyle:
+                          const TextStyle(color: Colors.black38, fontSize: 15),
                       border: InputBorder.none,
                       contentPadding:
                           EdgeInsets.symmetric(horizontal: 18, vertical: 10),

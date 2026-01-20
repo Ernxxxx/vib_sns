@@ -197,8 +197,11 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
           followersCount: snapshot?.followersCount ?? fallbackCount,
         );
       });
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('フォロー状態の更新に失敗しました: $error')),
+        SnackBar(
+            content: Text(
+                '${l10n?.followUpdateFailed ?? 'フォロー状態の更新に失敗しました'}: $error')),
       );
     } finally {
       if (mounted) {
@@ -216,8 +219,9 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
     }
     if (FirebaseAuth.instance.currentUser == null) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('認証に失敗したため、いいねできませんでした。')),
+        SnackBar(content: Text(l10n?.authFailed ?? '認証に失敗したため、いいねできませんでした。')),
       );
       return;
     }
@@ -260,8 +264,11 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
             receivedLikes: previousCount,
             pending: false,
           );
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('いいねの更新に失敗しました: $error')),
+        SnackBar(
+            content:
+                Text('${l10n?.likeUpdateFailed ?? 'いいねの更新に失敗しました'}: $error')),
       );
     } finally {
       if (mounted) setState(() => _isProcessingLike = false);
@@ -317,8 +324,11 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
       );
     } catch (error) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('チャットを開けませんでした: $error')),
+        SnackBar(
+            content:
+                Text('${l10n?.chatOpenFailed ?? 'チャットを開けませんでした'}: $error')),
       );
     }
   }
@@ -326,9 +336,10 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bio = _displayOrPlaceholder(_profile.bio);
-    final homeTown = _displayOrPlaceholder(_profile.homeTown);
-    final hashtags = _hashtagsOrPlaceholder(_profile.favoriteGames);
+    final l10n = AppLocalizations.of(context);
+    final bio = _displayOrPlaceholder(context, _profile.bio);
+    final homeTown = _displayOrPlaceholder(context, _profile.homeTown);
+    final hashtags = _hashtagsOrPlaceholder(context, _profile.favoriteGames);
     final isSelf = widget.profileId == _viewerId;
     final timelineManager = context.watch<TimelineManager>();
     final profilePosts = timelineManager.posts
@@ -452,7 +463,7 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
                                               ),
                                               const SizedBox(width: 10),
                                               Text(
-                                                'メッセージを送る',
+                                                l10n?.sendMessage ?? 'メッセージを送る',
                                                 style: theme
                                                     .textTheme.titleSmall
                                                     ?.copyWith(
@@ -473,28 +484,28 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> {
                             ),
                           const SizedBox(height: 28),
                           Text(
-                            'ステータス',
+                            l10n?.status ?? 'ステータス',
                             style: theme.textTheme.titleMedium,
                           ),
                           const SizedBox(height: 10),
                           ProfileInfoTile(
                             icon: Icons.mood,
-                            title: '一言コメント',
+                            title: l10n?.bio ?? '一言コメント',
                             value: bio,
                           ),
                           ProfileInfoTile(
                             icon: Icons.place_outlined,
-                            title: '活動エリア',
-                            value: homeTown,
+                            title: l10n?.activeArea ?? '活動エリア',
+                            value: _displayOrPlaceholder(context, homeTown),
                           ),
                           ProfileInfoTile(
                             icon: Icons.tag,
-                            title: 'ハッシュタグ',
+                            title: l10n?.hashtags ?? 'ハッシュタグ',
                             value: hashtags,
                           ),
                           const SizedBox(height: 28),
                           Text(
-                            'タイムライン',
+                            l10n?.timeline ?? 'タイムライン',
                             style: theme.textTheme.titleMedium,
                           ),
                           const SizedBox(height: 10),
@@ -580,25 +591,30 @@ Profile _placeholderProfile(String profileId) {
   );
 }
 
-String _formatTimelineTimestamp(DateTime time) {
+String _formatTimelineTimestamp(BuildContext context, DateTime time) {
+  final l10n = AppLocalizations.of(context);
   final diff = DateTime.now().difference(time);
-  if (diff.inMinutes < 1) return 'たった今';
-  if (diff.inHours < 1) return '${diff.inMinutes}\u5206\u524d';
-  if (diff.inHours < 24) return '${diff.inHours}\u6642\u9593\u524d';
-  return '${diff.inDays}\u65e5\u524d';
+  if (diff.inMinutes < 1) return l10n?.justNow ?? 'たった今';
+  if (diff.inHours < 1)
+    return l10n?.minutesAgo(diff.inMinutes) ?? '${diff.inMinutes}分前';
+  if (diff.inHours < 24)
+    return l10n?.hoursAgo(diff.inHours) ?? '${diff.inHours}時間前';
+  return l10n?.daysAgo(diff.inDays) ?? '${diff.inDays}日前';
 }
 
-String _displayOrPlaceholder(String value) {
+String _displayOrPlaceholder(BuildContext context, String value) {
   final trimmed = value.trim();
+  final l10n = AppLocalizations.of(context);
   if (trimmed.isEmpty || trimmed == '未登録') {
-    return '未登録';
+    return l10n?.unregistered ?? '未登録';
   }
   return trimmed;
 }
 
-String _hashtagsOrPlaceholder(List<String> hashtags) {
+String _hashtagsOrPlaceholder(BuildContext context, List<String> hashtags) {
+  final l10n = AppLocalizations.of(context);
   if (hashtags.isEmpty) {
-    return '未登録';
+    return l10n?.unregistered ?? '未登録';
   }
   return hashtags.join(' ');
 }
@@ -648,9 +664,9 @@ class _ProfileTimelineTabsState extends State<_ProfileTimelineTabs>
           labelColor: theme.colorScheme.onSurface,
           unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
           indicatorColor: theme.colorScheme.primary,
-          tabs: const [
-            Tab(text: '投稿'),
-            Tab(text: 'メディア'),
+          tabs: [
+            Tab(text: AppLocalizations.of(context)?.posts ?? '投稿'),
+            Tab(text: AppLocalizations.of(context)?.media ?? 'メディア'),
           ],
         ),
         SizedBox(
@@ -688,7 +704,7 @@ class _PostsTab extends StatelessWidget {
     if (posts.isEmpty) {
       return Center(
         child: Text(
-          'まだ投稿がありません',
+          AppLocalizations.of(context)?.noPostsYet ?? 'まだ投稿がありません',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -720,7 +736,7 @@ class _MediaTab extends StatelessWidget {
     if (posts.isEmpty) {
       return Center(
         child: Text(
-          'メディアがありません',
+          AppLocalizations.of(context)?.noMedia ?? 'メディアがありません',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -821,7 +837,10 @@ class _ProfilePostCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            post.authorName.isEmpty ? '匿名' : post.authorName,
+                            post.authorName.isEmpty
+                                ? (AppLocalizations.of(context)?.anonymous ??
+                                    '匿名')
+                                : post.authorName,
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w600,
                               color: theme.colorScheme.onSurface,
@@ -831,7 +850,7 @@ class _ProfilePostCard extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          _formatTimelineTimestamp(post.createdAt),
+                          _formatTimelineTimestamp(context, post.createdAt),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -852,9 +871,11 @@ class _ProfilePostCard extends StatelessWidget {
                               }
                             },
                             itemBuilder: (context) => [
-                              const PopupMenuItem(
+                              PopupMenuItem(
                                 value: 'delete',
-                                child: Text('削除'),
+                                child: Text(
+                                    AppLocalizations.of(context)?.delete ??
+                                        '削除'),
                               ),
                             ],
                           ),
