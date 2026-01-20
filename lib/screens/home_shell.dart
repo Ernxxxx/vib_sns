@@ -1826,9 +1826,9 @@ class _ProfileScreenState extends State<_ProfileScreen> {
     final totalLikes =
         (profile.receivedLikes + postLikesTotal).clamp(0, 999999);
     final displayProfile = profile.copyWith(receivedLikes: totalLikes);
-    final bio = _displayOrPlaceholder(profile.bio);
-    final homeTown = _displayOrPlaceholder(profile.homeTown);
-    final hashtags = _hashtagsOrPlaceholder(profile.favoriteGames);
+    final bio = profile.bio;
+    final homeTown = profile.homeTown;
+    final hashtags = profile.favoriteGames;
     return Scaffold(
       appBar: AppBar(
         title: const AppLogo(),
@@ -1953,17 +1953,17 @@ class _ProfileScreenState extends State<_ProfileScreen> {
                         ProfileInfoTile(
                           icon: Icons.mood,
                           title: l10n?.bio ?? '一言コメント',
-                          value: bio,
+                          value: _displayOrPlaceholder(context, bio),
                         ),
                         ProfileInfoTile(
                           icon: Icons.place_outlined,
                           title: l10n?.activeArea ?? '活動エリア',
-                          value: homeTown,
+                          value: _displayOrPlaceholder(context, homeTown),
                         ),
                         ProfileInfoTile(
                           icon: Icons.tag,
                           title: l10n?.hashtags ?? 'ハッシュタグ',
-                          value: hashtags,
+                          value: _hashtagsOrPlaceholder(context, hashtags),
                         ),
                         const SizedBox(height: 28),
                         Text(
@@ -1987,17 +1987,20 @@ class _ProfileScreenState extends State<_ProfileScreen> {
   }
 }
 
-String _displayOrPlaceholder(String value) {
+String _displayOrPlaceholder(BuildContext context, String value) {
   final trimmed = value.trim();
-  if (trimmed.isEmpty || trimmed == '\u672a\u767b\u9332') {
-    return '\u672a\u767b\u9332';
+  final l10n = AppLocalizations.of(context);
+  final defaults = const {'未登録', '未設定', 'Not set', 'Unregistered'};
+  if (trimmed.isEmpty || defaults.contains(trimmed)) {
+    return l10n?.unregistered ?? '未登録';
   }
   return trimmed;
 }
 
-String _hashtagsOrPlaceholder(List<String> hashtags) {
+String _hashtagsOrPlaceholder(BuildContext context, List<String> hashtags) {
+  final l10n = AppLocalizations.of(context);
   if (hashtags.isEmpty) {
-    return '\u672a\u767b\u9332';
+    return l10n?.unregistered ?? '未登録';
   }
   return hashtags.join(' ');
 }
