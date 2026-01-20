@@ -605,7 +605,8 @@ String _formatTimelineTimestamp(BuildContext context, DateTime time) {
 String _displayOrPlaceholder(BuildContext context, String value) {
   final trimmed = value.trim();
   final l10n = AppLocalizations.of(context);
-  if (trimmed.isEmpty || trimmed == '未登録') {
+  final defaults = const {'未登録', '未設定', 'Not set', 'Unregistered'};
+  if (trimmed.isEmpty || defaults.contains(trimmed)) {
     return l10n?.unregistered ?? '未登録';
   }
   return trimmed;
