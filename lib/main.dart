@@ -31,6 +31,8 @@ import 'state/profile_controller.dart';
 import 'state/runtime_config.dart';
 import 'state/notification_manager.dart';
 import 'state/timeline_manager.dart';
+import 'state/locale_provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 const _downloadUrl = String.fromEnvironment('DOWNLOAD_URL', defaultValue: '');
 
@@ -215,20 +217,29 @@ class VibSnsApp extends StatelessWidget {
           ),
         ),
       ],
-      child: MaterialApp(
-        title: 'Vib SNS',
-        debugShowCheckedModeBanner: false,
-        locale: const Locale('ja', 'JP'),
-        supportedLocales: const [
-          Locale('ja', 'JP'),
-        ],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        theme: _buildTheme(),
-        home: const _RootGate(),
+      child: ChangeNotifierProvider(
+        create: (_) => LocaleProvider(),
+        child: Consumer<LocaleProvider>(
+          builder: (context, localeProvider, _) {
+            return MaterialApp(
+              title: 'Vib SNS',
+              debugShowCheckedModeBanner: false,
+              locale: localeProvider.locale,
+              supportedLocales: const [
+                Locale('ja'),
+                Locale('en'),
+              ],
+              localizationsDelegates: const [
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              theme: _buildTheme(),
+              home: const _RootGate(),
+            );
+          },
+        ),
       ),
     );
   }
@@ -323,6 +334,14 @@ class VibSnsApp extends StatelessWidget {
       textTheme: base.textTheme.apply(
         bodyColor: Colors.black87,
         displayColor: Colors.black87,
+        fontFamilyFallback: const [
+          'Hiragino Sans',
+          'Hiragino Kaku Gothic ProN',
+          'Noto Sans JP',
+          'Meiryo',
+          'Yu Gothic',
+          'sans-serif',
+        ],
       ),
     );
   }

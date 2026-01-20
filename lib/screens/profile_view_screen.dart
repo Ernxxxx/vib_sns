@@ -19,6 +19,7 @@ import '../widgets/profile_info_tile.dart';
 import '../widgets/profile_stats_row.dart';
 import 'chat_screen.dart';
 import 'profile_follow_list_sheet.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class ProfileViewScreen extends StatefulWidget {
   const ProfileViewScreen({
@@ -960,20 +961,21 @@ class _ProfilePostCard extends StatelessWidget {
 
   Future<void> _confirmDelete(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('投稿を削除'),
-          content: const Text('この投稿を削除しますか？'),
+          title: Text(l10n?.deletePostTitle ?? '投稿を削除'),
+          content: Text(l10n?.deletePostMessage ?? 'この投稿を削除しますか？'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('キャンセル'),
+              child: Text(l10n?.cancel ?? 'キャンセル'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('削除'),
+              child: Text(l10n?.delete ?? '削除'),
             ),
           ],
         );
@@ -983,11 +985,11 @@ class _ProfilePostCard extends StatelessWidget {
     try {
       await timelineManager.deletePost(post);
       messenger.showSnackBar(
-        const SnackBar(content: Text('投稿を削除しました。')),
+        SnackBar(content: Text(l10n?.postDeleted ?? '投稿を削除しました。')),
       );
     } catch (error) {
       messenger.showSnackBar(
-        SnackBar(content: Text('削除に失敗しました: $error')),
+        SnackBar(content: Text('${l10n?.deleteFailed ?? '削除に失敗しました'}: $error')),
       );
     }
   }

@@ -17,6 +17,8 @@ import '../state/notification_manager.dart';
 import '../state/profile_controller.dart';
 import '../state/timeline_manager.dart';
 import '../utils/auth_helpers.dart';
+import '../state/locale_provider.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'profile_edit_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_of_service_screen.dart';
@@ -39,30 +41,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
         builder: (_) => ProfileEditScreen(profile: controller.profile),
       ),
     );
+
     if (result == true && mounted) {
+      final l10n = AppLocalizations.of(context);
       messenger.showSnackBar(
-        const SnackBar(content: Text('プロフィールを更新しました。')),
+        SnackBar(content: Text(l10n?.profileUpdated ?? 'プロフィールを更新しました。')),
       );
     }
   }
 
   void _showLogoutConfirmation() {
+    final l10n = AppLocalizations.of(context);
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('ログアウト'),
-        content: const Text('ログアウトしますか？\nアカウントデータは保持されます。'),
+        title: Text(l10n?.logoutConfirmTitle ?? 'ログアウト'),
+        content:
+            Text(l10n?.logoutConfirmMessage ?? 'ログアウトしますか？\nアカウントデータは保持されます。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('キャンセル'),
+            child: Text(l10n?.cancel ?? 'キャンセル'),
           ),
           FilledButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
               _logoutOnly();
             },
-            child: const Text('ログアウト'),
+            child: Text(l10n?.logout ?? 'ログアウト'),
           ),
         ],
       ),
@@ -70,19 +76,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showDeleteAccountConfirmation() {
+    final l10n = AppLocalizations.of(context);
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('アカウント削除'),
-        content: const Text(
-          'アカウントを削除しますか？\n\n'
-          'この操作は取り消せません。\n'
-          'すべてのプロフィール情報、投稿、フォロー関係が削除されます。',
+        title: Text(l10n?.deleteAccountTitle ?? 'アカウント削除'),
+        content: Text(
+          l10n?.deleteAccountMessage ??
+              'アカウントを削除しますか？\n\nこの操作は取り消せません。\nすべてのプロフィール情報、投稿、フォロー関係が削除されます。',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('キャンセル'),
+            child: Text(l10n?.cancel ?? 'キャンセル'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
@@ -90,7 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.of(dialogContext).pop();
               _deleteAccountAndLogout();
             },
-            child: const Text('削除する'),
+            child: Text(l10n?.deleteConfirm ?? '削除する'),
           ),
         ],
       ),
@@ -279,11 +285,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final profile = context.watch<ProfileController>().profile;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        title: const Text('設定'),
+        title: Text(l10n?.settings ?? '設定'),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -355,20 +362,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                _buildSectionHeader(context, 'アカウント'),
+                _buildSectionHeader(context, l10n?.account ?? 'アカウント'),
                 _buildSettingsTile(
                   context,
                   icon: Icons.edit_outlined,
-                  title: 'プロフィール編集',
+                  title: l10n?.editProfile ?? 'プロフィール編集',
                   onTap: _openProfileEdit,
                 ),
 
                 const SizedBox(height: 24),
-                _buildSectionHeader(context, 'アプリについて'),
+                _buildSectionHeader(context, l10n?.aboutApp ?? 'アプリについて'),
                 _buildSettingsTile(
                   context,
                   icon: Icons.description_outlined,
-                  title: '利用規約',
+                  title: l10n?.termsOfService ?? '利用規約',
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -380,7 +387,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _buildSettingsTile(
                   context,
                   icon: Icons.privacy_tip_outlined,
-                  title: 'プライバシーポリシー',
+                  title: l10n?.privacyPolicy ?? 'プライバシーポリシー',
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -389,13 +396,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                   },
                 ),
+                _buildSettingsTile(
+                  context,
+                  icon: Icons.language,
+                  title: l10n?.language ?? '言語 / Language',
+                  onTap: _showLanguageSheet,
+                ),
 
                 const SizedBox(height: 24),
-                _buildSectionHeader(context, 'ログイン'),
+                _buildSectionHeader(context, l10n?.login ?? 'ログイン'),
                 _buildSettingsTile(
                   context,
                   icon: Icons.logout,
-                  title: 'ログアウト',
+                  title: l10n?.logout ?? 'ログアウト',
                   textColor: theme.colorScheme.primary,
                   iconColor: theme.colorScheme.primary,
                   onTap: _showLogoutConfirmation,
@@ -403,7 +416,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _buildSettingsTile(
                   context,
                   icon: Icons.delete_forever_outlined,
-                  title: 'アカウント削除',
+                  title: l10n?.deleteAccountTitle ?? 'アカウント削除',
                   textColor: theme.colorScheme.error,
                   iconColor: theme.colorScheme.error,
                   onTap: _showDeleteAccountConfirmation,
@@ -466,6 +479,107 @@ class _SettingsScreenState extends State<SettingsScreen> {
               size: 20,
             )
           : null,
+    );
+  }
+
+  void _showLanguageSheet() {
+    final localeProvider = context.read<LocaleProvider>();
+    final currentLocale = localeProvider.locale;
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: Text(
+                    l10n?.language ?? '言語 / Language',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildLanguageOption(
+                  context: sheetContext,
+                  title: l10n?.languageSystem ?? '端末の設定 / System',
+                  isSelected: currentLocale == null,
+                  onTap: () {
+                    localeProvider.setSystemDefault();
+                    Navigator.of(sheetContext).pop();
+                  },
+                ),
+                _buildLanguageOption(
+                  context: sheetContext,
+                  title: '日本語',
+                  isSelected: currentLocale?.languageCode == 'ja',
+                  onTap: () {
+                    localeProvider.setJapanese();
+                    Navigator.of(sheetContext).pop();
+                  },
+                ),
+                _buildLanguageOption(
+                  context: sheetContext,
+                  title: 'English',
+                  isSelected: currentLocale?.languageCode == 'en',
+                  onTap: () {
+                    localeProvider.setEnglish();
+                    Navigator.of(sheetContext).pop();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLanguageOption({
+    required BuildContext context,
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
+            if (isSelected)
+              Icon(Icons.check_circle, color: theme.colorScheme.primary)
+            else
+              Icon(Icons.circle_outlined,
+                  color: theme.colorScheme.outline.withOpacity(0.5)),
+          ],
+        ),
+      ),
     );
   }
 }

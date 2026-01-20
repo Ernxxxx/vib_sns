@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:vib_sns/screens/name_setup_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -226,16 +227,21 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Text(
-                          'すれ違いから始まる\n新しいつながり',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.white.withOpacity(0.9),
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.5,
-                            height: 1.5,
-                          ),
+                        Builder(
+                          builder: (context) {
+                            final l10n = AppLocalizations.of(context);
+                            return Text(
+                              l10n?.welcomeTagline ?? 'すれ違いから始まる\n新しいつながり',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.white.withOpacity(0.9),
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.5,
+                                height: 1.5,
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),

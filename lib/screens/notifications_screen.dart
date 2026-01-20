@@ -12,6 +12,7 @@ import '../state/timeline_manager.dart';
 import '../widgets/app_logo.dart';
 import 'post_detail_screen.dart';
 import 'profile_view_screen.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 /// フィルターの種類を表す enum
 /// いいねは like と timelineLike をまとめて表示

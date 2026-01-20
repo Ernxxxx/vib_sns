@@ -1,0 +1,190 @@
+{
+  "@@locale": "ja",
+  "@_COMMON": {},
+  "appName": "Vib SNS",
+  "save": "保存",
+  "cancel": "キャンセル",
+  "delete": "削除",
+  "confirm": "確認",
+  "ok": "OK",
+  "error": "エラー",
+  "loading": "読み込み中...",
+  "retry": "再試行",
+  "close": "閉じる",
+  "next": "次へ",
+  "back": "戻る",
+  "done": "完了",
+  "edit": "編集",
+  "settings": "設定",
+  "logout": "ログアウト",
+  "login": "ログイン",
+
+  "@_WELCOME_SCREEN": {},
+  "getStarted": "はじめよう",
+  "welcomeTagline": "すれ違いから始まる\n新しいつながり",
+
+  "@_NAME_SETUP_SCREEN": {},
+  "setDisplayName": "表示名を設定",
+  "displayNameHint": "表示名を入力",
+  "usernameHint": "@ユーザーID（任意）",
+  "continueWithoutAccount": "アカウントなしで始める",
+  "demoRecommendation": "※デモ版では体験がおすすめです",
+  "quickLogin": "クイックログイン",
+  "quickLoginDescription": "表示名だけで簡単スタート",
+  "alreadyHaveAccount": "すでにアカウントをお持ちの方",
+  "loginWithEmailOrId": "メールまたはIDでログイン",
+  "loginWithIdOnly": "IDのみでログイン",
+
+  "@_HOME_SHELL": {},
+  "home": "ホーム",
+  "timeline": "タイムライン",
+  "notifications": "通知",
+  "profile": "プロフィール",
+  "messages": "メッセージ",
+  "encounters": "すれ違い",
+  "reunions": "再会",
+  "resonance": "共鳴",
+  "setUsernameBannerTitle": "ユーザーIDを設定しよう！",
+  "setUsernameBannerDescription": "@usernameでプロフィールを検索できるようになります",
+  "noPostsYet": "まだ投稿がありません",
+  "pullToRefresh": "引っ張って更新",
+
+  "@_TIMELINE_COMPOSER": {},
+  "whatsOnYourMind": "今どんな気持ち？",
+  "post": "投稿",
+  "addImage": "画像を追加",
+  "selectHashtags": "ハッシュタグを選択",
+
+  "@_ENCOUNTER_LIST": {},
+  "encounterListTitle": "すれ違いリスト",
+  "reunionListTitle": "再会リスト",
+  "resonanceListTitle": "共鳴リスト",
+  "noEncountersYet": "まだすれ違った人がいません",
+  "noReunionsYet": "まだ再会した人がいません",
+  "noResonanceYet": "まだ共鳴した人がいません",
+  "encounterCardDistance": "{distance}m",
+  "@encounterCardDistance": {
+    "placeholders": {
+      "distance": {"type": "String"}
+    }
+  },
+
+  "@_PROFILE_VIEW": {},
+  "profileStatus": "ステータス",
+  "oneLineComment": "一言コメント",
+  "activityArea": "活動エリア",
+  "hashtags": "ハッシュタグ",
+  "notRegistered": "未登録",
+  "followers": "フォロワー",
+  "following": "フォロー中",
+  "likes": "いいね",
+  "sendMessage": "メッセージを送る",
+  "follow": "フォロー",
+  "unfollow": "フォローを解除",
+  "like": "いいね",
+  "unlike": "いいね解除",
+  "userPosts": "投稿",
+  "userMedia": "メディア",
+  "noPostsFromUser": "まだ投稿がありません",
+  "noMediaFromUser": "メディアがありません",
+
+  "@_PROFILE_EDIT": {},
+  "editProfile": "プロフィール編集",
+  "displayName": "表示名",
+  "username": "ユーザーID",
+  "bio": "一言コメント",
+  "homeTown": "活動エリア",
+  "favoriteHashtags": "お気に入りハッシュタグ",
+  "selectImage": "画像を選ぶ",
+  "removeImage": "画像を削除",
+  "saveAndReturn": "保存して戻る",
+  "profileSyncFailed": "プロフィールの同期に失敗しました。",
+  "profileUpdated": "プロフィールを更新しました。",
+
+  "@_SETTINGS_SCREEN": {},
+  "account": "アカウント",
+  "aboutApp": "アプリについて",
+  "termsOfService": "利用規約",
+  "privacyPolicy": "プライバシーポリシー",
+  "logoutConfirmTitle": "ログアウト",
+  "logoutConfirmMessage": "ログアウトしますか？\nアカウントデータは保持されます。",
+  "deleteAccountTitle": "アカウント削除",
+  "deleteAccountMessage": "アカウントを削除しますか？\n\nこの操作は取り消せません。\nすべてのプロフィール情報、投稿、フォロー関係が削除されます。",
+  "deleteConfirm": "削除する",
+  "language": "言語",
+  "languageSystem": "端末の設定",
+  "languageJapanese": "日本語",
+  "languageEnglish": "English",
+
+  "@_NOTIFICATIONS": {},
+  "notificationTitle": "通知",
+  "noNotifications": "通知はありません",
+  "newFollower": "新しいフォロワー",
+  "likedYourProfile": "があなたにいいねしました",
+  "likedYourPost": "があなたの投稿にいいねしました",
+  "repliedToYourPost": "があなたの投稿に返信しました",
+  "encounteredYou": "とすれ違いました",
+  "resonatedWithYou": "と共鳴しました",
+
+  "@_POST_DETAIL": {},
+  "postDetailTitle": "投稿",
+  "replyHint": "返信を入力...",
+  "send": "送信",
+  "deletePostTitle": "投稿を削除",
+  "deletePostMessage": "この投稿を削除しますか？",
+  "deleteReplyTitle": "リプライを削除",
+  "deleteReplyMessage": "このリプライを削除しますか？",
+  "postDeleted": "投稿を削除しました。",
+  "deleteFailed": "削除に失敗しました",
+  "replyFailed": "リプライの送信に失敗しました",
+  "replyingTo": "Replying to",
+
+  "@_CHAT": {},
+  "chatTitle": "チャット",
+  "messageHint": "メッセージを入力...",
+  "chatOpenFailed": "チャットを開けませんでした",
+  "noConversations": "会話がありません",
+
+  "@_ERRORS": {},
+  "followUpdateFailed": "フォロー状態の更新に失敗しました",
+  "likeUpdateFailed": "いいねの更新に失敗しました",
+  "authFailed": "認証に失敗したため、いいねできませんでした。",
+  "loadFailed": "一覧の読み込みに失敗しました。再度お試しください。",
+
+  "@_REGISTER_ACCOUNT": {},
+  "registerTitle": "新規登録",
+  "setPasswordTitle": "パスワードを設定",
+  "emailLabel": "メールアドレス",
+  "passwordLabel": "パスワード",
+  "confirmPasswordLabel": "パスワード（確認）",
+  "setPassword": "設定する",
+
+  "@_COUNTS": {},
+  "countItems": "{count}件",
+  "@countItems": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "@_MISC": {},
+  "justNow": "たった今",
+  "minutesAgo": "{minutes}分前",
+  "@minutesAgo": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "hoursAgo": "{hours}時間前",
+  "@hoursAgo": {
+    "placeholders": {
+      "hours": {"type": "int"}
+    }
+  },
+  "daysAgo": "{days}日前",
+  "@daysAgo": {
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  }
+}

@@ -10,6 +10,7 @@ import '../state/timeline_manager.dart';
 import '../widgets/full_screen_image_viewer.dart';
 import '../widgets/profile_avatar.dart';
 import 'profile_view_screen.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class PostDetailScreen extends StatefulWidget {
   const PostDetailScreen({
@@ -62,8 +63,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       _clearReplyingTo();
     } catch (error) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('リプライの送信に失敗しました: $error')),
+        SnackBar(
+            content: Text('${l10n?.replyFailed ?? 'リプライの送信に失敗しました'}: $error')),
       );
     } finally {
       if (mounted) {
@@ -80,7 +83,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('投稿'),
+        title: Builder(
+          builder: (context) {
+            final l10n = AppLocalizations.of(context);
+            return Text(l10n?.postDetailTitle ?? '投稿');
+          },
+        ),
         surfaceTintColor: Colors.transparent,
       ),
       body: Column(
@@ -393,19 +401,21 @@ class _PostCard extends StatelessWidget {
   }
 
   Future<void> _deletePost(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('投稿を削除'),
-        content: const Text('この投稿を削除しますか？'),
+        title: Text(l10n?.deletePostTitle ?? '投稿を削除'),
+        content: Text(l10n?.deletePostMessage ?? 'この投稿を削除しますか？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('キャンセル'),
+            child: Text(l10n?.cancel ?? 'キャンセル'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('削除', style: TextStyle(color: Colors.red)),
+            child: Text(l10n?.delete ?? '削除',
+                style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -420,7 +430,7 @@ class _PostCard extends StatelessWidget {
     } catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('削除に失敗しました: $error')),
+        SnackBar(content: Text('${l10n?.deleteFailed ?? '削除に失敗しました'}: $error')),
       );
     }
   }
@@ -555,19 +565,21 @@ class _ReplyItemState extends State<_ReplyItem> {
   }
 
   Future<void> _deleteReply(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('リプライを削除'),
-        content: const Text('このリプライを削除しますか？'),
+        title: Text(l10n?.deleteReplyTitle ?? 'リプライを削除'),
+        content: Text(l10n?.deleteReplyMessage ?? 'このリプライを削除しますか？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('キャンセル'),
+            child: Text(l10n?.cancel ?? 'キャンセル'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('削除', style: TextStyle(color: Colors.red)),
+            child: Text(l10n?.delete ?? '削除',
+                style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -582,7 +594,7 @@ class _ReplyItemState extends State<_ReplyItem> {
     } catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('削除に失敗しました: $error')),
+        SnackBar(content: Text('${l10n?.deleteFailed ?? '削除に失敗しました'}: $error')),
       );
     }
   }

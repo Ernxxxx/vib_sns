@@ -38,6 +38,7 @@ import 'profile_view_screen.dart';
 import 'post_detail_screen.dart';
 import 'chat_screen.dart';
 import '../services/fcm_service.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -1054,7 +1055,12 @@ class _TimelineComposerState extends State<_TimelineComposer> {
                         onPressed: _submitting ? null : _pickImage,
                         icon:
                             const Icon(Icons.photo_library_outlined, size: 20),
-                        label: const Text('画像を選ぶ'),
+                        label: Builder(
+                          builder: (context) {
+                            final l10n = AppLocalizations.of(context);
+                            return Text(l10n?.selectImage ?? '画像を選ぶ');
+                          },
+                        ),
                       ),
                       const Spacer(),
                       Container(
@@ -1229,12 +1235,16 @@ class _UserPostCard extends StatelessWidget {
                                             _confirmDelete(context);
                                           }
                                         },
-                                        itemBuilder: (context) => [
-                                          const PopupMenuItem(
-                                            value: 'delete',
-                                            child: Text('削除'),
-                                          ),
-                                        ],
+                                        itemBuilder: (context) {
+                                          final l10n =
+                                              AppLocalizations.of(context);
+                                          return [
+                                            PopupMenuItem(
+                                              value: 'delete',
+                                              child: Text(l10n?.delete ?? '削除'),
+                                            ),
+                                          ];
+                                        },
                                       )
                                     : null, // メニューがない場合は空のSizedBoxでスペースだけ確保（あるいはSizedBox自体を表示しない選択肢もあるが、今回は時間を揃えるためあえてスペースを確保するか、あるいはスペースなしで右端に寄せるか。ユーザーは「時間のズレ」を気にしているので、自分の投稿（メニューあり）と他人の投稿（メニューなし）で時間がずれるのを防ぐなら、この方法が良い）
                               ),
@@ -1445,17 +1455,18 @@ class _UserPostCard extends StatelessWidget {
     final result = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
+        final l10n = AppLocalizations.of(dialogContext);
         return AlertDialog(
-          title: const Text('投稿を削除'),
-          content: const Text('この投稿を削除しますか？'),
+          title: Text(l10n?.deletePostTitle ?? '投稿を削除'),
+          content: Text(l10n?.deletePostMessage ?? 'この投稿を削除しますか？'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('キャンセル'),
+              child: Text(l10n?.cancel ?? 'キャンセル'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('削除'),
+              child: Text(l10n?.delete ?? '削除'),
             ),
           ],
         );
@@ -1467,12 +1478,14 @@ class _UserPostCard extends StatelessWidget {
       if (context.mounted) {
         context.read<EncounterManager>().suppressVibrationFor(post.authorId);
       }
+      final l10n = AppLocalizations.of(context);
       messenger.showSnackBar(
-        const SnackBar(content: Text('投稿を削除しました。')),
+        SnackBar(content: Text(l10n?.postDeleted ?? '投稿を削除しました。')),
       );
     } catch (error) {
+      final l10n = AppLocalizations.of(context);
       messenger.showSnackBar(
-        SnackBar(content: Text('削除に失敗しました: $error')),
+        SnackBar(content: Text('${l10n?.deleteFailed ?? '削除に失敗しました'}: $error')),
       );
     }
   }
@@ -1893,7 +1906,12 @@ class _ProfileScreenState extends State<_ProfileScreen> {
                                     theme.colorScheme.outline.withOpacity(0.3),
                               ),
                             ),
-                            child: const Text('プロフィールを編集'),
+                            child: Builder(
+                              builder: (context) {
+                                final l10n = AppLocalizations.of(context);
+                                return Text(l10n?.editProfile ?? 'プロフィールを編集');
+                              },
+                            ),
                           ),
                         ),
                         const SizedBox(height: 24),
