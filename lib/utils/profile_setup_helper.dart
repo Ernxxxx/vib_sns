@@ -125,6 +125,12 @@ Future<void> completeProfileSetup(
       avatarColor: Color((data['avatarColor'] as num?)?.toInt() ?? 0xFF1E88E5),
       avatarImageBase64: data['avatarImageBase64'] as String?,
     );
+    // Restore identity (deviceId and beaconId) to SharedPreferences
+    // This prevents duplicate encounters when logging in on a new device
+    await LocalProfileLoader.restoreIdentity(
+      profileId: existingProfileId,
+      beaconId: existingProfile.beaconId,
+    );
     // Save to local storage
     await LocalProfileLoader.updateLocalProfile(
       displayName: existingProfile.displayName,

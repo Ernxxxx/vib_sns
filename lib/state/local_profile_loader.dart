@@ -160,6 +160,22 @@ class LocalProfileLoader {
     return loadOrCreate();
   }
 
+  /// Restore identity (deviceId and beaconId) from Firestore profile data.
+  /// This is used when logging in with an existing username to ensure
+  /// the device uses the same IDs as the original profile, preventing
+  /// duplicate encounters.
+  static Future<void> restoreIdentity({
+    required String profileId,
+    required String beaconId,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    debugPrint(
+        'LocalProfileLoader: restoring identity profileId=$profileId beaconId=$beaconId');
+    await prefs.setString(
+        FirestoreStreetPassService.prefsDeviceIdKey, profileId);
+    await prefs.setString(_beaconIdKey, beaconId);
+  }
+
   static Future<bool> hasDisplayName() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getString(_displayNameKey);
